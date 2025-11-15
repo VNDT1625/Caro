@@ -57,5 +57,11 @@ If you want, I can:
 - split `supabase_schema.sql` into migration files compatible with `supabase db push`;
 - create a Git commit message and add the file to the repo index.
 
+Migrations
+---------
+This folder now supports a `migrations/` directory. For Supabase CLI compatibility you can place numbered migration files under `infra/migrations/` (example: `0001_init.sql`) and run `supabase db push` which expects a migrations workflow.
+
+I have added `infra/migrations/0001_init.sql` containing the initial schema. Use this with the Supabase CLI or split into smaller migrations if you prefer incremental deploys.
+
 ---
 Generated helpers: `apply_schema.ps1` (PowerShell) can be used to run a quick apply using `psql` if desired.
