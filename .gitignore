@@ -1,0 +1,21 @@
+# Node
+node_modules/
+
+# Composer / PHP
+/vendor/
+/.env
+/.env.*
+/storage/
+/.idea/
+/.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build
+dist/
+build/
+
+# Backend env
+backend/.env
