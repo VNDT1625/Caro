@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caro Game Logic Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #22d3ee;
+            text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+        }
+        button {
+            background: linear-gradient(135deg, #22d3ee, #06b6d4);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            box-shadow: 0 4px 12px rgba(34, 211, 238, 0.3);
+            transition: all 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(34, 211, 238, 0.5);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #output {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .pass { color: #10b981; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        .info { color: #22d3ee; }
+        .warning { color: #f59e0b; }
+        .board {
+            background: #334155;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .summary {
+            background: #334155;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #22d3ee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 CARO GAME LOGIC TEST SUITE 🎮</h1>
+        
+        <div class="button-group">
+            <button onclick="runAllTests()">🚀 Chạy Tất Cả Tests</button>
+            <button onclick="runTest(1)">Test 1: Hàng Ngang</button>
+            <button onclick="runTest(2)">Test 2: Hàng Dọc</button>
+            <button onclick="runTest(3)">Test 3: Chéo \</button>
+            <button onclick="runTest(4)">Test 4: Chéo /</button>
+            <button onclick="runTest(5)">Test 5: 4 Hàng</button>
+            <button onclick="runTest(6)">Test 6: 6 Hàng</button>
+            <button onclick="runTest(7)">Test 7: Bị Chặn</button>
+            <button onclick="runTest(8)">Test 8: Góc Board</button>
+            <button onclick="runTest(9)">Test 9: Cuối Board</button>
+            <button onclick="runTest(10)">Test 10: Nhiều 4</button>
+            <button onclick="clearOutput()">🗑️ Xóa Log</button>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const outputEl = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = message + '\n';
+            outputEl.appendChild(span);
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+
+        function clearOutput() {
+            outputEl.innerHTML = '';
+        }
+
+        // Game Logic Implementation
+        function checkWinner(board, lastX, lastY, player) {
+            log(`🔍 Checking winner for ${player} at (${lastX}, ${lastY})`, 'info');
+            log(`  Board at position: ${board[lastY]?.[lastX]}`, 'info');
+            
+            if (!board[lastY] || board[lastY][lastX] !== player) {
+                log(`  ⚠️ Invalid board state at (${lastX}, ${lastY}): ${board[lastY]?.[lastX]}`, 'warning');
+                return null;
+            }
+            
+            const directions = [
+                [1, 0],   // horizontal
+                [0, 1],   // vertical
+                [1, 1],   // diagonal \
+                [1, -1]   // diagonal /
+            ];
+            const dirNames = ['horizontal', 'vertical', 'diagonal \\', 'diagonal /'];
+
+            for (let i = 0; i < directions.length; i++) {
+                const [dx, dy] = directions[i];
+                let count = 1;
+
+                // Count in positive direction
+                let x = lastX + dx;
+                let y = lastY + dy;
+                while (x >= 0 && x < 15 && y >= 0 && y < 15 && board[y] && board[y][x] === player) {
+                    count++;
+                    x += dx;
+                    y += dy;
+                }
+
+                // Count in negative direction
+                x = lastX - dx;
+                y = lastY - dy;
+                while (x >= 0 && x < 15 && y >= 0 && y < 15 && board[y] && board[y][x] === player) {
+                    count++;
+                    x -= dx;
+                    y -= dy;
+                }
+
+                log(`  ${dirNames[i]}: ${count} in a row`, 'info');
+
+                if (count >= 5) {
+                    log(`✅ WINNER FOUND! ${player} has ${count} in ${dirNames[i]}`, 'pass');
+                    return player;
+                }
+            }
+
+            log(`  No winner detected (max < 5)`, 'info');
+            return null;
+        }
+
+        function createEmptyBoard() {
+            return Array(15).fill(null).map(() => Array(15).fill(null));
+        }
+
+        function printBoard(board, title) {
+            log('\n' + '='.repeat(50), 'info');
+            log(title, 'info');
+            log('='.repeat(50), 'info');
+            for (let y = 0; y < 15; y++) {
+                const row = board[y].map(cell => cell || '.').join(' ');
+                log(`${y.toString().padStart(2, '0')} | ${row}`, 'info');
+            }
+            log('='.repeat(50) + '\n', 'info');
+        }
+
+        // Test Cases
+        function test1_HorizontalWin() {
+            log('\n🧪 TEST 1: 5 Hàng Ngang (Horizontal Win)\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][3] = 'X';
+            board[7][4] = 'X';
+            board[7][5] = 'X';
+            board[7][6] = 'X';
+            board[7][7] = 'X';
+            
+            printBoard(board, 'TEST 1: 5 hàng ngang');
+            
+            const winner = checkWinner(board, 7, 7, 'X');
+            const passed = winner === 'X';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test2_VerticalWin() {
+            log('\n🧪 TEST 2: 5 Hàng Dọc (Vertical Win)\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[3][5] = 'O';
+            board[4][5] = 'O';
+            board[5][5] = 'O';
+            board[6][5] = 'O';
+            board[7][5] = 'O';
+            
+            printBoard(board, 'TEST 2: 5 hàng dọc');
+            
+            const winner = checkWinner(board, 5, 7, 'O');
+            const passed = winner === 'O';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test3_DiagonalWin() {
+            log('\n🧪 TEST 3: 5 Hàng Chéo \\ (Diagonal Win)\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[3][3] = 'X';
+            board[4][4] = 'X';
+            board[5][5] = 'X';
+            board[6][6] = 'X';
+            board[7][7] = 'X';
+            
+            printBoard(board, 'TEST 3: 5 hàng chéo \\');
+            
+            const winner = checkWinner(board, 7, 7, 'X');
+            const passed = winner === 'X';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test4_AntiDiagonalWin() {
+            log('\n🧪 TEST 4: 5 Hàng Chéo / (Anti-diagonal Win)\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][3] = 'O';
+            board[6][4] = 'O';
+            board[5][5] = 'O';
+            board[4][6] = 'O';
+            board[3][7] = 'O';
+            
+            printBoard(board, 'TEST 4: 5 hàng chéo /');
+            
+            const winner = checkWinner(board, 3, 7, 'O');
+            const passed = winner === 'O';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test5_NoWinWith4() {
+            log('\n🧪 TEST 5: 4 Hàng - Không Thắng\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][3] = 'X';
+            board[7][4] = 'X';
+            board[7][5] = 'X';
+            board[7][6] = 'X';
+            
+            printBoard(board, 'TEST 5: Chỉ 4 hàng');
+            
+            const winner = checkWinner(board, 7, 6, 'X');
+            const passed = winner === null;
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test6_WinWith6() {
+            log('\n🧪 TEST 6: 6 Hàng - Vẫn Thắng\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][2] = 'O';
+            board[7][3] = 'O';
+            board[7][4] = 'O';
+            board[7][5] = 'O';
+            board[7][6] = 'O';
+            board[7][7] = 'O';
+            
+            printBoard(board, 'TEST 6: 6 hàng');
+            
+            const winner = checkWinner(board, 7, 7, 'O');
+            const passed = winner === 'O';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test7_BlockedInMiddle() {
+            log('\n🧪 TEST 7: Bị Chặn Giữa - Không Thắng\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][3] = 'X';
+            board[7][4] = 'X';
+            board[7][5] = 'O';
+            board[7][6] = 'X';
+            board[7][7] = 'X';
+            
+            printBoard(board, 'TEST 7: Bị chặn giữa');
+            
+            const winner = checkWinner(board, 7, 7, 'X');
+            const passed = winner === null;
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test8_WinAtEdge() {
+            log('\n🧪 TEST 8: Thắng Ở Góc Board\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[0][0] = 'X';
+            board[0][1] = 'X';
+            board[0][2] = 'X';
+            board[0][3] = 'X';
+            board[0][4] = 'X';
+            
+            printBoard(board, 'TEST 8: Thắng ở góc');
+            
+            const winner = checkWinner(board, 0, 4, 'X');
+            const passed = winner === 'X';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test9_WinAtBottomRight() {
+            log('\n🧪 TEST 9: Thắng Ở Cuối Board\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[14][10] = 'O';
+            board[14][11] = 'O';
+            board[14][12] = 'O';
+            board[14][13] = 'O';
+            board[14][14] = 'O';
+            
+            printBoard(board, 'TEST 9: Thắng ở cuối board');
+            
+            const winner = checkWinner(board, 14, 14, 'O');
+            const passed = winner === 'O';
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function test10_Multiple4NoWin() {
+            log('\n🧪 TEST 10: Nhiều Dãy 4 - Không Thắng\n', 'info');
+            const board = createEmptyBoard();
+            
+            board[7][3] = 'X';
+            board[7][4] = 'X';
+            board[7][5] = 'X';
+            board[7][6] = 'X';
+            
+            board[3][5] = 'X';
+            board[4][5] = 'X';
+            board[6][5] = 'X';
+            board[8][5] = 'X';
+            
+            printBoard(board, 'TEST 10: Nhiều dãy 4');
+            
+            const winner = checkWinner(board, 7, 6, 'X');
+            const passed = winner === null;
+            
+            log(`Result: ${winner}`, 'info');
+            log(`Status: ${passed ? '✅ PASSED' : '❌ FAILED'}`, passed ? 'pass' : 'fail');
+            
+            return passed;
+        }
+
+        function runTest(testNumber) {
+            clearOutput();
+            const tests = [
+                null, // Index 0 không dùng
+                test1_HorizontalWin,
+                test2_VerticalWin,
+                test3_DiagonalWin,
+                test4_AntiDiagonalWin,
+                test5_NoWinWith4,
+                test6_WinWith6,
+                test7_BlockedInMiddle,
+                test8_WinAtEdge,
+                test9_WinAtBottomRight,
+                test10_Multiple4NoWin
+            ];
+            
+            if (tests[testNumber]) {
+                tests[testNumber]();
+            }
+        }
+
+        function runAllTests() {
+            clearOutput();
+            log('🧪'.repeat(25), 'info');
+            log('      GAME LOGIC TEST SUITE', 'info');
+            log('🧪'.repeat(25) + '\n', 'info');
+            
+            const tests = [
+                { name: 'TEST 1: Horizontal Win', fn: test1_HorizontalWin },
+                { name: 'TEST 2: Vertical Win', fn: test2_VerticalWin },
+                { name: 'TEST 3: Diagonal Win', fn: test3_DiagonalWin },
+                { name: 'TEST 4: Anti-diagonal Win', fn: test4_AntiDiagonalWin },
+                { name: 'TEST 5: No Win With 4', fn: test5_NoWinWith4 },
+                { name: 'TEST 6: Win With 6', fn: test6_WinWith6 },
+                { name: 'TEST 7: Blocked In Middle', fn: test7_BlockedInMiddle },
+                { name: 'TEST 8: Win At Edge', fn: test8_WinAtEdge },
+                { name: 'TEST 9: Win At Bottom Right', fn: test9_WinAtBottomRight },
+                { name: 'TEST 10: Multiple 4 No Win', fn: test10_Multiple4NoWin }
+            ];
+            
+            const results = tests.map(test => ({
+                name: test.name,
+                passed: test.fn()
+            }));
+            
+            log('\n' + '='.repeat(50), 'info');
+            log('            TEST SUMMARY', 'info');
+            log('='.repeat(50), 'info');
+            
+            results.forEach((result, index) => {
+                log(`${index + 1}. ${result.name}: ${result.passed ? '✅ PASSED' : '❌ FAILED'}`, result.passed ? 'pass' : 'fail');
+            });
+            
+            const passed = results.filter(r => r.passed).length;
+            const total = results.length;
+            
+            log('='.repeat(50), 'info');
+            log(`Total: ${passed}/${total} tests passed`, 'info');
+            log(`Success Rate: ${((passed / total) * 100).toFixed(1)}%`, 'info');
+            log('='.repeat(50) + '\n', 'info');
+            
+            if (passed === total) {
+                log('🎉 ALL TESTS PASSED! 🎉', 'pass');
+            } else {
+                log('❌ SOME TESTS FAILED!', 'fail');
+            }
+        }
+
+        // Auto run on load
+        window.addEventListener('load', () => {
+            log('✨ Test suite ready! Click "Chạy Tất Cả Tests" to begin.\n', 'info');
+        });
+    </script>
+</body>
+</html>

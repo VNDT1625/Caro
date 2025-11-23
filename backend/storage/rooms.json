@@ -1,0 +1,210 @@
+{
+    "0e25314b6987": {
+        "id": "0e25314b6987",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:50:11+00:00",
+        "players": []
+    },
+    "26351e68ce46": {
+        "id": "26351e68ce46",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:50:11+00:00",
+        "players": []
+    },
+    "ce26b0dee960": {
+        "id": "ce26b0dee960",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:50:11+00:00",
+        "players": [
+            {
+                "id": "1da6513a",
+                "name": "guest"
+            }
+        ]
+    },
+    "74fd8a9c0cd5": {
+        "id": "74fd8a9c0cd5",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:52:27+00:00",
+        "players": []
+    },
+    "6824fb5d06be": {
+        "id": "6824fb5d06be",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:52:27+00:00",
+        "players": []
+    },
+    "9db582fffb68": {
+        "id": "9db582fffb68",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:52:27+00:00",
+        "players": [
+            {
+                "id": "13c99d20",
+                "name": "guest"
+            }
+        ]
+    },
+    "f15715a550b2": {
+        "id": "f15715a550b2",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:53:21+00:00",
+        "players": []
+    },
+    "609cf1509b5c": {
+        "id": "609cf1509b5c",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:53:21+00:00",
+        "players": []
+    },
+    "64046b6205d1": {
+        "id": "64046b6205d1",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:53:21+00:00",
+        "players": [
+            {
+                "id": "aaa12925",
+                "name": "guest"
+            }
+        ]
+    },
+    "1ddb075a696c": {
+        "id": "1ddb075a696c",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:57:09+00:00",
+        "players": []
+    },
+    "f8d8902fed7f": {
+        "id": "f8d8902fed7f",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:57:09+00:00",
+        "players": []
+    },
+    "220328c2f5ec": {
+        "id": "220328c2f5ec",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-15T11:57:09+00:00",
+        "players": [
+            {
+                "id": "a4b2febf",
+                "name": "guest"
+            }
+        ]
+    },
+    "afb5d4421d42": {
+        "id": "afb5d4421d42",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-15T12:39:44+00:00",
+        "players": []
+    },
+    "118a774a1fc7": {
+        "id": "118a774a1fc7",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-15T12:39:44+00:00",
+        "players": []
+    },
+    "5ef9c727c779": {
+        "id": "5ef9c727c779",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-15T12:39:44+00:00",
+        "players": [
+            {
+                "id": "5d80d08a",
+                "name": "guest"
+            }
+        ]
+    },
+    "0e034052-c689-4f51-8c7a-8e60ab11c2cb": {
+        "id": "0e034052-c689-4f51-8c7a-8e60ab11c2cb",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:43:30+00:00",
+        "players": []
+    },
+    "bf6d52fa-a8ad-40a6-a4f7-953f808af762": {
+        "id": "bf6d52fa-a8ad-40a6-a4f7-953f808af762",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:43:30+00:00",
+        "players": []
+    },
+    "7c3e269b-aa00-45c1-940f-389fe3bd0a50": {
+        "id": "7c3e269b-aa00-45c1-940f-389fe3bd0a50",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:43:30+00:00",
+        "players": [
+            {
+                "id": "b0272168",
+                "name": "guest"
+            }
+        ]
+    },
+    "b2ccdd40-ab55-4a59-9ed6-e4d15d60e2f1": {
+        "id": "b2ccdd40-ab55-4a59-9ed6-e4d15d60e2f1",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:59:29+00:00",
+        "players": []
+    },
+    "da680e23-aa18-424a-b837-eedac6107c4c": {
+        "id": "da680e23-aa18-424a-b837-eedac6107c4c",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:59:29+00:00",
+        "players": []
+    },
+    "98b07fc5-b1fe-48e7-95a6-30ad457f2424": {
+        "id": "98b07fc5-b1fe-48e7-95a6-30ad457f2424",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-16T02:59:29+00:00",
+        "players": [
+            {
+                "id": "16847e67",
+                "name": "guest"
+            }
+        ]
+    },
+    "8fe7f88f-eb68-4999-a929-5526cd399dc4": {
+        "id": "8fe7f88f-eb68-4999-a929-5526cd399dc4",
+        "name": "phpunit-room",
+        "mode": "casual",
+        "created_at": "2025-11-16T03:19:48+00:00",
+        "players": []
+    },
+    "7ace6853-f3bd-4fb2-a53b-4c985279d0de": {
+        "id": "7ace6853-f3bd-4fb2-a53b-4c985279d0de",
+        "name": "room-for-get",
+        "mode": "casual",
+        "created_at": "2025-11-16T03:19:48+00:00",
+        "players": []
+    },
+    "85a5dded-f0d0-4fc3-a78e-35322e1ba717": {
+        "id": "85a5dded-f0d0-4fc3-a78e-35322e1ba717",
+        "name": "room-to-join",
+        "mode": "casual",
+        "created_at": "2025-11-16T03:19:48+00:00",
+        "players": [
+            {
+                "id": "ed151add",
+                "name": "guest"
+            }
+        ]
+    }
+}

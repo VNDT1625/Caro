@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mindpoint
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - db-data:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+volumes:
+  db-data: {}
+
+# Add backend, ai, and socket services as you scaffold them

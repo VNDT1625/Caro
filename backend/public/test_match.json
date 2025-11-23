@@ -1,0 +1,14 @@
+{
+  "roomId": "room123",
+  "match_type": "casual",
+  "players": [
+    { "userId": "user-a" },
+    { "userId": "user-b" }
+  ],
+  "moves": [
+    { "player": "X", "x": 3, "y": 4 }
+  ],
+  "winner": "X",
+  "started_at": "2025-11-15T00:00:00Z",
+  "ended_at": "2025-11-15T00:05:00Z"
+}

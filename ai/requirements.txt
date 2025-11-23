@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+numpy
+# add ML libs below as needed

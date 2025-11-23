@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(244,114,182);stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:rgb(8,7,29);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" fill="url(#grad2)"/>
+  <circle cx="200" cy="150" r="60" fill="rgba(251,191,36,0.4)" />
+  <circle cx="600" cy="250" r="90" fill="rgba(248,113,113,0.3)" />
+  <path d="M 400 100 L 420 140 L 460 145 L 425 175 L 435 215 L 400 193 L 365 215 L 375 175 L 340 145 L 380 140 Z" fill="rgba(251,191,36,0.6)" />
+  <text x="400" y="280" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">LỬA TRẠI ĐẠI HỘI</text>
+  <text x="400" y="330" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,0.8)" text-anchor="middle">Tổ đội 3 người săn dấu ấn</text>
+</svg>
