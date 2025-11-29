@@ -7,6 +7,7 @@ interface Quest {
   desc: string
   coins: number
   gems: number
+  exp: number
   tier: 'bronze' | 'silver' | 'gold' | 'platinum'
   difficulty: 'Dễ' | 'Trung bình' | 'Khó' | 'Cực khó'
   completed: boolean
@@ -18,6 +19,13 @@ function formatRewardValue(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
   if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}k`
   return `${value}`
+}
+
+// Calculate EXP needed for next level (exponential scaling)
+function getExpForLevel(level: number): number {
+  // Base: 100 EXP for level 1->2
+  // Formula: 100 * level^1.5 (tăng theo cấp bậc)
+  return Math.floor(100 * Math.pow(level, 1.5))
 }
 
 export default function Quests() {
@@ -63,6 +71,7 @@ export default function Quests() {
         desc: 'Thử sức với MindPoint Arena', 
         coins: 30, 
         gems: 0, 
+        exp: 50,
         tier: 'bronze', 
         difficulty: 'Dễ',
         completed: false, 
@@ -75,6 +84,7 @@ export default function Quests() {
         desc: 'Chứng tỏ kỹ năng của bạn', 
         coins: 50, 
         gems: 0, 
+        exp: 100,
         tier: 'bronze', 
         difficulty: 'Dễ',
         completed: false, 
@@ -87,6 +97,7 @@ export default function Quests() {
         desc: 'Rèn luyện thường xuyên', 
         coins: 100, 
         gems: 5, 
+        exp: 200,
         tier: 'silver', 
         difficulty: 'Trung bình',
         completed: false, 
@@ -99,6 +110,7 @@ export default function Quests() {
         desc: 'Thể hiện sự ổn định', 
         coins: 200, 
         gems: 10, 
+        exp: 300,
         tier: 'gold', 
         difficulty: 'Khó',
         completed: false, 
@@ -114,6 +126,7 @@ export default function Quests() {
         desc: 'Kiên trì leo rank', 
         coins: 200, 
         gems: 5, 
+        exp: 500,
         tier: 'bronze', 
         difficulty: 'Dễ',
         completed: false, 
@@ -126,6 +139,7 @@ export default function Quests() {
         desc: 'Chứng tỏ đẳng cấp', 
         coins: 350, 
         gems: 10, 
+        exp: 800,
         tier: 'silver', 
         difficulty: 'Trung bình',
         completed: false, 
@@ -138,6 +152,7 @@ export default function Quests() {
         desc: 'Tiến bộ trong tuần này', 
         coins: 500, 
         gems: 20, 
+        exp: 1000,
         tier: 'gold', 
         difficulty: 'Khó',
         completed: false, 
@@ -153,6 +168,7 @@ export default function Quests() {
         desc: 'Chiến thần bất bại', 
         coins: 500, 
         gems: 30, 
+        exp: 2000,
         tier: 'gold', 
         difficulty: 'Khó',
         completed: false, 
@@ -165,6 +181,7 @@ export default function Quests() {
         desc: 'Bậc thầy caro', 
         coins: 1000, 
         gems: 50, 
+        exp: 5000,
         tier: 'platinum', 
         difficulty: 'Cực khó',
         completed: false, 
@@ -177,6 +194,7 @@ export default function Quests() {
         desc: 'Người không biết mệt', 
         coins: 800, 
         gems: 40, 
+        exp: 3000,
         tier: 'gold', 
         difficulty: 'Khó',
         completed: false, 
@@ -196,6 +214,18 @@ export default function Quests() {
     try {
       const newCoins = (profile.coins || 0) + quest.coins
       const newGems = (profile.gems || 0) + quest.gems
+      const newExp = (profile.exp || 0) + quest.exp
+      const currentLevel = profile.level || 1
+      
+      // Calculate level up
+      let finalLevel = currentLevel
+      let finalExp = newExp
+      const expNeeded = getExpForLevel(currentLevel)
+      
+      if (finalExp >= expNeeded) {
+        finalLevel = currentLevel + 1
+        finalExp = finalExp - expNeeded
+      }
 
       const questProgress = profile.metadata?.quests || {}
       questProgress[quest.id] = true
@@ -210,11 +240,18 @@ export default function Quests() {
         .update({ 
           coins: newCoins, 
           gems: newGems,
+          level: finalLevel,
+          exp: finalExp,
           metadata: newMetadata
         })
         .eq('user_id', user.id)
 
-      setProfile({ ...profile, coins: newCoins, gems: newGems, metadata: newMetadata })
+      // Show level up notification if leveled up
+      if (finalLevel > currentLevel) {
+        alert(`🎉 Chúc mừng! Bạn đã lên cấp ${finalLevel}!\n+${quest.exp} EXP`)
+      }
+
+      setProfile({ ...profile, coins: newCoins, gems: newGems, level: finalLevel, exp: finalExp, metadata: newMetadata })
       
       setQuests(prev => prev.map(q => 
         q.id === quest.id ? { ...q, claimed: true } : q
@@ -467,6 +504,7 @@ export default function Quests() {
                   )}
                   <div className="quest-reward-pair">
                     {[
+                      { key: 'exp', icon: 'EXP', value: quest.exp, label: 'Kinh nghiệm', activeColor: '#A78BFA' },
                       { key: 'gem', icon: '/gem.png', value: quest.gems, label: 'Nguyên Thần', activeColor: '#7DD3FC' },
                       { key: 'coin', icon: '/coin.png', value: quest.coins, label: 'Tinh Thạch', activeColor: '#FCD34D' }
                     ].map((reward) => (
@@ -476,11 +514,15 @@ export default function Quests() {
                         title={`${reward.label}: ${reward.value}`}
                       >
                         <span className="quest-reward-chip__icon">
-                          <img
-                            src={reward.icon}
-                            alt={reward.label}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                          />
+                          {reward.key === 'exp' ? (
+                            <span style={{ fontSize: '18px' }}>{reward.icon}</span>
+                          ) : (
+                            <img
+                              src={reward.icon}
+                              alt={reward.label}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
+                          )}
                         </span>
                         <span
                           className="quest-reward-chip__value"
@@ -498,26 +540,36 @@ export default function Quests() {
                     <button
                       className="claim-button"
                       onClick={() => handleClaimQuest(quest)}
+                      disabled={!(quest.progress && quest.progress.current >= quest.progress.total)}
                       style={{
                         padding: '12px 24px',
                         borderRadius: '10px',
                         border: 'none',
-                        background: 'linear-gradient(135deg, #22D3EE, #06B6D4)',
+                        background: (quest.progress && quest.progress.current >= quest.progress.total)
+                          ? 'linear-gradient(135deg, #22D3EE, #06B6D4)'
+                          : 'linear-gradient(135deg, #94A3B8, #CBD5E1)',
                         color: 'white',
                         fontSize: '16px',
                         fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(34,211,238,0.4)',
+                        cursor: (quest.progress && quest.progress.current >= quest.progress.total) ? 'pointer' : 'not-allowed',
+                        boxShadow: (quest.progress && quest.progress.current >= quest.progress.total)
+                          ? '0 4px 12px rgba(34,211,238,0.4)'
+                          : 'none',
+                        opacity: (quest.progress && quest.progress.current >= quest.progress.total) ? 1 : 0.5,
                         transition: 'all 0.2s ease',
                         textTransform: 'uppercase'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(34,211,238,0.6)'
+                        if (quest.progress && quest.progress.current >= quest.progress.total) {
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(34,211,238,0.6)'
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(34,211,238,0.4)'
+                        if (quest.progress && quest.progress.current >= quest.progress.total) {
+                          e.currentTarget.style.transform = 'translateY(0)'
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(34,211,238,0.4)'
+                        }
                       }}
                     >
                       Nhận

@@ -28,7 +28,7 @@ export default function Room() {
   const [moveHistory, setMoveHistory] = React.useState<Array<{x: number, y: number, player: 'X' | 'O', timestamp: number}>>([])
   const [gameWinner, setGameWinner] = React.useState<'X' | 'O' | 'draw' | null>(null)
   const [matchWinner, setMatchWinner] = React.useState<'X' | 'O' | null>(null)
-  const [showGameWinPopup, setShowGameWinPopup] = React.useState(false)
+  const [showGameResultPopup, setShowGameResultPopup] = React.useState(false)
   
   const [opponent, setOpponent] = React.useState({
     name: 'Đối thủ',
@@ -364,10 +364,10 @@ export default function Room() {
     setGameWinner(winnerSymbol)
     gameWinnerRef.current = winnerSymbol
     
-    // Hiển thị popup thắng/thua trong 3 giây
-    setShowGameWinPopup(true)
+    // Hiển thị popup kết quả game
+    setShowGameResultPopup(true)
     setTimeout(() => {
-      setShowGameWinPopup(false)
+      setShowGameResultPopup(false)
     }, 3000)
 
     const updatedScores = { ...scoresRef.current }
@@ -1117,9 +1117,8 @@ export default function Room() {
           </div>
         </div>
       </div>
-
-      {/* Game Win Popup - Hiển thị 3s */}
-      {showGameWinPopup && gameWinner && (
+      {/* Game Result Popup (3s auto-hide) */}
+      {showGameResultPopup && gameWinner && (
         <div style={{
           position: 'fixed',
           top: '50%',
@@ -1132,42 +1131,38 @@ export default function Room() {
             background: gameWinner === playerSymbol 
               ? 'linear-gradient(135deg, #10b981, #059669)' 
               : 'linear-gradient(135deg, #ef4444, #dc2626)',
-            color: 'white',
-            padding: '40px 60px',
-            borderRadius: '20px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 100px rgba(0,0,0,0.3)',
+            color: '#fff',
+            padding: '32px 48px',
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
             textAlign: 'center',
-            border: '3px solid rgba(255,255,255,0.3)',
-            backdropFilter: 'blur(10px)'
+            minWidth: '400px',
+            border: '3px solid rgba(255,255,255,0.3)'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
               {gameWinner === playerSymbol ? '🎉' : '😢'}
             </div>
             <h2 style={{ 
-              margin: 0, 
-              fontSize: '36px', 
+              margin: '0 0 8px 0', 
+              fontSize: '32px',
               fontWeight: 'bold',
-              textShadow: '0 2px 10px rgba(0,0,0,0.3)',
-              marginBottom: '12px'
+              textShadow: '0 2px 8px rgba(0,0,0,0.3)'
             }}>
               {gameWinner === playerSymbol ? 'BẠN THẮNG!' : 'BẠN THUA!'}
             </h2>
             <p style={{ 
-              margin: 0, 
-              fontSize: '20px',
+              margin: '8px 0 0 0', 
+              fontSize: '18px',
               opacity: 0.95
             }}>
-              {gameWinner === playerSymbol 
-                ? `Quân ${playerSymbol} chiến thắng ván này!` 
-                : `Quân ${gameWinner} chiến thắng ván này!`}
+              Người chơi <strong>{gameWinner}</strong> chiến thắng ván này
             </p>
             <div style={{
-              marginTop: '20px',
-              fontSize: '16px',
-              opacity: 0.9,
-              fontWeight: 600
+              marginTop: '16px',
+              fontSize: '14px',
+              opacity: 0.8
             }}>
-              Tỷ số: X {scores.X} - {scores.O} O
+              Tỉ số hiện tại: X <strong>{scores.X}</strong> - <strong>{scores.O}</strong> O
             </div>
           </div>
         </div>
@@ -1204,16 +1199,15 @@ export default function Room() {
         </div>
       )}
 
-      {/* CSS Animations */}
       <style>{`
         @keyframes slideDown {
-          0% { 
-            opacity: 0; 
-            transform: translate(-50%, -60%); 
+          from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
           }
-          100% { 
-            opacity: 1; 
-            transform: translate(-50%, -50%); 
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
           }
         }
       `}</style>

@@ -183,7 +183,7 @@ export default function CreateRoom() {
             Chánh Điện
         </a>
         <span style={{ color: 'rgba(255,255,255,0.5)' }}>›</span>
-        <span style={{ color: '#fff' }}>Tiêu Dao</span>
+        <span style={{ color: '#fff' }}>Vạn Môn Tranh Đấu</span>
       </nav>        {/* Header */}
         <div className="createroom-header">
           <h1 className="createroom-title">TẠO PHÒNG MỚI</h1>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { checkWinnerLastMove } from '../lib/game/checkWinnerLastMove'
 import { checkForbiddenMove, getWinningChain } from '../lib/game/gomokuRules'
+import { AudioManager } from '../lib/AudioManager'
 
 type Player = 'X' | 'O'
 type BoardState = Record<string, Player>
@@ -95,6 +96,14 @@ export default function GameBoard({
       const check = checkForbiddenMove(board, x, y, 'X')
       if (check.isForbidden) {
         console.log(`Forbidden move: ${check.reason}`)
+        // Play error sound and vibrate for forbidden move
+        AudioManager.playSoundEffect('error')
+        if (navigator.vibrate) {
+          const vibrationEnabled = document.body.getAttribute('data-vibration-enabled') === 'true'
+          if (vibrationEnabled) {
+            navigator.vibrate([50, 30, 50]) // Short error pattern
+          }
+        }
         return
       }
     }
@@ -107,6 +116,14 @@ export default function GameBoard({
 
       if (onMove) {
         const actingPlayer = myPlayerSide ?? currentPlayer ?? 'X'
+        // Play move sound and vibrate
+        AudioManager.playSoundEffect('move')
+        if (navigator.vibrate) {
+          const vibrationEnabled = document.body.getAttribute('data-vibration-enabled') === 'true'
+          if (vibrationEnabled) {
+            navigator.vibrate(30) // Short tap
+          }
+        }
         onMove(x, y, actingPlayer)
       }
       return
@@ -116,6 +133,15 @@ export default function GameBoard({
     const nextBoard = { ...board, [key]: actingPlayer }
     setInternalBoard(nextBoard)
     setLastMove([x, y])
+    
+    // Play move sound and vibrate
+    AudioManager.playSoundEffect('move')
+    if (navigator.vibrate) {
+      const vibrationEnabled = document.body.getAttribute('data-vibration-enabled') === 'true'
+      if (vibrationEnabled) {
+        navigator.vibrate(30) // Short tap
+      }
+    }
 
     if (onMove) {
       onMove(x, y, actingPlayer)
@@ -127,6 +153,21 @@ export default function GameBoard({
         setInternalWinner(result)
         const chain = getWinningChain(nextBoard, x, y) || []
         setInternalWinningChain(chain)
+        
+        // Play win/lose sound and vibrate
+        const isPlayerWin = result === myPlayerSide
+        AudioManager.playSoundEffect(isPlayerWin ? 'win' : 'lose')
+        if (navigator.vibrate) {
+          const vibrationEnabled = document.body.getAttribute('data-vibration-enabled') === 'true'
+          if (vibrationEnabled) {
+            if (isPlayerWin) {
+              navigator.vibrate([100, 50, 100, 50, 200]) // Victory pattern
+            } else {
+              navigator.vibrate([200, 100, 200]) // Defeat pattern
+            }
+          }
+        }
+        
         if (onWin) {
           onWin(result, chain)
         }

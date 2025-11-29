@@ -397,6 +397,17 @@ header.app-header h1{margin:0;font-size:24px}
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .matchmaking-info {
   flex: 1;
   display: flex;
@@ -4957,6 +4968,7 @@ html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover{
   font-size:14px;
   text-align:center;
   max-width:500px;
+  white-space:pre-line;
 }
 
 .cta-primary{
