@@ -1,6 +1,7 @@
 import React from 'react'
 import { supabase } from '../lib/supabase'
 import { useChat } from '../hooks/useChat'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface InMatchProps {
   user?: any
@@ -20,6 +21,8 @@ interface GameState {
 }
 
 export default function InMatch({ user, rank }: InMatchProps = {}) {
+  const { t } = useLanguage()
+  
   // Room and player info
   const [roomId, setRoomId] = React.useState<string | null>(null)
   const [matchId, setMatchId] = React.useState<string | null>(null)
@@ -117,6 +120,31 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
       avatar: '🎭'
     }
   }, [])
+
+  // Presence: join match-specific presence channel for accurate in-match online tracking
+  React.useEffect(() => {
+    if (!user?.id || !matchId) return
+
+    const channel = supabase.channel(`presence:match:${matchId}`, {
+      config: { presence: { key: user.id } }
+    })
+
+    channel.on('presence', { event: 'sync' }, () => {
+      // presence available via channel.presenceState() if needed later
+    })
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        void channel.track({
+          user_id: user.id,
+          side: playerSymbol,
+          at: new Date().toISOString()
+        })
+      }
+    })
+
+    return () => { try { void channel.unsubscribe() } catch (e) {} }
+  }, [user?.id, matchId, playerSymbol])
 
   // Initialize room and player info on mount
   React.useEffect(() => {

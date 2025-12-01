@@ -11,6 +11,7 @@ function buildUrl(path: string) {
 export interface FetchChatHistoryParams {
   channel?: Exclude<ChatChannelScope, 'room'>
   roomId?: string | null
+  targetUserId?: string | null
   limit?: number
   cursor?: string
   token?: string | null
@@ -21,6 +22,7 @@ export interface SendChatMessageParams {
   messageType?: ChatMessageType
   roomId?: string | null
   channel?: Exclude<ChatChannelScope, 'room'>
+  targetUserId?: string | null
   token?: string | null
 }
 
@@ -39,6 +41,7 @@ export async function fetchChatHistory(params: FetchChatHistoryParams): Promise<
   const query = new URLSearchParams()
   if (params.channel) query.set('channel', params.channel)
   if (params.roomId) query.set('room_id', params.roomId)
+  if (params.targetUserId) query.set('target_user_id', params.targetUserId)
   if (params.limit) query.set('limit', String(params.limit))
   if (params.cursor) query.set('cursor', params.cursor)
   const search = query.toString()
@@ -62,6 +65,9 @@ export async function sendChatMessage(params: SendChatMessageParams): Promise<Se
   }
   if (params.channel) {
     body.channel = params.channel
+  }
+  if (params.targetUserId) {
+    body.target_user_id = params.targetUserId
   }
   return request<SendChatResponse>(url, {
     method: 'POST',

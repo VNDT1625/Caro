@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Lobby() {
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [user, setUser] = useState<any>(null)
@@ -112,7 +114,7 @@ export default function Lobby() {
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'var(--color-muted)' }}>›</span>
         <span style={{ color: 'var(--color-text)' }}>Lobby</span>

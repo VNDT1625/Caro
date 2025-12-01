@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 type Item = { 
   id: string
@@ -41,14 +42,16 @@ function Card({
   const previewH = 210
   const isVideo = item.media_url && item.media_url.endsWith('.mp4')
 
+  const { t } = useLanguage()
+  
   function rarityLabel(r?: string) {
     if (!r) return ''
     const key = r.toString().toLowerCase()
     switch (key) {
-      case 'common': return 'Thường'
-      case 'rare': return 'Hiếm'
-      case 'epic': return 'Cao cấp'
-      case 'legendary': return 'Huyền thoại'
+      case 'common': return t('inventory.rarityCommon')
+      case 'rare': return t('inventory.rarityRare')
+      case 'epic': return t('inventory.rarityEpic')
+      case 'legendary': return t('inventory.rarityLegendary')
       default: return r
     }
   }
@@ -138,7 +141,7 @@ function Card({
         <div className="shop-card-sub">{item.subtitle}</div>
         {item.acquired_at && (
           <div className="acquired-date">
-            Nhận: {new Date(item.acquired_at).toLocaleDateString('vi-VN')}
+            {t('inventory.acquired')}: {new Date(item.acquired_at).toLocaleDateString('vi-VN')}
           </div>
         )}
         <div className="shop-card-footer">
@@ -156,7 +159,7 @@ function Card({
               await onUse(item)
             }}
           >
-            {item.is_equipped ? '✓ Đang dùng' : 'Sử dụng'}
+            {item.is_equipped ? `✓ ${t('inventory.using')}` : t('inventory.use')}
           </button>
         </div>
       </div>
@@ -202,6 +205,17 @@ function Card({
 }
 
 export default function Inventory() {
+  const { t, language } = useLanguage()
+  
+  // Helper to get localized item text - wrapped in useCallback to prevent infinite loop
+  const getLocalizedItemText = React.useCallback((viText: string, enText?: string | null) => {
+    if (language === 'vi') return viText
+    if (language === 'en') return enText || viText
+    if (language === 'zh') return enText || viText
+    if (language === 'ja') return enText || viText
+    return viText // Fallback to Vietnamese
+  }, [language])
+  
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
   const [rarity, setRarity] = useState('all')
@@ -289,7 +303,9 @@ export default function Inventory() {
               description,
               category,
               rarity,
-              preview_url
+              preview_url,
+              name_en,
+              description_en
             )
           `)
           .eq('user_id', u.id)
@@ -304,8 +320,8 @@ export default function Inventory() {
               const i = ui.items
               return {
                 id: ui.item_id,
-                title: i.name || 'Unknown Item',
-                subtitle: i.description || '',
+                title: getLocalizedItemText(i.name || 'Unknown Item', i.name_en),
+                subtitle: getLocalizedItemText(i.description || '', i.description_en),
                 media_url: i.preview_url || '',
                 rarity: i.rarity || 'common',
                 type: i.category || 'other',
@@ -387,19 +403,19 @@ export default function Inventory() {
 
     fetchItems()
     return () => { cancelled = true }
-  }, [query, type, rarity, equipped])
+  }, [query, type, rarity, equipped, language, getLocalizedItemText])
 
   async function handleUse(item: Item) {
     const id = item.id
     setUsing(prev => ({ ...prev, [id]: true }))
     try {
       if (!user) {
-        await openInfo('Lỗi', 'Vui lòng đăng nhập')
+        await openInfo(t('inventory.modalError'), t('inventory.errorPleaseLogin'))
         return { ok: false }
       }
 
       if (item.is_equipped) {
-        await openInfo('Thông báo', 'Vật phẩm này đang được sử dụng')
+        await openInfo(t('inventory.modalNotification'), t('inventory.errorAlreadyEquipped'))
         return { ok: false }
       }
 
@@ -435,11 +451,11 @@ export default function Inventory() {
         is_equipped: it.id === item.id ? true : (it.type === item.type ? false : it.is_equipped)
       })))
 
-      await openInfo('Thành công', `Đã trang bị "${item.title}"`)
+      await openInfo(t('inventory.modalSuccess'), `${t('inventory.successEquipped')} "${item.title}"`)
       return { ok: true }
     } catch (err: any) {
       console.error('Use item failed', err)
-      await openInfo('Lỗi', err?.message || 'Không thể sử dụng vật phẩm')
+      await openInfo(t('inventory.modalError'), err?.message || t('inventory.errorCannotUse'))
       return { ok: false }
     } finally {
       setUsing(prev => ({ ...prev, [id]: false }))
@@ -457,9 +473,9 @@ export default function Inventory() {
   return (
     <div className="app-container">
       <nav className="breadcrumb-nav">
-        <a href="#home">Chánh Điện</a>
+        <a href="#home">{t('breadcrumb.home')}</a>
         <span>›</span>
-        <span className="breadcrumb-current">Túi Trữ Vật</span>
+        <span className="breadcrumb-current">{t('inventory.breadcrumbInventory')}</span>
       </nav>
       <div className="shop-page" style={{ gap: 18 }}>
         <aside className="panel shop-sidebar">
@@ -471,51 +487,51 @@ export default function Inventory() {
               textShadow: '0 0 20px rgba(34,211,238,0.5)',
               marginBottom: 8
             }}>
-              Bộ Sưu Tập
+              {t('inventory.title')}
             </h2>
             <p style={{ 
               fontSize: 13, 
               color: 'rgba(255,255,255,0.6)',
               lineHeight: 1.4
             }}>
-              Quản lý và sử dụng các vật phẩm đã sở hữu
+              {t('inventory.subtitle')}
             </p>
           </div>
 
           <div style={{ marginTop: 12 }}>
             <input 
               className="sidebar-search" 
-              placeholder="Tìm kiếm..." 
+              placeholder={t('inventory.search')} 
               value={query} 
               onChange={e => setQuery(e.target.value)} 
             />
           </div>
 
           <div className="shop-filters" style={{ marginTop: 12 }}>
-            <label className="filter-label">Loại vật phẩm</label>
+            <label className="filter-label">{t('inventory.filterType')}</label>
             <select value={type} onChange={e => setType(e.target.value)}>
-              <option value="all">Tất cả</option>
+              <option value="all">{t('inventory.all')}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name_vi}
+                  {cat.icon} {language === 'vi' ? cat.name_vi : (cat.name_en || cat.name_vi)}
                 </option>
               ))}
             </select>
 
-            <label className="filter-label">Độ hiếm</label>
+            <label className="filter-label">{t('inventory.filterRarity')}</label>
             <select value={rarity} onChange={e => setRarity(e.target.value)}>
-              <option value="all">Tất cả</option>
-              <option value="common">Thường</option>
-              <option value="rare">Hiếm</option>
-              <option value="epic">Cao cấp</option>
-              <option value="legendary">Huyền thoại</option>
+              <option value="all">{t('inventory.all')}</option>
+              <option value="common">{t('inventory.rarityCommon')}</option>
+              <option value="rare">{t('inventory.rarityRare')}</option>
+              <option value="epic">{t('inventory.rarityEpic')}</option>
+              <option value="legendary">{t('inventory.rarityLegendary')}</option>
             </select>
 
-            <label className="filter-label">Trạng thái</label>
+            <label className="filter-label">{t('inventory.filterStatus')}</label>
             <select value={equipped} onChange={e => setEquipped(e.target.value)}>
-              <option value="all">Tất cả</option>
-              <option value="equipped">Đang dùng</option>
-              <option value="unequipped">Chưa dùng</option>
+              <option value="all">{t('inventory.all')}</option>
+              <option value="equipped">{t('inventory.statusEquipped')}</option>
+              <option value="unequipped">{t('inventory.statusUnequipped')}</option>
             </select>
           </div>
 
@@ -527,7 +543,7 @@ export default function Inventory() {
             border: '1px solid rgba(34,211,238,0.2)'
           }}>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-              Tổng vật phẩm: <strong style={{ color: '#22D3EE' }}>{items.length}</strong>
+              {t('inventory.totalItems')}: <strong style={{ color: '#22D3EE' }}>{items.length}</strong>
             </div>
           </div>
         </aside>
@@ -552,17 +568,17 @@ export default function Inventory() {
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
             >
-              Chánh Điện
+              {t('inventory.breadcrumbHome')}
             </a>
             <span style={{ color: 'var(--color-muted)' }}>›</span>
-            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>Túi Trữ Vật</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('inventory.breadcrumbInventory')}</span>
           </nav>
 
-          <h2 className="section-title">Bộ sưu tập của bạn</h2>
+          <h2 className="section-title">{t('inventory.yourCollection')}</h2>
 
           {loading && (
             <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.6)' }}>
-              Đang tải...
+              {t('inventory.loading')}
             </div>
           )}
 
@@ -586,8 +602,8 @@ export default function Inventory() {
               color: 'rgba(255,255,255,0.6)'
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-              <div style={{ fontSize: 18, marginBottom: 8 }}>Vui lòng đăng nhập</div>
-              <div style={{ fontSize: 14 }}>để xem bộ sưu tập của bạn</div>
+              <div style={{ fontSize: 18, marginBottom: 8 }}>{t('inventory.pleaseLogin')}</div>
+              <div style={{ fontSize: 14 }}>{t('inventory.toViewCollection')}</div>
             </div>
           )}
 
@@ -598,8 +614,8 @@ export default function Inventory() {
               color: 'rgba(255,255,255,0.6)'
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
-              <div style={{ fontSize: 18, marginBottom: 8 }}>Chưa có vật phẩm nào</div>
-              <div style={{ fontSize: 14 }}>Hãy ghé Shop để sắm đồ nhé!</div>
+              <div style={{ fontSize: 18, marginBottom: 8 }}>{t('inventory.noItems')}</div>
+              <div style={{ fontSize: 14 }}>{t('inventory.visitShop')}</div>
               <button 
                 onClick={() => window.location.hash = '#shop'}
                 style={{
@@ -614,7 +630,7 @@ export default function Inventory() {
                   fontWeight: 600
                 }}
               >
-                Đi tới Shop
+                {t('inventory.goToShop')}
               </button>
             </div>
           )}
@@ -622,7 +638,12 @@ export default function Inventory() {
           {!loading && user && Object.keys(itemsByCategory).length > 0 && (
             Object.entries(itemsByCategory).map(([categoryId, categoryItems]) => {
               const category = categories.find(c => c.id === categoryId)
-              const displayName = category?.name_vi || categoryId
+              const displayName = 
+                language === 'vi' ? (category?.name_vi || categoryId) :
+                language === 'en' ? (category?.name_en || category?.name_vi || categoryId) :
+                language === 'zh' ? (category?.name_en || category?.name_vi || categoryId) :
+                language === 'ja' ? (category?.name_en || category?.name_vi || categoryId) :
+                (category?.name_vi || categoryId)
               const icon = category?.icon || '📦'
               const color = category?.color || '#22D3EE'
               
@@ -687,15 +708,15 @@ export default function Inventory() {
               marginBottom: 20,
               filter: 'drop-shadow(0 4px 12px rgba(34, 211, 238, 0.4))'
             }}>
-              {modalTitle === 'Thành công' ? '✨' : modalTitle === 'Lỗi' ? '⚠️' : 'ℹ️'}
+              {modalTitle === t('inventory.modalSuccess') ? '✨' : modalTitle === t('inventory.modalError') ? '⚠️' : 'ℹ️'}
             </div>
             <h3 className="mp-modal-title" style={{
-              color: modalTitle === 'Thành công' ? '#22D3EE' : modalTitle === 'Lỗi' ? '#EF4444' : '#FCD34D',
+              color: modalTitle === t('inventory.modalSuccess') ? '#22D3EE' : modalTitle === t('inventory.modalError') ? '#EF4444' : '#FCD34D',
               fontSize: 24,
               fontWeight: 800,
               textAlign: 'center',
               marginBottom: 16,
-              textShadow: `0 0 20px ${modalTitle === 'Thành công' ? 'rgba(34, 211, 238, 0.5)' : modalTitle === 'Lỗi' ? 'rgba(239, 68, 68, 0.5)' : 'rgba(252, 211, 77, 0.5)'}`,
+              textShadow: `0 0 20px ${modalTitle === t('inventory.modalSuccess') ? 'rgba(34, 211, 238, 0.5)' : modalTitle === t('inventory.modalError') ? 'rgba(239, 68, 68, 0.5)' : 'rgba(252, 211, 77, 0.5)'}`,
               letterSpacing: '1px'
             }}>
               {modalTitle}
@@ -734,7 +755,7 @@ export default function Inventory() {
                 e.currentTarget.style.boxShadow = 'none'
                 e.currentTarget.style.transform = 'translateY(0)'
               }}>
-                Đồng ý
+                {t('inventory.modalOk')}
               </button>
             </div>
           </div>

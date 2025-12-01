@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface EventReward {
   day?: number
@@ -10,6 +11,7 @@ interface EventReward {
 }
 
 export default function Events() {
+  const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [currentBanner, setCurrentBanner] = useState(0)
@@ -21,24 +23,24 @@ export default function Events() {
   const banners = [
     {
       id: 1,
-      title: 'Sự Kiện Đăng Nhập',
-      subtitle: 'Đăng nhập mỗi ngày nhận thưởng',
+      title: t('events.loginEvent'),
+      subtitle: t('events.loginEventDesc'),
       gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       icon: '📅',
       type: 'login'
     },
     {
       id: 2,
-      title: 'Sự Kiện Chiến Đấu',
-      subtitle: 'Chơi trận nhận Tinh Thạch và Gem',
+      title: t('events.matchEvent'),
+      subtitle: t('events.matchEventDesc'),
       gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
       icon: '⚔️',
       type: 'matches'
     },
     {
       id: 3,
-      title: 'Sự Kiện Đặc Biệt',
-      subtitle: 'Săn Gem khủng cuối tuần',
+      title: t('events.specialEvent'),
+      subtitle: t('events.specialEventDesc'),
       gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
       icon: '🎁',
       type: 'special'
@@ -107,7 +109,7 @@ export default function Events() {
     const reward = loginRewards.find(r => r.day === day)
     if (!reward || reward.claimed) return
     if (consecutiveLogins < day) {
-      alert('Bạn chưa đủ điều kiện nhận thưởng này!')
+      alert(t('events.notEligible'))
       return
     }
 
@@ -138,10 +140,10 @@ export default function Events() {
         r.day === day ? { ...r, claimed: true } : r
       ))
 
-      alert(`Đã nhận ${reward.coin} Tinh Thạch${reward.gem > 0 ? ` và ${reward.gem} Gem` : ''}!`)
+      alert(t('events.claimSuccess', { coins: reward.coin, gems: reward.gem > 0 ? ` ${t('common.and')} ${reward.gem} ${t('shop.gems')}` : '' }))
     } catch (e) {
       console.error('Claim login reward failed:', e)
-      alert('Lỗi khi nhận thưởng!')
+      alert(t('events.claimFailed'))
     }
   }
 
@@ -151,7 +153,7 @@ export default function Events() {
     const reward = matchRewards.find(r => r.matches === matches)
     if (!reward || reward.claimed) return
     if (todayMatches < matches) {
-      alert(`Bạn cần chơi ${matches} trận để nhận thưởng này! (Hiện tại: ${todayMatches} trận)`)
+      alert(`${t('events.needMatches')} ${matches} ${t('events.matches')}! (${t('events.current')}: ${todayMatches} ${t('events.matches')})`)
       return
     }
 
@@ -182,10 +184,10 @@ export default function Events() {
         r.matches === matches ? { ...r, claimed: true } : r
       ))
 
-      alert(`Đã nhận ${reward.coin} Tinh Thạch${reward.gem > 0 ? ` và ${reward.gem} Gem` : ''}!`)
+      alert(t('events.claimSuccess', { coins: reward.coin, gems: reward.gem > 0 ? ` ${t('common.and')} ${reward.gem} ${t('shop.gems')}` : '' }))
     } catch (e) {
       console.error('Claim match reward failed:', e)
-      alert('Lỗi khi nhận thưởng!')
+      alert(t('events.claimFailed'))
     }
   }
 
@@ -221,10 +223,10 @@ export default function Events() {
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'var(--color-muted)' }}>›</span>
-        <span style={{ color: 'var(--color-text)' }}>Sự Kiện</span>
+        <span style={{ color: 'var(--color-text)' }}>{t('events.title')}</span>
       </nav>
 
       <div className="grid-3">
@@ -239,7 +241,7 @@ export default function Events() {
               fontWeight: 600,
               color: '#F59E0B'
             }}>
-              🎉 Sự Kiện
+              🎉 {t('events.title')}
             </div>
           </div>
         </div>
@@ -367,11 +369,11 @@ export default function Events() {
           {currentBannerData.type === 'login' && (
             <div>
               <h3 style={{ fontSize: '24px', marginBottom: '20px', color: 'var(--color-primary)' }}>
-                📅 Điểm Danh Hàng Ngày
+                📅 {t('events.dailyCheckin')}
               </h3>
               <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(102,126,234,0.1)', borderRadius: '12px', border: '1px solid rgba(102,126,234,0.3)' }}>
                 <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text)' }}>
-                  Đăng nhập liên tục: <strong style={{ color: '#667eea', fontSize: '18px' }}>{consecutiveLogins} ngày</strong>
+                  {t('events.consecutiveLogins')}: <strong style={{ color: '#667eea', fontSize: '18px' }}>{consecutiveLogins} {t('events.day')}</strong>
                 </p>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
@@ -400,7 +402,7 @@ export default function Events() {
                       {reward.day === 7 ? '🎁' : '📅'}
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text)' }}>
-                      Ngày {reward.day}
+                      {t('events.dayN', { n: reward.day })}
                     </div>
                     <div style={{ fontSize: '14px', marginBottom: '4px', color: '#FBBF24' }}>
                       💰 {reward.coin}
@@ -429,16 +431,16 @@ export default function Events() {
                           onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                           onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                         >
-                          Nhận
+                          {t('events.claimReward')}
                         </button>
                       ) : (
                         <div style={{ fontSize: '12px', color: 'var(--color-muted)', padding: '8px' }}>
-                          🔒 Chưa mở
+                          🔒 {t('events.locked')}
                         </div>
                       )
                     ) : (
                       <div style={{ fontSize: '12px', color: '#4ADE80', fontWeight: 600, padding: '8px' }}>
-                        ✓ Đã nhận
+                        ✓ {t('events.claimed')}
                       </div>
                     )}
                   </div>
@@ -450,11 +452,11 @@ export default function Events() {
           {currentBannerData.type === 'matches' && (
             <div>
               <h3 style={{ fontSize: '24px', marginBottom: '20px', color: 'var(--color-primary)' }}>
-                ⚔️ Nhiệm Vụ Chiến Đấu
+                ⚔️ {t('events.battleQuests')}
               </h3>
               <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(240,147,251,0.1)', borderRadius: '12px', border: '1px solid rgba(240,147,251,0.3)' }}>
                 <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text)' }}>
-                  Số trận hôm nay: <strong style={{ color: '#f093fb', fontSize: '18px' }}>{todayMatches} trận</strong>
+                  {t('events.todayMatches')}: <strong style={{ color: '#f093fb', fontSize: '18px' }}>{todayMatches} {t('events.matches')}</strong>
                 </p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -483,15 +485,15 @@ export default function Events() {
                   >
                     <div>
                       <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text)' }}>
-                        {reward.matches === 20 ? '🏆' : '⚔️'} Chơi {reward.matches} trận
+                        {reward.matches === 20 ? '🏆' : '⚔️'} {t('events.playMatches', { n: reward.matches })}
                       </div>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ fontSize: '14px', color: '#FBBF24', fontWeight: 600 }}>
-                          💰 {reward.coin} Tinh Thạch
+                          💰 {reward.coin} {t('shop.coins')}
                         </div>
                         {reward.gem > 0 && (
                           <div style={{ fontSize: '14px', color: '#22D3EE', fontWeight: 600 }}>
-                            💎 {reward.gem} Gem
+                            💎 {reward.gem} {t('shop.gems')}
                           </div>
                         )}
                       </div>
@@ -504,7 +506,7 @@ export default function Events() {
                           display: 'flex',
                           justifyContent: 'space-between'
                         }}>
-                          <span>Tiến độ</span>
+                          <span>{t('events.progress')}</span>
                           <span>{Math.min(todayMatches, reward.matches!)}/{reward.matches}</span>
                         </div>
                         <div style={{
@@ -549,11 +551,11 @@ export default function Events() {
                               e.currentTarget.style.boxShadow = '0 4px 12px rgba(240,147,251,0.4)'
                             }}
                           >
-                            Nhận
+                            {t('events.claimReward')}
                           </button>
                         ) : (
                           <div style={{ fontSize: '14px', color: 'var(--color-muted)', padding: '12px 24px' }}>
-                            🔒 Chưa đủ
+                            🔒 {t('events.notEnough')}
                           </div>
                         )
                       ) : (
@@ -566,7 +568,7 @@ export default function Events() {
                           borderRadius: '10px',
                           border: '1px solid rgba(74,222,128,0.3)'
                         }}>
-                          ✓ Đã nhận
+                          ✓ {t('events.claimed')}
                         </div>
                       )}
                     </div>
@@ -580,10 +582,10 @@ export default function Events() {
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: '80px', marginBottom: '20px' }}>🎁</div>
               <h3 style={{ fontSize: '28px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-                Sự Kiện Đặc Biệt
+                {t('events.specialEvent')}
               </h3>
               <p style={{ fontSize: '16px', color: 'var(--color-muted)', marginBottom: '24px' }}>
-                Sự kiện đặc biệt sẽ được cập nhật vào cuối tuần
+                {t('events.specialEventDesc')}
               </p>
               <div style={{ 
                 display: 'inline-block',
@@ -595,7 +597,7 @@ export default function Events() {
                 color: '#4facfe',
                 fontWeight: 600
               }}>
-                ⏰ Đang chuẩn bị...
+                ⏰ {t('events.preparing')}
               </div>
             </div>
           )}
@@ -604,36 +606,32 @@ export default function Events() {
         {/* Right Sidebar */}
         <div className="panel glass-card" style={{ height: 'fit-content' }}>
           <h3 style={{ fontSize: '18px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-            💰 Về Tinh Thạch
+            💰 {t('events.aboutCoins')}
           </h3>
           <div style={{ fontSize: '14px', color: 'var(--color-muted)', lineHeight: '1.6' }}>
             <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(251,191,36,0.1)', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#FBBF24', marginBottom: '8px' }}>
-                Tinh Thạch (Coin)
+                {t('shop.coins')}
               </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>
-                Đơn vị tiền tệ chính trong game, dùng để mua vật phẩm, nâng cấp và mở khóa tính năng.
-              </p>
+              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>{t('events.aboutCoinsDesc')}</p>
             </div>
             
             <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(34,211,238,0.1)', borderRadius: '8px', border: '1px solid rgba(34,211,238,0.2)' }}>
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#22D3EE', marginBottom: '8px' }}>
-                Gem (Ngọc)
+                {t('shop.gems')}
               </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>
-                Đơn vị cao cấp, dùng để mua vật phẩm hiếm và đổi Tinh Thạch.
-              </p>
+              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>{t('events.aboutGemsDesc')}</p>
             </div>
 
             <div style={{ padding: '12px', background: 'rgba(34,197,94,0.1)', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#22C55E', marginBottom: '8px' }}>
-                💡 Cách kiếm
+                💡 {t('events.howToEarn')}
               </div>
               <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', lineHeight: '1.6' }}>
-                <li>Đăng nhập mỗi ngày</li>
-                <li>Hoàn thành nhiệm vụ</li>
-                <li>Chơi trận đấu</li>
-                <li>Tham gia sự kiện</li>
+                <li>{t('events.loginEventDesc')}</li>
+                <li>{t('quests.subtitle')}</li>
+                <li>{t('events.matchEventDesc')}</li>
+                <li>{t('events.specialEventDesc')}</li>
               </ul>
             </div>
           </div>

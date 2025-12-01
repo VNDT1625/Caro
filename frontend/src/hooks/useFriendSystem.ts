@@ -68,11 +68,15 @@
     // Get all unique profile IDs
     const profileIds = [...new Set(data.flatMap(row => [row.user_id, row.friend_id]))]
     
-    // Fetch all profiles in one query
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('user_id,username,display_name,avatar_url,current_rank,last_active')
-      .in('user_id', profileIds)
+    // Fetch all profiles in one query (skip if empty to avoid in.() error)
+    let profiles: any[] | null = null
+    if (profileIds.length > 0) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id,username,display_name,avatar_url,current_rank,last_active')
+        .in('user_id', profileIds)
+      profiles = data
+    }
 
     const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
 
@@ -110,11 +114,15 @@
     const allRows = [...(incomingRows || []), ...(outgoingRows || [])]
     const profileIds = [...new Set(allRows.flatMap(row => [row.user_id, row.friend_id]))]
     
-    // Fetch all profiles in one query
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('user_id,username,display_name,avatar_url,current_rank,last_active')
-      .in('user_id', profileIds)
+    // Fetch all profiles in one query (skip if empty to avoid in.() error)
+    let profiles: any[] | null = null
+    if (profileIds.length > 0) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id,username,display_name,avatar_url,current_rank,last_active')
+        .in('user_id', profileIds)
+      profiles = data
+    }
 
     const profileMap = new Map((profiles || []).map(p => [p.user_id, p]))
 

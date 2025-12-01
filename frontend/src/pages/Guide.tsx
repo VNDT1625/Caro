@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Guide() {
+  const { t } = useLanguage()
   const [selectedSection, setSelectedSection] = useState<string>('intro')
+  const [compact, setCompact] = useState<boolean>(true)
 
   const breadcrumbStyle = {
     display: 'flex',
@@ -15,200 +18,110 @@ export default function Guide() {
 
   const guideData = {
     intro: {
-      title: '🌟 Lời Ngỏ Từ Kỳ Môn',
+      title: '🌟 ' + t('guide.menuIntro'),
       icon: '📜',
       content: [
-        {
-          subtitle: 'Chào mừng tân đồ',
-          text: 'Ta là trưởng lão Kỳ Môn, người canh giữ đạo caro trong thế giới MindPoint Arena. Ngươi đã bước chân vào một hành trình tu luyện đầy gian nan nhưng vinh quang.'
-        },
-        {
-          subtitle: 'Đạo caro là gì?',
-          text: 'Đạo caro không đơn thuần là trò chơi. Đó là môn kỳ thuật chiến thuật cao siêu, nơi mỗi nước đi là một bước tu hành, mỗi chiến thắng là một tầng đột phá.'
-        },
-        {
-          subtitle: 'Mục tiêu của ngươi',
-          text: 'Từ Vô Danh, ngươi sẽ trải qua 7 cảnh giới: Tân Kỳ → Học Kỳ → Kỳ Lão → Cao Kỳ → Tam Kỳ → Đệ Nhị → và cuối cùng là Vô Đối.'
-        }
+        { subtitle: t('guide.intro.subtitle1'), text: t('guide.intro.text1') },
+        { subtitle: t('guide.intro.subtitle2'), text: t('guide.intro.text2') },
+        { subtitle: t('guide.intro.subtitle3'), text: t('guide.intro.text3') }
       ]
     },
     rules: {
-      title: '⚔️ Quy Luật Đấu Trận',
+      title: '⚔️ ' + t('guide.menuRules'),
       icon: '📖',
       content: [
-        {
-          subtitle: 'Luật cơ bản',
-          text: 'Hai kỳ thủ lần lượt đặt quân trên bàn caro. Người nào tạo thành 5 quân liên tiếp theo hàng ngang, dọc hoặc chéo sẽ giành chiến thắng.'
-        },
-        {
-          subtitle: 'Kích thước bàn',
-          text: 'Bàn caro có nhiều kích thước: 3x3 (nhập môn), 7x7 (cơ bản), 15x15 (tiêu chuẩn), 19x19 (cao thủ). Kích thước càng lớn, chiến thuật càng phức tạp.'
-        },
-        {
-          subtitle: 'Thời gian suy nghĩ',
-          text: 'Mỗi nước đi có giới hạn thời gian (10-45 giây). Tổng thời gian cho cả trận từ 5-20 phút. Hết giờ sẽ tự động thua cuộc.'
-        },
-        {
-          subtitle: 'Ưu tiên lượt đi',
-          text: 'Người đi trước (cầm X - màu đen) có lợi thế nhưng cũng phải chịu áp lực tạo thế mạnh ngay từ đầu.'
-        }
+        { subtitle: t('guide.rules.subtitle1'), text: t('guide.rules.text1') },
+        { subtitle: t('guide.rules.subtitle2'), text: t('guide.rules.text2') },
+        { subtitle: t('guide.rules.subtitle3'), text: t('guide.rules.text3') },
+        { subtitle: t('guide.rules.subtitle4'), text: t('guide.rules.text4') }
       ]
     },
     tactics: {
-      title: '🧠 Chiến Thuật Căn Bản',
+      title: '🧠 ' + t('guide.menuTactics'),
       icon: '⚡',
       content: [
-        {
-          subtitle: 'Tạo song kiếm',
-          text: 'Hình thành 2 dãy 3 quân có khả năng thành 5 cùng lúc. Đối thủ chỉ chặn được 1 đường → ngươi thắng.'
-        },
-        {
-          subtitle: 'Phòng thủ chủ động',
-          text: 'Không chỉ tấn công. Quan sát nước đi của đối phương, chặn đứng các dãy 3-4 quân nguy hiểm trước khi chúng thành hình.'
-        },
-        {
-          subtitle: 'Kiểm soát trung tâm',
-          text: 'Nước đi ở trung tâm bàn cờ có nhiều hướng phát triển hơn. Cao thủ luôn tranh giành vị trí chiến lược này.'
-        },
-        {
-          subtitle: 'Dụ địch sâu nhập',
-          text: 'Tạo một dãy 3 quân giả, khiến đối thủ chặn sai hướng. Trong khi đó, ngươi âm thầm tạo thế thắng ở nơi khác.'
-        },
-        {
-          subtitle: 'Liên hoàn kế',
-          text: 'Tạo nhiều mối đe dọa cùng lúc. Dù đối thủ chặn đường nào, ngươi vẫn có đường dự phòng để thắng.'
-        }
+        { subtitle: t('guide.tactics.subtitle1'), text: t('guide.tactics.text1') },
+        { subtitle: t('guide.tactics.subtitle2'), text: t('guide.tactics.text2') },
+        { subtitle: t('guide.tactics.subtitle3'), text: t('guide.tactics.text3') },
+        { subtitle: t('guide.tactics.subtitle4'), text: t('guide.tactics.text4') },
+        { subtitle: t('guide.tactics.subtitle5'), text: t('guide.tactics.text5') }
       ]
     },
     modes: {
-      title: '🏆 Các Chế Độ Tu Luyện',
+      title: '🏆 ' + t('guide.menuModes'),
       icon: '🎯',
       content: [
-        {
-          subtitle: '🤖 Luyện tập với Ma Thú',
-          text: 'Đấu với AI để rèn luyện kỹ năng. Có 3 cấp độ: Dễ (cho tân thủ), Trung bình (thử thách), Khó (chỉ dành cho cao thủ).'
-        },
-        {
-          subtitle: '⚔️ Đấu thường',
-          text: 'Tự do giao đấu với người chơi khác mà không ảnh hưởng rank. Phù hợp để thử nghiệm chiến thuật mới.'
-        },
-        {
-          subtitle: '🔥 Xếp hạng',
-          text: 'Chế độ chính thức! Mỗi trận thắng/thua sẽ tăng/giảm điểm rank. Leo lên để chứng tỏ ngươi là Vô Đối Kỳ Thủ.'
-        },
-        {
-          subtitle: '🏠 Phòng riêng',
-          text: 'Tạo phòng với cài đặt tùy chỉnh: kích thước bàn, thời gian, đặt cược coin/gem. Mời bạn bè cùng thi đấu.'
-        },
-        {
-          subtitle: '🏅 Giải đấu',
-          text: 'Tham gia các giải đấu lớn với giải thưởng hậu hĩnh. Đây là nơi các cao thủ hội tụ, tranh tài!'
-        }
+        { subtitle: t('guide.modes.subtitle1'), text: t('guide.modes.text1') },
+        { subtitle: t('guide.modes.subtitle2'), text: t('guide.modes.text2') },
+        { subtitle: t('guide.modes.subtitle3'), text: t('guide.modes.text3') },
+        { subtitle: t('guide.modes.subtitle4'), text: t('guide.modes.text4') },
+        { subtitle: t('guide.modes.subtitle5'), text: t('guide.modes.text5') }
       ]
     },
     progression: {
-      title: '✨ Hệ Thống Tu Luyện',
+      title: '✨ ' + t('guide.menuProgression'),
       icon: '🌙',
       content: [
-        {
-          subtitle: '📊 Rank & ELO',
-          text: 'Điểm ELO thể hiện thực lực. Mỗi rank có ngưỡng ELO riêng. Thắng cao thủ tăng nhiều điểm, thua tân thủ mất nhiều điểm.'
-        },
-        {
-          subtitle: '💰 Coin & Gem',
-          text: 'Coin kiếm qua nhiệm vụ và trận đấu, dùng mua skin. Gem quý hiếm hơn, dùng để mua item độc quyền hoặc mở rương.'
-        },
-        {
-          subtitle: '🎁 Nhiệm vụ hằng ngày',
-          text: 'Hoàn thành nhiệm vụ nhỏ mỗi ngày để nhận coin. Dễ làm, dễ kiếm, giúp ngươi tích lũy tài nguyên ổn định.'
-        },
-        {
-          subtitle: '🏅 Thành tựu',
-          text: 'Mở khóa thành tựu khi đạt mốc đặc biệt: 100 trận thắng, 10 chuỗi thắng, đạt rank Vô Đối... Nhận coin + danh hiệu đặc biệt.'
-        },
-        {
-          subtitle: '🎨 Skin & Trang trí',
-          text: 'Sưu tầm skin bàn cờ, quân cờ độc đáo trong Shop. Thể hiện phong cách riêng khi giao đấu!'
-        }
+        { subtitle: t('guide.progression.subtitle1'), text: t('guide.progression.text1') },
+        { subtitle: t('guide.progression.subtitle2'), text: t('guide.progression.text2') },
+        { subtitle: t('guide.progression.subtitle3'), text: t('guide.progression.text3') },
+        { subtitle: t('guide.progression.subtitle4'), text: t('guide.progression.text4') },
+        { subtitle: t('guide.progression.subtitle5'), text: t('guide.progression.text5') }
       ]
     },
     advanced: {
-      title: '🔮 Bí Kíp Cao Thủ',
+      title: '🔮 ' + t('guide.menuAdvanced'),
       icon: '💎',
       content: [
-        {
-          subtitle: '🤖 AI Phân tích',
-          text: 'Sau mỗi trận, dùng AI phân tích để xem nước đi sai lầm, nước đi tối ưu. Học hỏi từ chính trận đấu của mình.'
-        },
-        {
-          subtitle: '📈 Replay & Học hỏi',
-          text: 'Xem lại các trận đấu của cao thủ. Học cách họ mở đầu, triển khai chiến thuật, xử lý tình huống nguy hiểm.'
-        },
-        {
-          subtitle: '👥 Thiết lập bang hội',
-          text: 'Kết bạn với đồng môn, cùng nhau luyện tập. Chia sẻ kinh nghiệm, tổ chức nội chiến để tiến bộ nhanh hơn.'
-        },
-        {
-          subtitle: '⏱️ Quản lý thời gian',
-          text: 'Cao thủ không chỉ đi đúng mà còn đi nhanh. Rèn phản xạ, nhận diện thế cờ nhanh để không hết giờ trong lúc căng thẳng.'
-        },
-        {
-          subtitle: '🧘 Tâm thế ổn định',
-          text: 'Thua là chuyện bình thường. Quan trọng là học được gì từ thất bại. Giữ tâm bình tĩnh, không cảm xúc khi thua liên tiếp.'
-        }
+        { subtitle: t('guide.advanced.subtitle1'), text: t('guide.advanced.text1') },
+        { subtitle: t('guide.advanced.subtitle2'), text: t('guide.advanced.text2') },
+        { subtitle: t('guide.advanced.subtitle3'), text: t('guide.advanced.text3') },
+        { subtitle: t('guide.advanced.subtitle4'), text: t('guide.advanced.text4') },
+        { subtitle: t('guide.advanced.subtitle5'), text: t('guide.advanced.text5') }
       ]
     },
     faq: {
-      title: '❓ Nghi Vấn Thường Gặp',
+      title: '❓ ' + t('guide.menuFaq'),
       icon: '💬',
       content: [
-        {
-          subtitle: 'Làm sao leo rank nhanh?',
-          text: 'Chơi nhiều trận xếp hạng, học chiến thuật, phân tích sai lầm. Thắng liên tiếp sẽ được tăng điểm bonus.'
-        },
-        {
-          subtitle: 'Mất coin khi thua có sao không?',
-          text: 'Trận thường không mất coin. Chỉ phòng đặt cược mới có rủi ro mất tiền. Cân nhắc trước khi tham gia!'
-        },
-        {
-          subtitle: 'AI phân tích có chính xác không?',
-          text: 'AI của chúng ta được huấn luyện bởi hàng triệu ván cờ cao thủ. Độ chính xác rất cao, đặc biệt với bàn 15x15.'
-        },
-        {
-          subtitle: 'Có thể đổi username không?',
-          text: 'Có thể đổi username trong phần Profile. Lần đầu miễn phí, từ lần 2 tốn gem.'
-        },
-        {
-          subtitle: 'Làm sao kiếm gem nhanh?',
-          text: 'Gem kiếm qua: Nhiệm vụ tuần, thành tựu khó, giải đấu, hoặc mua bằng tiền thật.'
-        }
+        { subtitle: t('guide.faq.q1.title'), text: t('guide.faq.q1.body') },
+        { subtitle: t('guide.faq.q2.title'), text: t('guide.faq.q2.body') },
+        { subtitle: t('guide.faq.q3.title'), text: t('guide.faq.q3.body') },
+        { subtitle: t('guide.faq.q4.title'), text: t('guide.faq.q4.body') },
+        { subtitle: t('guide.faq.q5.title'), text: t('guide.faq.q5.body') }
       ]
     }
   }
 
   const menuItems = [
-    { id: 'intro', label: 'Lời Ngỏ', icon: '🌟' },
-    { id: 'rules', label: 'Quy Luật', icon: '⚔️' },
-    { id: 'tactics', label: 'Chiến Thuật', icon: '🧠' },
-    { id: 'modes', label: 'Chế Độ', icon: '🏆' },
-    { id: 'progression', label: 'Tu Luyện', icon: '✨' },
-    { id: 'advanced', label: 'Bí Kíp', icon: '🔮' },
-    { id: 'faq', label: 'FAQ', icon: '❓' }
+    { id: 'intro', labelKey: 'guide.menuIntro', icon: '🌟' },
+    { id: 'rules', labelKey: 'guide.menuRules', icon: '⚔️' },
+    { id: 'tactics', labelKey: 'guide.menuTactics', icon: '🧠' },
+    { id: 'modes', labelKey: 'guide.menuModes', icon: '🏆' },
+    { id: 'progression', labelKey: 'guide.menuProgression', icon: '✨' },
+    { id: 'advanced', labelKey: 'guide.menuAdvanced', icon: '🔮' },
+    { id: 'faq', labelKey: 'guide.menuFaq', icon: '❓' }
   ]
 
   const currentGuide = guideData[selectedSection as keyof typeof guideData]
 
+  const itemsToShow = compact ? Math.min((currentGuide?.content?.length || 0), 3) : (currentGuide?.content?.length || 0)
+
   return (
-    <div className="guide-container">
+    <div className="guide-container" style={{
+      maxWidth: 1120,
+      margin: '0 auto',
+      padding: compact ? '8px 12px' : undefined
+    }}>
       {/* Breadcrumb Navigation */}
       <nav style={{ 
         display: 'flex', 
         alignItems: 'center', 
         gap: '8px', 
-        fontSize: '13px', 
+        fontSize: compact ? '12px' : '13px', 
         color: 'rgba(255,255,255,0.5)',
-        marginBottom: '16px',
-        padding: '20px 24px 0'
+        marginBottom: compact ? '8px' : '16px',
+        padding: compact ? '8px 12px 0' : '20px 24px 0'
       }}>
         <a 
           href="#home" 
@@ -220,45 +133,72 @@ export default function Guide() {
           onMouseEnter={(e) => e.currentTarget.style.color = '#22D3EE'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'rgba(255,255,255,0.5)' }}>›</span>
-        <span style={{ color: '#fff' }}>Bí Tịch</span>
+        <span style={{ color: '#fff' }}>{t('guide.breadcrumbGuide')}</span>
       </nav>
       
       {/* Decorative Background Elements */}
-      <div className="guide-bg-decoration">
-        <div className="floating-orb orb-1"></div>
-        <div className="floating-orb orb-2"></div>
-        <div className="floating-orb orb-3"></div>
-      </div>
+      {!compact && (
+        <div className="guide-bg-decoration">
+          <div className="floating-orb orb-1"></div>
+          <div className="floating-orb orb-2"></div>
+          <div className="floating-orb orb-3"></div>
+        </div>
+      )}
 
-      {/* Header */}
+      {/* Header (centered, no expand button) */}
       <div className="guide-header">
         <div className="guide-title-wrapper">
           <div className="guide-title-icon">📚</div>
           <div>
-            <h1 className="guide-main-title">THIÊN CƠ BÍ ĐIỂN</h1>
-            <p className="guide-subtitle">Tổng tập đạo caro trong MindPoint Arena</p>
+            <h1 className="guide-main-title">{t('guide.mainTitle')}</h1>
+            <p className="guide-subtitle">{t('guide.mainSubtitle')}</p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="guide-content-grid">
+      <div className="guide-content-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(200px, 240px) 1fr',
+        gap: compact ? 10 : 20,
+        alignItems: 'start'
+      }}>
         {/* Left Sidebar - Navigation */}
-        <div className="guide-sidebar">
-          <div className="guide-menu-title">📖 Mục Lục</div>
-          <div className="guide-menu">
+        <div className="guide-sidebar" style={{ position: 'sticky', top: compact ? 8 : 16, alignSelf: 'start' }}>
+          <div className="guide-menu-title" style={{ marginBottom: compact ? 8 : undefined, fontSize: compact ? 14 : undefined }}>📖 {t('guide.tableOfContents')}</div>
+          <div className="guide-menu" style={{
+            display: compact ? 'grid' : undefined,
+            gridTemplateColumns: compact ? '1fr 1fr' : undefined,
+            gap: compact ? 8 : undefined
+          }}>
             {menuItems.map((item) => (
               <button
                 key={item.id}
                 className={`guide-menu-item ${selectedSection === item.id ? 'active' : ''}`}
                 onClick={() => setSelectedSection(item.id)}
+                style={{
+                  display: 'flex',
+                  flexDirection: compact ? 'column' as const : undefined,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: compact ? '8px 6px' : undefined,
+                  minHeight: compact ? 64 : undefined
+                }}
               >
-                <span className="menu-icon">{item.icon}</span>
-                <span className="menu-label">{item.label}</span>
-                {selectedSection === item.id && (
+                <span className="menu-icon" style={{ fontSize: compact ? 18 : undefined, lineHeight: 1 }}>{item.icon}</span>
+                <span className="menu-label" style={{
+                  fontSize: compact ? 12 : undefined,
+                  marginTop: compact ? 2 : undefined,
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  width: '100%'
+                }}>{t(item.labelKey)}</span>
+                {!compact && selectedSection === item.id && (
                   <div className="menu-active-indicator"></div>
                 )}
               </button>
@@ -267,29 +207,51 @@ export default function Guide() {
         </div>
 
         {/* Right Content Panel */}
-        <div className="guide-main-panel">
+        <div className="guide-main-panel" style={{ padding: compact ? 12 : 20 }}>
           {/* Section Header */}
-          <div className="section-header">
-            <div className="section-icon-large">{currentGuide.icon}</div>
-            <h2 className="section-title">{currentGuide.title}</h2>
+          <div className="section-header" style={{ marginBottom: compact ? 8 : 16 }}>
+            <div className="section-icon-large" style={{ fontSize: compact ? 20 : undefined }}>{currentGuide.icon}</div>
+            <h2 className="section-title" style={{ fontSize: compact ? 18 : undefined, margin: compact ? 0 : undefined }}>{currentGuide.title}</h2>
           </div>
 
           {/* Content Cards */}
-          <div className="guide-content-list">
-            {currentGuide.content.map((item, index) => (
-              <div key={index} className="guide-content-card">
-                <div className="card-number">{index + 1}</div>
+          <div className="guide-content-list" style={{
+            display: 'grid',
+            gridTemplateColumns: compact ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr',
+            gap: compact ? 10 : 16
+          }}>
+            {currentGuide.content.slice(0, itemsToShow).map((item, index) => (
+              <div key={index} className="guide-content-card" style={{ padding: compact ? 8 : 14, gap: compact ? 6 : undefined }}>
+                <div className="card-number" style={{ fontSize: compact ? 12 : undefined, minWidth: compact ? 22 : undefined, height: compact ? 22 : undefined }}>{index + 1}</div>
                 <div className="card-body">
-                  <h3 className="card-subtitle">{item.subtitle}</h3>
-                  <p className="card-text">{item.text}</p>
+                  <h3 className="card-subtitle" style={{ fontSize: compact ? 13 : undefined, margin: compact ? '0 0 2px 0' : undefined }}>{item.subtitle}</h3>
+                  <p className="card-text" style={{ fontSize: compact ? 12 : undefined, lineHeight: compact ? 1.25 : undefined }}>{item.text}</p>
                 </div>
-                <div className="card-glow-effect"></div>
+                {!compact && <div className="card-glow-effect"></div>}
               </div>
             ))}
           </div>
 
+          {compact && currentGuide.content.length > itemsToShow && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+              <button
+                onClick={() => setCompact(false)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(148,163,184,0.35)',
+                  background: 'rgba(15,23,42,0.6)',
+                  color: '#E2E8F0',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('guide.viewMore')}
+              </button>
+            </div>
+          )}
+
           {/* Navigation Footer */}
-          <div className="guide-nav-footer">
+          <div className="guide-nav-footer" style={{ marginTop: compact ? 8 : 16, gap: compact ? 8 : undefined }}>
             <button 
               className="guide-nav-btn prev"
               onClick={() => {
@@ -299,11 +261,12 @@ export default function Guide() {
                 }
               }}
               disabled={menuItems.findIndex(m => m.id === selectedSection) === 0}
+            style={{ padding: compact ? '6px 8px' : undefined, fontSize: compact ? 12 : undefined }}
             >
-              <span className="nav-arrow">←</span>
-              <span>Mục trước</span>
+              <span className="nav-arrow" style={{ fontSize: compact ? 12 : undefined }}>←</span>
+              <span>{t('guide.prevSection')}</span>
             </button>
-            <div className="guide-progress-indicator">
+            <div className="guide-progress-indicator" style={{ fontSize: compact ? 12 : undefined }}>
               {menuItems.findIndex(m => m.id === selectedSection) + 1} / {menuItems.length}
             </div>
             <button 
@@ -315,9 +278,10 @@ export default function Guide() {
                 }
               }}
               disabled={menuItems.findIndex(m => m.id === selectedSection) === menuItems.length - 1}
+            style={{ padding: compact ? '6px 8px' : undefined, fontSize: compact ? 12 : undefined }}
             >
-              <span>Mục tiếp</span>
-              <span className="nav-arrow">→</span>
+              <span>{t('guide.nextSection')}</span>
+              <span className="nav-arrow" style={{ fontSize: compact ? 12 : undefined }}>→</span>
             </button>
           </div>
         </div>

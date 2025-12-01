@@ -1,3 +1,5 @@
+﻿const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -6,44 +8,75 @@ const { registerFriendRoutes } = require('./friends');
 const { checkWinner } = require('./game/checkWinner');
 const fetch = global.fetch || require('node-fetch');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || null;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || null;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+// Lightweight .env loader (trÃ¡nh thÃªm dependency)
+(() => {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+  for (const line of lines) {
+    if (!line || line.trim().startsWith('#')) continue;
+    const idx = line.indexOf('=');
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    const val = line.slice(idx + 1).trim();
+    if (key && !process.env[key]) {
+      process.env[key] = val;
+    }
+  }
+})();
+
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim() || null;
+const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim() || null;
+const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim() || null;
 
 async function verifySupabaseToken(token) {
-  if (!token || !SUPABASE_URL) {
-    console.log('⚠️ Missing token or SUPABASE_URL');
-    return null;
+  if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.log('⚠️ Missing token or SUPABASE credentials', { hasUrl: Boolean(SUPABASE_URL), hasAnon: Boolean(SUPABASE_ANON_KEY) })
+    return null
   }
+
+  if (supabaseAdmin && SUPABASE_SERVICE_KEY) {
+    try {
+      const { data, error } = await supabaseAdmin.auth.getUser(token)
+      if (error || !data?.user) {
+        console.log('❌ auth.getUser failed', error?.message)
+        return null
+      }
+      console.log('✅ auth.getUser success')
+      return data.user
+    } catch (err) {
+      console.error('auth.getUser exception', err)
+    }
+  }
+
   try {
-    const url = `${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`;
-    console.log('🌐 Verifying token at:', url);
-    
+    const url = `${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`
+    console.log('🔍 Verifying token at:', url)
+
     const res = await fetch(url, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
         ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY } : {})
       }
-    });
-    
-    console.log('📡 Supabase auth response status:', res.status);
-    
+    })
+
+    console.log('ℹ️ Supabase auth response status:', res.status)
+
     if (!res.ok) {
-      const errorText = await res.text();
-      console.log('❌ Supabase auth failed:', errorText);
-      return null;
+      const errorText = await res.text()
+      console.log('❌ Supabase auth failed:', errorText)
+      return null
     }
-    
-    const data = await res.json();
-    console.log('✅ Token verified successfully');
-    return data;
+
+    const data = await res.json()
+    console.log('✅ Token verified successfully')
+    return data
   } catch (err) {
-    console.error('💥 verifySupabaseToken error', err);
-    return null;
+    console.error('verifySupabaseToken error', err)
+    return null
   }
 }
-
 const app = express();
 
 // CORS middleware to allow frontend calls
@@ -72,29 +105,29 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
 
 async function authMiddleware(req, res, next) {
   const header = req.headers.authorization || '';
-  console.log('🔐 Auth middleware:', req.method, req.url, 'has auth header:', !!header);
+  console.log('ðŸ” Auth middleware:', req.method, req.url, 'has auth header:', !!header);
   
   if (!header.startsWith('Bearer ')) {
-    console.log('❌ No Bearer token in header');
-    return res.status(401).json({ error: 'Thiếu token xác thực' });
+    console.log('âŒ No Bearer token in header');
+    return res.status(401).json({ error: 'Thiáº¿u token xÃ¡c thá»±c' });
   }
   const token = header.slice(7);
-  console.log('🔑 Token received (length):', token.length);
+  console.log('ðŸ”‘ Token received (length):', token.length);
   
   try {
     const user = await verifySupabaseToken(token);
-    console.log('👤 Verified user:', user ? user.id : 'null');
+    console.log('ðŸ‘¤ Verified user:', user ? user.id : 'null');
     
     if (!user || !user.id) {
-      console.log('❌ Token verification failed');
-      return res.status(401).json({ error: 'Token không hợp lệ' });
+      console.log('âŒ Token verification failed');
+      return res.status(401).json({ error: 'Token khÃ´ng há»£p lá»‡' });
     }
     req.user = user;
-    console.log('✅ Auth successful for user:', user.id);
+    console.log('âœ… Auth successful for user:', user.id);
     return next();
   } catch (err) {
     console.error('authMiddleware error', err);
-    return res.status(500).json({ error: 'Không thể xác thực' });
+    return res.status(500).json({ error: 'KhÃ´ng thá»ƒ xÃ¡c thá»±c' });
   }
 }
 
@@ -155,7 +188,9 @@ app.get('/api/chat/history', authMiddleware, async (req, res) => {
       return res.status(503).json({ error: 'Chat service unavailable' });
     }
 
-    const { channel, room_id, limit = 20, cursor } = req.query;
+    const { channel, room_id, target_user_id, limit = 20, cursor } = req.query;
+    const userId = req.user?.id;
+
     let query = supabaseAdmin
       .from('chat_messages')
       .select('*, sender_profile:profiles!sender_user_id(display_name, username, avatar_url)')
@@ -164,6 +199,13 @@ app.get('/api/chat/history', authMiddleware, async (req, res) => {
 
     if (room_id) {
       query = query.eq('room_id', room_id);
+    } else if (channel === 'friends') {
+      query = query.eq('channel_scope', 'friends');
+      if (target_user_id && userId) {
+        query = query.or(`and(sender_user_id.eq.${userId},target_user_id.eq.${target_user_id}),and(sender_user_id.eq.${target_user_id},target_user_id.eq.${userId})`);
+      } else if (userId) {
+        query = query.or(`sender_user_id.eq.${userId},target_user_id.eq.${userId}`);
+      }
     } else if (channel) {
       query = query.eq('channel_scope', channel);
     }
@@ -185,6 +227,7 @@ app.get('/api/chat/history', authMiddleware, async (req, res) => {
       sender_user_id: msg.sender_user_id,
       room_id: msg.room_id,
       match_id: msg.match_id,
+      target_user_id: msg.target_user_id,
       message_type: msg.message_type,
       content: msg.content,
       channel_scope: msg.channel_scope,
@@ -208,7 +251,8 @@ app.post('/api/chat/send', authMiddleware, async (req, res) => {
       return res.status(503).json({ error: 'Chat service unavailable' });
     }
 
-    const { content, message_type = 'text', room_id, channel = 'global' } = req.body;
+    const { content, message_type = 'text', room_id, channel = 'global', target_user_id } = req.body;
+    const userId = req.user?.id;
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({ error: 'Message content is required' });
@@ -218,8 +262,12 @@ app.post('/api/chat/send', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Message too long (max 300 characters)' });
     }
 
+    if (channel === 'friends' && !target_user_id) {
+      return res.status(400).json({ error: 'target_user_id required for friends chat' });
+    }
+
     const messageData = {
-      sender_user_id: req.user.id,
+      sender_user_id: userId,
       content: content.trim(),
       message_type: message_type,
       channel_scope: room_id ? 'room' : channel
@@ -227,6 +275,9 @@ app.post('/api/chat/send', authMiddleware, async (req, res) => {
 
     if (room_id) {
       messageData.room_id = room_id;
+    }
+    if (target_user_id) {
+      messageData.target_user_id = target_user_id;
     }
 
     const { data, error } = await supabaseAdmin
@@ -274,7 +325,7 @@ app.post('/api/game/move', authMiddleware, gameLogic.makeMove);
 // Get current game state
 app.get('/api/game/state/:roomId', authMiddleware, gameLogic.getGameState);
 
-console.log('✅ Game API endpoints registered');
+console.log('âœ… Game API endpoints registered');
 
 // =====================================================================
 // END GAME API
@@ -375,3 +426,6 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => console.log('Socket server listening on', PORT));
+
+
+

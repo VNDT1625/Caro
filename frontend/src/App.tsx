@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { useLanguage } from './contexts/LanguageContext'
 import Home from './pages/Home'
+import AiAnalysis from './pages/AiAnalysis'
 import Lobby from './pages/Lobby'
 import Room from './pages/Room'
 import TrainingRoom from './pages/TrainingRoom'
@@ -20,6 +21,7 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Hotseat from './pages/Hotseat'
+import Admin from './pages/Admin'
 import KhaiNhan from './pages/KhaiNhan'
 import { AudioManager, loadAudioSettingsFromStorage } from './lib/AudioManager'
 import { NotificationManager, loadNotificationSettingsFromStorage } from './lib/NotificationManager'
@@ -335,7 +337,10 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
-              onClick={onClose}
+              onClick={() => {
+                onClose()
+                window.location.hash = '#profile'
+              }}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -361,14 +366,11 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
                 e.currentTarget.style.borderColor = 'rgba(71, 85, 105, 0.4)'
               }}
             >
-              <span>✓</span>
-              <span>Xong</span>
+              <span>⚙️</span>
+              <span>{t('common.add')}</span>
             </button>
             <button 
-              onClick={() => {
-                onClose()
-                window.location.hash = '#profile'
-              }}
+              onClick={onClose}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -397,8 +399,8 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(56, 189, 248, 0.15)'
               }}
             >
-              <span>⚙️</span>
-              <span>Thêm</span>
+              <span>✓</span>
+              <span>{t('common.done')}</span>
             </button>
           </div>
         </div>
@@ -408,11 +410,12 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'home' | 'lobby' | 'room' | 'training' | 'shop' | 'profile' | 'inventory' | 'matchmaking' | 'createroom' | 'inmatch' | 'quests' | 'guide' | 'events' | 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'hotseat' | 'khainhan'>('home')
+  const [page, setPage] = useState<'home' | 'lobby' | 'room' | 'training' | 'shop' | 'profile' | 'inventory' | 'matchmaking' | 'createroom' | 'inmatch' | 'quests' | 'guide' | 'events' | 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'hotseat' | 'khainhan' | 'admin' | 'ai-analysis'>('home')
   const [user, setUser] = useState<any>(null)
   const [showSettingsPopup, setShowSettingsPopup] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showMobileWallet, setShowMobileWallet] = useState(true)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
   useEffect(() => {
     // Initialize AudioManager
@@ -435,11 +438,11 @@ export default function App() {
     
     // initialize from hash
     const hash = window.location.hash.replace('#', '')
-    if (hash === 'home' || hash === 'lobby' || hash === 'room' || hash === 'training' || hash === 'shop' || hash === 'profile' || hash === 'inventory' || hash === 'matchmaking' || hash === 'createroom' || hash === 'inmatch' || hash === 'quests' || hash === 'guide' || hash === 'events' || hash === 'landing' || hash === 'login' || hash === 'signup' || hash === 'forgot-password' || hash === 'reset-password' || hash === 'hotseat' || hash === 'khainhan') setPage(hash as any)
+    if (hash === 'home' || hash === 'lobby' || hash === 'room' || hash === 'training' || hash === 'shop' || hash === 'profile' || hash === 'inventory' || hash === 'matchmaking' || hash === 'createroom' || hash === 'inmatch' || hash === 'quests' || hash === 'guide' || hash === 'events' || hash === 'landing' || hash === 'login' || hash === 'signup' || hash === 'forgot-password' || hash === 'reset-password' || hash === 'hotseat' || hash === 'khainhan' || hash === 'admin' || hash === 'ai-analysis') setPage(hash as any)
 
     const onHash = () => {
       const h = window.location.hash.replace('#', '')
-      if (h === 'home' || h === 'lobby' || h === 'room' || h === 'training' || h === 'shop' || h === 'profile' || h === 'inventory' || h === 'matchmaking' || h === 'createroom' || h === 'inmatch' || h === 'quests' || h === 'guide' || h === 'events' || h === 'landing' || h === 'login' || h === 'signup' || h === 'forgot-password' || h === 'reset-password' || h === 'hotseat' || h === 'khainhan') setPage(h as any)
+      if (h === 'home' || h === 'lobby' || h === 'room' || h === 'training' || h === 'shop' || h === 'profile' || h === 'inventory' || h === 'matchmaking' || h === 'createroom' || h === 'inmatch' || h === 'quests' || h === 'guide' || h === 'events' || h === 'landing' || h === 'login' || h === 'signup' || h === 'forgot-password' || h === 'reset-password' || h === 'hotseat' || h === 'khainhan' || h === 'admin' || h === 'ai-analysis') setPage(h as any)
     }
 
     window.addEventListener('hashchange', onHash)
@@ -593,6 +596,83 @@ export default function App() {
     }
   }, [user])
 
+  // Check admin permission from public.admin table
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('admin')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (!cancelled) setIsAdmin(!!data && !error)
+      } catch {
+        if (!cancelled) setIsAdmin(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user])
+
+  // Heartbeat: update profiles.last_active periodically to support Admin online metric
+  useEffect(() => {
+    if (!user) return
+
+    let cancelled = false
+    const updateLastSeen = async () => {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_active: new Date().toISOString() })
+          .eq('user_id', user.id)
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // initial ping
+    void updateLastSeen()
+    // interval every 30s
+    const id = setInterval(() => { if (!cancelled) void updateLastSeen() }, 30000)
+
+    // update when tab becomes visible again
+    const onVis = () => { if (!cancelled && document.visibilityState === 'visible') void updateLastSeen() }
+    document.addEventListener('visibilitychange', onVis)
+
+    return () => {
+      cancelled = true
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [user])
+
+  // Global realtime presence: join a global presence channel for accurate online counts
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase.channel('presence:global', {
+      config: { presence: { key: user.id } }
+    })
+
+    channel.on('presence', { event: 'sync' }, () => {
+      // no-op; admin dashboard will read presence state on its own
+    })
+
+    void channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        void channel.track({
+          user_id: user.id,
+          username: user.user_metadata?.username || user.email || 'user',
+          is_admin: isAdmin,
+          online_at: new Date().toISOString()
+        })
+      }
+    })
+
+    return () => { try { void channel.unsubscribe() } catch (e) {} }
+  }, [user, isAdmin])
+
   const { t, language } = useLanguage()
 
   // Update rank label when language changes
@@ -627,7 +707,7 @@ export default function App() {
     // compute a displayPage that respects the current URL hash as a last-resort
     (() => {
       const currentHash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : ''
-      let displayPage = (currentHash === 'shop' || currentHash === 'room' || currentHash === 'training' || currentHash === 'lobby' || currentHash === 'home' || currentHash === 'profile' || currentHash === 'inventory' || currentHash === 'matchmaking' || currentHash === 'createroom' || currentHash === 'inmatch' || currentHash === 'quests' || currentHash === 'guide' || currentHash === 'landing' || currentHash === 'login' || currentHash === 'signup' || currentHash === 'forgot-password' || currentHash === 'reset-password' || currentHash === 'hotseat' || currentHash === 'khainhan') ? (currentHash as any) : page
+      let displayPage = (currentHash === 'shop' || currentHash === 'room' || currentHash === 'training' || currentHash === 'lobby' || currentHash === 'home' || currentHash === 'profile' || currentHash === 'inventory' || currentHash === 'matchmaking' || currentHash === 'createroom' || currentHash === 'inmatch' || currentHash === 'quests' || currentHash === 'guide' || currentHash === 'landing' || currentHash === 'login' || currentHash === 'signup' || currentHash === 'forgot-password' || currentHash === 'reset-password' || currentHash === 'hotseat' || currentHash === 'khainhan' || currentHash === 'admin' || currentHash === 'ai-analysis') ? (currentHash as any) : page
 
       // If user is not authenticated, always show landing/login/signup/forgot-password/reset-password
       if (!user) {
@@ -635,6 +715,11 @@ export default function App() {
           // prefer hash navigation if explicitly login/signup, otherwise force landing
           displayPage = 'landing'
         }
+      }
+
+      // If user is admin, force Admin page only
+      if (user && isAdmin) {
+        displayPage = 'admin'
       }
 
       return (
@@ -736,8 +821,8 @@ export default function App() {
           </div>
           <nav className="header-right">
             <div className="auth-actions">
-              <button className="auth-header-btn" onClick={() => { window.location.hash = '#login' }}>Đăng nhập</button>
-              <button className="auth-header-btn" onClick={() => { window.location.hash = '#signup' }}>Đăng ký</button>
+              <button className="auth-header-btn" onClick={() => { window.location.hash = '#login' }}>{t('auth.landing.login')}</button>
+              <button className="auth-header-btn" onClick={() => { window.location.hash = '#signup' }}>{t('auth.landing.signup')}</button>
             </div>
           </nav>
         </header>
@@ -763,7 +848,14 @@ export default function App() {
         {displayPage === 'guide' && <Guide />}
         {displayPage === 'events' && <Events />}
         {displayPage === 'hotseat' && <Hotseat />}
+        {displayPage === 'admin' && (isAdmin ? <Admin /> : (
+          <div style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Not authorized</div>
+            <button onClick={() => { window.location.hash = '#home' }}>Back</button>
+          </div>
+        ))}
         {displayPage === 'khainhan' && <KhaiNhan />}
+        {displayPage === 'ai-analysis' && <AiAnalysis />}
       </main>
       </div>
       )

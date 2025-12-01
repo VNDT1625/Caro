@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface Quest {
   id: number
@@ -13,6 +14,16 @@ interface Quest {
   completed: boolean
   claimed: boolean
   progress?: { current: number; total: number }
+}
+
+function getDifficultyTranslation(difficulty: string, t: any): string {
+  switch (difficulty) {
+    case 'Dễ': return t('quests.difficultyEasy')
+    case 'Trung bình': return t('quests.difficultyMedium')
+    case 'Khó': return t('quests.difficultyHard')
+    case 'Cực khó': return t('quests.difficultyVeryHard')
+    default: return difficulty
+  }
 }
 
 function formatRewardValue(value: number) {
@@ -29,6 +40,7 @@ function getExpForLevel(level: number): number {
 }
 
 export default function Quests() {
+  const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'achievement'>('daily')
@@ -295,7 +307,7 @@ export default function Quests() {
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'var(--color-muted)' }}>›</span>
         <span style={{ color: 'var(--color-text)' }}>Tiên Duyên</span>
@@ -345,7 +357,7 @@ export default function Quests() {
                 boxShadow: activeTab === 'daily' ? '0 4px 12px rgba(34,211,238,0.4)' : 'none'
               }}
             >
-              📅 Hàng Ngày
+              📅 {t('quests.daily')}
             </button>
             <button
               onClick={() => setActiveTab('weekly')}
@@ -361,7 +373,7 @@ export default function Quests() {
                 boxShadow: activeTab === 'weekly' ? '0 4px 12px rgba(168,85,247,0.4)' : 'none'
               }}
             >
-              📆 Hàng Tuần
+              📆 {t('quests.weekly')}
             </button>
             <button
               onClick={() => setActiveTab('achievement')}
@@ -458,7 +470,7 @@ export default function Quests() {
                            : quest.difficulty === 'Trung bình' ? '#22D3EE'
                            : '#22C55E')
                     }}>
-                      {quest.difficulty}
+                      {getDifficultyTranslation(quest.difficulty, t)}
                     </div>
                   </div>
                   <h3 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 6px 0' }}>
@@ -480,7 +492,7 @@ export default function Quests() {
                         display: 'flex',
                         justifyContent: 'space-between'
                       }}>
-                        <span>Tiến độ</span>
+                        <span>{t('quests.progress')}</span>
                         <span>{quest.progress.current}/{quest.progress.total}</span>
                       </div>
                       <div style={{
@@ -504,9 +516,9 @@ export default function Quests() {
                   )}
                   <div className="quest-reward-pair">
                     {[
-                      { key: 'exp', icon: 'EXP', value: quest.exp, label: 'Kinh nghiệm', activeColor: '#A78BFA' },
-                      { key: 'gem', icon: '/gem.png', value: quest.gems, label: 'Nguyên Thần', activeColor: '#7DD3FC' },
-                      { key: 'coin', icon: '/coin.png', value: quest.coins, label: 'Tinh Thạch', activeColor: '#FCD34D' }
+                      { key: 'exp', icon: '⚡', value: quest.exp, label: t('quests.exp'), activeColor: '#A78BFA' },
+                      { key: 'gem', icon: '/gem.png', value: quest.gems, label: t('shop.gems'), activeColor: '#7DD3FC' },
+                      { key: 'coin', icon: '/coin.png', value: quest.coins, label: t('shop.coins'), activeColor: '#FCD34D' }
                     ].map((reward) => (
                       <div
                         key={`${quest.id}-${reward.key}`}
@@ -572,7 +584,7 @@ export default function Quests() {
                         }
                       }}
                     >
-                      Nhận
+                      {t('quests.claim')}
                     </button>
                   ) : (
                     <div style={{ 
@@ -585,7 +597,7 @@ export default function Quests() {
                       border: '1px solid rgba(74,222,128,0.3)',
                       textAlign: 'center'
                     }}>
-                      ✓ Đã nhận
+                      ✓ {t('quests.claimed')}
                     </div>
                   )}
                 </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface LeaderboardEntry {
   user_id: string
@@ -10,15 +11,8 @@ interface LeaderboardEntry {
   avatar_url: string | null
 }
 
-const rankLabelMap: Record<string, string> = {
-  vo_danh: 'Vô Danh',
-  tan_ky: 'Tân Kỳ',
-  hoc_ky: 'Học Kỳ',
-  ky_lao: 'Kỳ Lão',
-  cao_ky: 'Cao Kỳ',
-  ky_thanh: 'Kỳ Thành',
-  truyen_thuyet: 'Truyền Thuyết'
-}
+// Map rank code -> i18n key suffix
+const rankCodes = ['vo_danh','tan_ky','hoc_ky','ky_lao','cao_ky','ky_thanh','truyen_thuyet'] as const
 
 const fallbackEntries: LeaderboardEntry[] = [
   { user_id: '1', display_name: 'Thanh Vân', username: 'thanhvan', current_rank: 'truyen_thuyet', mindpoint: 2680, avatar_url: null },
@@ -28,22 +22,33 @@ const fallbackEntries: LeaderboardEntry[] = [
   { user_id: '5', display_name: 'Tử Yên', username: 'tuyen', current_rank: 'hoc_ky', mindpoint: 1982, avatar_url: null }
 ]
 
-function formatRankLabel(rank?: string | null) {
-  if (!rank) return 'Ẩn danh'
-  return rankLabelMap[rank] ?? rank
+function formatRankLabel(t: (k: string)=>string, rank?: string | null) {
+  if (!rank) return t('rank.vo_danh')
+  const key = `rank.${rank}`
+  return rankCodes.includes(rank as any) ? t(key) : rank
 }
 
-function formatMindpoint(value?: number | null) {
+function formatMindpoint(value?: number | null, locale?: string) {
   const n = Number(value ?? 0)
-  return n.toLocaleString('vi-VN')
+  return n.toLocaleString(locale || 'en-US')
 }
 
 export default function KhaiNhan() {
+  const { t, language } = useLanguage()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const locale = useMemo(() => {
+    switch (language) {
+      case 'vi': return 'vi-VN'
+      case 'zh': return 'zh-CN'
+      case 'ja': return 'ja-JP'
+      default: return 'en-US'
+    }
+  }, [language])
 
   useEffect(() => {
     ;(async () => {
@@ -78,7 +83,7 @@ export default function KhaiNhan() {
     } catch (error) {
       console.error('Load leaderboard failed:', error)
       setEntries(fallbackEntries)
-      setErrorMessage('Không thể tải xếp hạng trực tiếp, hiển thị danh sách mẫu.')
+      setErrorMessage(t('leaderboard.errorLoading'))
     } finally {
       setLoading(false)
     }
@@ -108,30 +113,28 @@ export default function KhaiNhan() {
           onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-muted)')}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'var(--color-muted)' }}>›</span>
-        <span style={{ color: 'var(--color-text)' }}>Khai Nhãn</span>
+        <span style={{ color: 'var(--color-text)' }}>{t('leaderboard.breadcrumb')}</span>
       </nav>
 
       <div className="leaderboard-page">
         <section className="leaderboard-hero glass-card">
           <div>
-            <p className="leaderboard-eyebrow">BẢNG TÔN VINH MINDPOINT</p>
-            <h1 className="leaderboard-title">Khai Nhãn Các</h1>
-            <p className="leaderboard-description">
-              Top đạo hữu sở hữu MindPoint cao nhất toàn cõi. Càng leo cao càng dễ được trưởng lão để mắt và mở khóa phần thưởng danh dự.
-            </p>
+            <p className="leaderboard-eyebrow">{t('leaderboard.honorBoard')}</p>
+            <h1 className="leaderboard-title">{t('leaderboard.title')}</h1>
+            <p className="leaderboard-description">{t('leaderboard.description')}</p>
             <div className="leaderboard-meta">
-              <span>100 cao thủ hàng đầu</span>
-              {lastUpdated && <span>Cập nhật: {lastUpdated.toLocaleTimeString('vi-VN')}</span>}
+              <span>{t('leaderboard.top100')}</span>
+              {lastUpdated && <span>{t('leaderboard.updated')}: {lastUpdated.toLocaleTimeString(locale)}</span>}
             </div>
           </div>
           <div className="leaderboard-actions">
             <button className="refresh-btn" onClick={fetchLeaderboard} disabled={loading}>
-              {loading ? 'Đang tải...' : 'Tải lại bảng' }
+              {loading ? t('leaderboard.loading') : t('leaderboard.refresh') }
             </button>
-            <p className="leaderboard-note">Sắp xếp theo MindPoint thực, cập nhật liên tục.</p>
+            <p className="leaderboard-note">{t('leaderboard.sortByMindpoint')}</p>
           </div>
         </section>
 
@@ -156,13 +159,13 @@ export default function KhaiNhan() {
                     <span>{entry.display_name?.[0] ?? entry.username?.[0] ?? '★'}</span>
                   </div>
                   <div>
-                    <strong>{entry.display_name ?? entry.username ?? 'Ẩn danh'}</strong>
-                    <p>{entry.username ? `@${entry.username}` : 'Chưa đặt danh'}</p>
+                    <strong>{entry.display_name ?? entry.username ?? t('leaderboard.anonymous')}</strong>
+                    <p>{entry.username ? `@${entry.username}` : t('leaderboard.noUsernameYet')}</p>
                   </div>
                 </div>
                 <div className="stack-meta">
-                  <span className="stack-rank-chip">{formatRankLabel(entry.current_rank)}</span>
-                  <span className="stack-mindpoint">{formatMindpoint(entry.mindpoint)} MP</span>
+                  <span className="stack-rank-chip">{formatRankLabel(t, entry.current_rank)}</span>
+                  <span className="stack-mindpoint">{formatMindpoint(entry.mindpoint, locale)} MP</span>
                 </div>
               </article>
             )

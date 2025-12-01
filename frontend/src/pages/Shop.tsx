@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
-type Item = { id: string; title: string; subtitle?: string; price: number; currency?: 'coin' | 'gem'; media_url?: string; rarity?: string; type?: string }
+type Item = { id: string; title: string; subtitle?: string; price: number; currency?: 'coin' | 'gem'; media_url?: string; rarity?: string; type?: string; item_code?: string }
 
 type Category = {
   id: string
@@ -14,19 +15,34 @@ type Category = {
   item_count?: number
 }
 
+// Note: These sample items use i18n keys for title/desc
 const sampleSkins: Item[] = [
-  { id: 'skin1', title: 'Quân Cờ Gỗ Cổ Điển', subtitle: 'Classic wood', price: 0, currency: 'coin', media_url: '' },
-  { id: 'skin2', title: 'Quân Cờ Ngọc Bích', subtitle: 'Jade pieces', price: 250, currency: 'coin', media_url: '' },
-  { id: 'skin3', title: 'Quân Cờ Hoàng Kim', subtitle: 'Gold pieces', price: 50, currency: 'gem', media_url: '' }
+  { id: 'skin1', item_code: 'skin1', title: 'Quân Cờ Gỗ Cổ Điển', subtitle: 'Gỗ cổ điển truyền thống', price: 0, currency: 'coin', media_url: '' },
+  { id: 'skin2', item_code: 'skin2', title: 'Quân Cờ Ngọc Bích', subtitle: 'Quân cờ ngọc bích quý giá', price: 250, currency: 'coin', media_url: '' },
+  { id: 'skin3', item_code: 'skin3', title: 'Quân Cờ Hoàng Kim', subtitle: 'Quân cờ vàng huyền thoại', price: 50, currency: 'gem', media_url: '' }
 ]
 
 const sampleBoards: Item[] = [
-  { id: 'board1', title: 'Bàn Cờ Cổ Điển', subtitle: 'Wooden board', price: 0, currency: 'coin', media_url: '' },
-  { id: 'board2', title: 'Bàn Cờ Hoa Anh Đào', subtitle: 'Sakura board', price: 600, currency: 'coin', media_url: '' },
-  { id: 'board3', title: 'Bàn Cờ Vũ Trụ', subtitle: 'Space board', price: 120, currency: 'gem', media_url: '' }
+  { id: 'board1', item_code: 'board1', title: 'Bàn Cờ Cổ Điển', subtitle: 'Bàn gỗ truyền thống', price: 0, currency: 'coin', media_url: '' },
+  { id: 'board2', item_code: 'board2', title: 'Bàn Cờ Hoa Anh Đào', subtitle: 'Bàn cờ hoa anh đào Nhật Bản', price: 600, currency: 'coin', media_url: '' },
+  { id: 'board3', item_code: 'board3', title: 'Bàn Cờ Vũ Trụ', subtitle: 'Bàn cờ không gian vũ trụ', price: 120, currency: 'gem', media_url: '' }
 ]
 
+// UI-level capitalization helper (first letter uppercase; preserves other text)
+function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+// Helper to get category display name via i18n "shop.type.<id>"
+function getCategoryName(categoryId: string, t: (key: string) => string): string {
+  const key = `shop.type.${categoryId}`
+  const translated = t(key)
+  return capitalize(translated || categoryId)
+}
+
 function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { item: Item; onBuy: (it: Item)=>Promise<{ok: boolean; message?: string}> | Promise<any>; owned?: boolean; buying?: boolean; profile?: any; openInfo: (title: string, msg: string)=>Promise<void>; openConfirm: (title: string, msg: string)=>Promise<boolean> }) {
+  const { t } = useLanguage()
   const [hover, setHover] = React.useState(false)
   const [pos, setPos] = React.useState<{ left: number; top: number; width: number; height: number; side: 'left' | 'right' }>({ left: 0, top: 0, width: 280, height: 160, side: 'right' })
   // larger preview popup requested: ~1.5x previous
@@ -41,10 +57,10 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
     if (!r) return ''
     const key = r.toString().toLowerCase()
     switch (key) {
-      case 'common': return 'Thường'
-      case 'rare': return 'Hiếm'
-      case 'epic': return 'Cao cấp'
-      case 'legendary': return 'Huyền thoại'
+      case 'common': return t('inventory.rarityCommon')
+      case 'rare': return t('inventory.rarityRare')
+      case 'epic': return t('inventory.rarityEpic')
+      case 'legendary': return t('inventory.rarityLegendary')
       default: return r
     }
   }
@@ -141,19 +157,35 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
     <div className={`shop-card ${clickedDbg ? 'debug-clicked' : ''}`} onClick={handleCardClickDebug} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseMove={handleMouseMove}>
       <div className="shop-card-media">
         {item.rarity && <div className={`rarity-badge ${item.rarity ? `rarity-${item.rarity}` : ''}`}>{rarityLabel(item.rarity)}</div>}
-        {item.media_url ? '' : 'Preview'}
+        {item.media_url ? '' : t('shop.preview')}
       </div>
       <div className="shop-card-body">
-        <div className="shop-card-title">{item.title}</div>
-        <div className="shop-card-sub">{item.subtitle}</div>
+        <div className="shop-card-title">{
+          (() => {
+            const code = item.item_code || item.id
+            const titleKey = `shop.item.${code}.title`
+            const translated = t(titleKey)
+            const direct = typeof item.title === 'string' ? t(item.title) : ''
+            return translated || direct || (typeof item.title === 'string' ? item.title : '')
+          })()
+        }</div>
+        <div className="shop-card-sub">{
+          (() => {
+            const code = item.item_code || item.id
+            const descKey = `shop.item.${code}.desc`
+            const translated = t(descKey)
+            const direct = item.subtitle ? t(item.subtitle) : ''
+            return translated || direct || (item.subtitle || '')
+          })()
+        }</div>
         <div className="shop-card-footer">
           <div className="shop-card-price" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {item.price === 0 ? 'Miễn phí' : (
+            {item.price === 0 ? t('shop.free') : (
               <>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>{item.price}</span>
                 <img 
                   src={item.currency === 'gem' ? '/gem.png' : '/coin.png'} 
-                  alt={item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'} 
+                  alt={item.currency === 'gem' ? t('shop.gems') : t('shop.coins')} 
                   style={{ width: 18, height: 18, objectFit: 'contain', filter: `drop-shadow(0 2px 4px ${item.currency === 'gem' ? 'rgba(34, 211, 238, 0.4)' : 'rgba(251, 191, 36, 0.4)'})` }} 
                 />
               </>
@@ -169,23 +201,23 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
 
               // If the item costs > 0 and we don't have a loaded profile, ask user to sign in (modal)
               if ((item.price ?? 0) > 0 && !profile) {
-                await openInfo('Cần đăng nhập', 'Vui lòng đăng nhập để mua vật phẩm.')
+                await openInfo(t('shop.needLogin'), t('shop.loginMessage'))
                 return
               }
 
               // If user can't afford, show a friendly modal and stop
               if (!(canAfford)) {
-                const cur = item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'
-                await openInfo('Không đủ tiền', `Không đủ ${cur} để mua vật phẩm này.`)
+                const cur = item.currency === 'gem' ? t('shop.gems') : t('shop.coins')
+                await openInfo(t('shop.notEnoughCurrency'), t('shop.notEnoughCurrencyMessage', { currency: cur }))
                 return
               }
 
               // show a quick debug info modal to confirm the button received the click
-              const debugLabel = item.price === 0 ? 'Nhận' : `Mua (${item.price} ${item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'})`
-              await openInfo('Đã nhấn', `Đã nhấn: ${debugLabel}`)
+              const debugLabel = item.price === 0 ? t('shop.buy') : `${t('shop.buy')} (${item.price} ${item.currency === 'gem' ? t('shop.gems') : t('shop.coins')})`
+              await openInfo(t('common.debug'), t('shop.debugClicked', { label: debugLabel }))
 
-              const label = item.price === 0 ? 'Nhận' : `Mua (${item.price} ${item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'})`
-              const ok = await openConfirm('Xác nhận mua', `Bạn chắc chắn muốn ${label}?`)
+              const label = item.price === 0 ? t('shop.buy') : `${t('shop.buy')} (${item.price} ${item.currency === 'gem' ? t('shop.gems') : t('shop.coins')})`
+              const ok = await openConfirm(t('shop.confirmPurchase'), t('shop.confirmPurchaseMessage', { action: label }))
               if (!ok) return
               if (!onBuy) return
               try {
@@ -202,17 +234,17 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
                   okRes = true
                 }
                 if (okRes) {
-                  await openInfo('Thành công', 'Mua thành công!')
+                  await openInfo(t('shop.purchaseSuccess'), t('shop.purchaseSuccessMessage', { item: item.title }))
                 } else {
-                  await openInfo('Không thành công', msg || 'Không thể mua vật phẩm.')
+                  await openInfo(t('shop.purchaseFailed'), msg || t('shop.purchaseFailed'))
                 }
               } catch (err: any) {
                 console.error('onBuy threw', err)
-                await openInfo('Lỗi', 'Lỗi khi mua: ' + (err?.message ?? String(err)))
+                await openInfo(t('common.error'), t('common.error') + ': ' + (err?.message ?? String(err)))
               }
             }}
           >
-            {owned ? 'Đã sở hữu' : (buying ? 'Đang xử lý...' : (item.price === 0 ? 'Nhận' : 'Mua'))}
+            {owned ? t('shop.owned') : (buying ? t('common.loading') : t('shop.buy'))}
           </button>
         </div>
       </div>
@@ -239,19 +271,19 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
             <img src={item.media_url} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           )
         ) : (
-          <div className="shop-card-preview-fallback">No preview</div>
+          <div className="shop-card-preview-fallback">{t('shop.noPreview')}</div>
         )}
         <div className="shop-card-preview-meta">
           <div className="shop-card-preview-price" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {item.price === 0 ? 'Miễn phí' : (
+            {item.price === 0 ? t('shop.free') : (
               <>
                 <span>{item.price}</span>
                 <img 
                   src={item.currency === 'gem' ? '/gem.png' : '/coin.png'} 
-                  alt={item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'} 
+                  alt={item.currency === 'gem' ? t('shop.gems') : t('shop.coins')} 
                   style={{ width: 16, height: 16, objectFit: 'contain' }} 
                 />
-                <span style={{ fontSize: 11 }}>{item.currency === 'gem' ? 'Nguyên Thần' : 'Tinh Thạch'}</span>
+                <span style={{ fontSize: 11 }}>{item.currency === 'gem' ? t('shop.gems') : t('shop.coins')}</span>
               </>
             )}
           </div>
@@ -263,6 +295,7 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
 }
 
 export default function Shop() {
+  const { t } = useLanguage()
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
   const [rarity, setRarity] = useState('all')
@@ -335,8 +368,10 @@ export default function Shop() {
             const currency = priceGems > 0 ? 'gem' : 'coin'
             const price = priceGems > 0 ? priceGems : priceCoins
             const cat: string = (i.category || 'other').toString().trim()
+            const code: string = (i.item_code || i.id || '').toString()
             return {
               id: i.id,
+              // Store raw for fallback, but prefer i18n keys by code
               title: i.name || i.item_code || 'Item',
               subtitle: i.description || '',
               price,
@@ -344,6 +379,7 @@ export default function Shop() {
               media_url: i.preview_url || '',
               type: cat, // use category directly as type
               rarity: i.rarity,
+              item_code: code
             }
           })
 
@@ -376,11 +412,11 @@ export default function Shop() {
         
         // Fallback: group sample data by type
         const fallbackGrouped: Record<string, Item[]> = {
-          skin: sampleSkins,
-          board: sampleBoards
+          skin_piece: sampleSkins,
+          skin_board: sampleBoards
         }
         setItemsByCategory(fallbackGrouped)
-        setAvailableCategories(['skin', 'board'])
+        setAvailableCategories(['skin_piece', 'skin_board'])
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -445,20 +481,20 @@ export default function Shop() {
       const { data } = await supabase.auth.getUser()
       const u = data?.user ?? null
       if (!u) {
-        return { ok: false, message: 'Vui lòng đăng nhập để mua hoặc nhận vật phẩm.' }
+        return { ok: false, message: t('shop.loginMessage') }
       }
       uid = u.id
       // keep local state in sync
       setUser(u)
     } catch (e) {
       console.warn('auth read err', e)
-      return { ok: false, message: 'Lỗi xác thực người dùng.' }
+      return { ok: false, message: t('common.error') }
     }
     const id = item.id
     setPurchasing(prev => ({ ...prev, [id]: true }))
     try {
       if (ownedIds[id]) {
-        return { ok: false, message: 'Bạn đã sở hữu vật phẩm này.' }
+        return { ok: false, message: t('shop.owned') }
       }
 
       // ensure profile exists to satisfy FK on user_items
@@ -489,7 +525,7 @@ export default function Shop() {
           // treat unique-constraint as already-owned
           if (/duplicate key value|unique constraint/i.test(errInsert.message || '')) {
             await refreshUserState()
-            return { ok: false, message: 'Bạn đã sở hữu vật phẩm này.' }
+            return { ok: false, message: t('shop.alreadyOwned') }
           }
           throw errInsert
         }
@@ -502,10 +538,10 @@ export default function Shop() {
       const coins = Number(prof?.coins ?? 0)
       const gems = Number(prof?.gems ?? 0)
       if (item.currency === 'coin' && coins < item.price) {
-        return { ok: false, message: 'Không đủ Tinh Thạch để mua vật phẩm này.' }
+        return { ok: false, message: t('shop.notEnoughCoins') }
       }
       if (item.currency === 'gem' && gems < item.price) {
-        return { ok: false, message: 'Không đủ Nguyên Thần để mua vật phẩm này.' }
+        return { ok: false, message: t('shop.notEnoughGems') }
       }
 
       // attempt deduct and assign (optimistic)
@@ -537,13 +573,13 @@ export default function Shop() {
       console.error('purchase err raw:', err)
       const msg = err?.message || String(err)
       if (msg && /foreign key constraint/i.test(msg)) {
-        return { ok: false, message: 'Lỗi cơ sở dữ liệu: cần một `profiles` cho user này. Chi tiết: ' + msg }
+        return { ok: false, message: t('shop.dbError') + msg }
       } else if (msg && /duplicate key value|unique constraint/i.test(msg)) {
         // already owned — refresh state and inform user
         await refreshUserState()
         return { ok: true }
       } else {
-        return { ok: false, message: 'Không thể mua vật phẩm: ' + msg }
+        return { ok: false, message: t('shop.cannotPurchase') + msg }
       }
     } finally {
       setPurchasing(prev => ({ ...prev, [id]: false }))
@@ -596,55 +632,55 @@ export default function Shop() {
           {/* Category pills matching mock (All, Sale & Hot, GIFTS, Pass, Package) */}
           <div style={{ marginBottom: 8 }}>
             <div className="category-pills">
-              <button className={`category-pill ${type === 'all' ? 'active' : ''}`} onClick={() => setType('all')}>All</button>
-              <button className={`category-pill ${type === 'sale' ? 'active' : ''}`} onClick={() => setType('sale')}>Sale & Hot</button>
-              <button className={`category-pill ${type === 'gifts' ? 'active' : ''}`} onClick={() => setType('gifts')}>Tinh Thạch & Nguyên Thần</button>
-              <button className={`category-pill ${type === 'pass' ? 'active' : ''}`} onClick={() => setType('pass')}>Pass</button>
-              <button className={`category-pill ${type === 'package' ? 'active' : ''}`} onClick={() => setType('package')}>Package</button>
+              <button className={`category-pill ${type === 'all' ? 'active' : ''}`} onClick={() => setType('all')}>{t('shop.categoryAll')}</button>
+              <button className={`category-pill ${type === 'sale' ? 'active' : ''}`} onClick={() => setType('sale')}>{t('shop.categorySaleHot')}</button>
+              <button className={`category-pill ${type === 'gifts' ? 'active' : ''}`} onClick={() => setType('gifts')}>{t('shop.categoryGiftsCurrency')}</button>
+              <button className={`category-pill ${type === 'pass' ? 'active' : ''}`} onClick={() => setType('pass')}>{t('shop.categoryPass')}</button>
+              <button className={`category-pill ${type === 'package' ? 'active' : ''}`} onClick={() => setType('package')}>{t('shop.categoryPackage')}</button>
             </div>
           </div>
 
           
 
           <div style={{ marginTop: 12 }}>
-            <input className="sidebar-search" placeholder="Tìm kiếm..." value={query} onChange={e => setQuery(e.target.value)} />
+            <input className="sidebar-search" placeholder={t('shop.searchPlaceholder')} value={query} onChange={e => setQuery(e.target.value)} />
           </div>
 
           <div style={{ marginTop: 12 }} />
 
           <div className="shop-filters" style={{ marginTop: 12 }}>
-            <label>Loại</label>
+            <label>{t('shop.filterType')}</label>
             <select value={type} onChange={e => setType(e.target.value)}>
-              <option value="all">Tất cả</option>
+              <option value="all">{capitalize(t('shop.typeAll'))}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name_vi}
+                  {cat.icon} {getCategoryName(cat.id, t)}
                 </option>
               ))}
             </select>
 
-            <label style={{ marginTop: 8 }}>Độ hiếm</label>
+            <label style={{ marginTop: 8 }}>{t('shop.filterRarity')}</label>
             <select value={rarity} onChange={e => setRarity(e.target.value)}>
-              <option value="all">Tất cả</option>
-              <option value="common">Thường</option>
-              <option value="rare">Hiếm</option>
-              <option value="legendary">Huyền thoại</option>
+              <option value="all">{t('common.all')}</option>
+              <option value="common">{t('shop.rarityCommon')}</option>
+              <option value="rare">{t('shop.rarityRare')}</option>
+              <option value="legendary">{t('shop.rarityLegendary')}</option>
             </select>
 
             {/* Price filter block (mock shows price filters) */}
-            <label style={{ marginTop: 8 }}>Giá</label>
+            <label style={{ marginTop: 8 }}>{t('shop.filterPrice')}</label>
             <div className="price-filters">
               <select value={priceCurrency} onChange={e => setPriceCurrency(e.target.value)}>
-                <option value="all">Tất cả</option>
-                <option value="coin">Tinh Thạch</option>
-                <option value="gem">Nguyên Thần</option>
+                <option value="all">{t('common.all')}</option>
+                <option value="coin">{t('shop.coins')}</option>
+                <option value="gem">{t('shop.gems')}</option>
               </select>
               <div style={{ marginTop: 8 }}>
-                <label style={{ fontSize: 13, color: 'var(--color-muted)' }}>Sắp xếp</label>
+                <label style={{ fontSize: 13, color: 'var(--color-muted)' }}>{t('shop.sortLabel')}</label>
                 <select value={globalSort} onChange={e => setGlobalSort(e.target.value as any)} style={{ width: '100%', marginTop: 6 }}>
-                  <option value="none">Mặc định</option>
-                  <option value="price_asc">Giá: Tăng dần</option>
-                  <option value="price_desc">Giá: Giảm dần</option>
+                  <option value="none">{t('shop.sortDefault')}</option>
+                  <option value="price_asc">{t('shop.sortPriceAsc')}</option>
+                  <option value="price_desc">{t('shop.sortPriceDesc')}</option>
                 </select>
               </div>
               {/* slider removed per request — no numeric price bounds UI */}
@@ -673,25 +709,25 @@ export default function Shop() {
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
             >
-              Chánh Điện
+              {t('breadcrumb.home')}
             </a>
             <span style={{ color: 'var(--color-muted)' }}>›</span>
-            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>Tiêu Bảo Các</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('breadcrumb.shop')}</span>
           </nav>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Cửa hàng</h2>
+            <h2 style={{ margin: 0 }}>{t('shop.pageTitle')}</h2>
           </div>
 
           {fetchDebug && (
             <div style={{ marginTop: 12 }}>
               <div style={{ padding: 12, borderRadius: 10, background: 'linear-gradient(90deg, rgba(245,158,11,0.06), rgba(244,114,182,0.03))', border: '1px solid rgba(245,158,11,0.08)', color: '#F59E0B' }}>
-                <strong>Đang dùng dữ liệu mẫu</strong> — Không thể tải dữ liệu cửa hàng từ server. Chi tiết (dev): <span style={{ color: 'var(--color-muted)' }}>{fetchDebug}</span>
+                <strong>{t('shop.usingSampleData')}</strong> — {t('shop.cannotLoadShopData')}. {t('shop.detailsDev')} <span style={{ color: 'var(--color-muted)' }}>{fetchDebug}</span>
               </div>
             </div>
           )}
 
-          {loading && <div style={{ color: 'var(--color-muted)', marginTop: 12 }}>Đang tải...</div>}
+          {loading && <div style={{ color: 'var(--color-muted)', marginTop: 12 }}>{t('common.loading')}</div>}
           {error && <div style={{ color: '#F97373', marginTop: 12 }}>{error}</div>}
 
           {/* Dynamic sections: auto-generate from itemsByCategory */}
@@ -705,7 +741,7 @@ export default function Shop() {
             
             // Get category info from categories array
             const categoryInfo = categories.find(c => c.id === categoryId)
-            const categoryDisplay = categoryInfo ? `${categoryInfo.icon || ''} ${categoryInfo.name_vi}` : categoryId.charAt(0).toUpperCase() + categoryId.slice(1)
+            const categoryDisplay = categoryInfo ? `${categoryInfo.icon || ''} ${getCategoryName(categoryInfo.id, t)}` : getCategoryName(categoryId, t)
             const categoryColor = categoryInfo?.color || '#22D3EE'
             
             // Chỉ hiển thị thanh trượt ngang khi số sản phẩm > 8
@@ -749,11 +785,11 @@ export default function Shop() {
             <div className="mp-modal-actions">
               {modalMode === 'confirm' ? (
                 <>
-                  <button className="mp-btn mp-btn-secondary" onClick={() => closeModal(false)}>Hủy</button>
-                  <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>Xác nhận</button>
+                  <button className="mp-btn mp-btn-secondary" onClick={() => closeModal(false)}>{t('common.cancel')}</button>
+                  <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>{t('common.confirm')}</button>
                 </>
               ) : (
-                <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>OK</button>
+                <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>{t('common.ok')}</button>
               )}
             </div>
           </div>

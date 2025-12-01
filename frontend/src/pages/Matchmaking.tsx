@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Matchmaking() {
+  const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [isMatching, setIsMatching] = useState(false)
@@ -62,20 +64,95 @@ export default function Matchmaking() {
     setIsMatching(true)
     setMatchTime(0)
     
-    // TODO: Implement actual matchmaking logic
-    // This is mock - simulate finding opponent after 3-5 seconds
-    setTimeout(() => {
-      setOpponent({
-        username: 'Player_' + Math.floor(Math.random() * 9999),
-        avatar_url: ''
-      })
-    }, 3000 + Math.random() * 2000)
+    try {
+      // Import matchmaking service
+      const { joinMatchmakingQueue } = await import('../lib/matchmaking')
+      
+      const matchSettings = {
+        mode: 'rank' as const,
+        gameType: 'standard',
+        boardSize: '15x15',
+        winCondition: 5,
+        turnTime: 30,
+        totalTime: 600
+      }
+      
+      const result = await joinMatchmakingQueue(user.id, matchSettings)
+      
+      if (result.success && result.queueId) {
+        console.log('✓ Joined matchmaking queue:', result.queueId)
+        
+        // Store in localStorage for persistence
+        localStorage.setItem('matchmaking', JSON.stringify({
+          active: true,
+          queueId: result.queueId,
+          startTime: Date.now(),
+          matchSettings
+        }))
+        
+        // Poll for match every 2 seconds
+        const pollInterval = setInterval(async () => {
+          const { findMatch } = await import('../lib/matchmaking')
+          const matchResult = await findMatch(user.id, result.queueId!, matchSettings)
+          
+          if (matchResult.success && matchResult.opponent) {
+            clearInterval(pollInterval)
+            setOpponent({
+              username: matchResult.opponent.displayName || matchResult.opponent.username,
+              avatar_url: matchResult.opponent.avatar || '',
+              rank: matchResult.opponent.rank,
+              mindpoint: matchResult.opponent.mindpoint
+            })
+            
+            // Store room info
+            if (matchResult.roomId) {
+              localStorage.setItem('currentRoom', JSON.stringify({
+                roomId: matchResult.roomId,
+                opponent: matchResult.opponent
+              }))
+            }
+          }
+        }, 2000)
+        
+        // Auto-cancel after 60 seconds
+        setTimeout(() => {
+          if (isMatching && !opponent) {
+            clearInterval(pollInterval)
+            handleCancelMatch()
+            alert('Không tìm thấy đối thủ phù hợp. Vui lòng thử lại!')
+          }
+        }, 60000)
+      } else {
+        setIsMatching(false)
+        alert('Không thể tham gia hàng đợi: ' + (result.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Matchmaking error:', error)
+      setIsMatching(false)
+      alert('Có lỗi xảy ra khi tìm trận!')
+    }
   }
 
-  function handleCancelMatch() {
+  async function handleCancelMatch() {
     setIsMatching(false)
     setMatchTime(0)
     setOpponent(null)
+    
+    // Cancel queue entry if exists
+    const matchmaking = localStorage.getItem('matchmaking')
+    if (matchmaking) {
+      try {
+        const data = JSON.parse(matchmaking)
+        if (data.queueId) {
+          const { cancelMatchmaking } = await import('../lib/matchmaking')
+          await cancelMatchmaking(data.queueId)
+          console.log('✓ Cancelled matchmaking queue')
+        }
+      } catch (error) {
+        console.error('Error cancelling matchmaking:', error)
+      }
+      localStorage.removeItem('matchmaking')
+    }
   }
 
   async function handleAvatarClick() {
@@ -119,11 +196,39 @@ export default function Matchmaking() {
 
   const emojis = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐']
 
-  function handleSendChat() {
+  async function handleSendChat() {
     if (!chatMessage.trim()) return
-    // TODO: Implement chat sending
-    console.log('Send chat:', chatMessage)
-    setChatMessage('')
+    
+    try {
+      // Get room info from localStorage
+      const roomData = localStorage.getItem('currentRoom')
+      if (!roomData) {
+        console.log('No room found, cannot send chat')
+        return
+      }
+      
+      const { roomId } = JSON.parse(roomData)
+      
+      // Insert chat message to database
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          room_id: roomId,
+          user_id: user.id,
+          message: chatMessage.trim(),
+          created_at: new Date().toISOString()
+        })
+      
+      if (error) {
+        console.error('Error sending chat:', error)
+        return
+      }
+      
+      console.log('✓ Chat message sent')
+      setChatMessage('')
+    } catch (error) {
+      console.error('Chat error:', error)
+    }
   }
 
   function handleEmojiSelect(emoji: string) {
@@ -159,7 +264,7 @@ export default function Matchmaking() {
           onMouseEnter={(e) => e.currentTarget.style.color = '#22D3EE'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
         >
-          Chánh Điện
+          {t('breadcrumb.home')}
         </a>
         <span style={{ color: 'rgba(255,255,255,0.5)' }}>›</span>
         <span style={{ color: '#fff' }}>Ghép Trận Nhanh</span>
@@ -167,9 +272,9 @@ export default function Matchmaking() {
       
       <div className="matchmaking-header">
         <button 
-          className="back-home-btn"
-          onClick={() => window.location.hash = 'home'}
-          title="Trở lại trang chủ"
+          className="back-btn" 
+          onClick={() => window.location.hash = '#home'}
+          title="Quay Lại"
         >
           <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>

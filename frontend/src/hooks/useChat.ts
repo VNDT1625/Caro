@@ -7,6 +7,7 @@ import type { ChatChannelScope, ChatMessage, ChatMessageType } from '../types/ch
 const MAX_MESSAGE_LENGTH = 300
 const MAX_BUFFER = 120
 const SEND_COOLDOWN_MS = 1500
+const GLOBAL_COOLDOWN_MS = 30_000
 
 export type ChatConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error'
 
@@ -14,6 +15,7 @@ export interface UseChatOptions {
   mode: 'home' | 'room' | 'match'
   channel?: ChatChannelScope
   roomId?: string | null
+  targetUserId?: string | null
   limit?: number
   enabled?: boolean
 }
@@ -30,6 +32,7 @@ export interface UseChatResult {
   cooldownMs: number
   sendMessage: (content: string, type?: ChatMessageType) => Promise<void>
   loadOlder: () => Promise<void>
+  refresh: () => Promise<void>
   reset: () => void
   clearNotice: () => void
 }
@@ -41,6 +44,8 @@ export function useChat(options: UseChatOptions): UseChatResult {
     if (options.mode === 'match' && options.roomId) return 'room'
     return options.channel ?? 'global'
   }, [options.channel, options.mode, options.roomId])
+
+  const resolvedTarget = useMemo(() => options.targetUserId ?? null, [options.targetUserId])
 
   const effectiveRoomId = resolvedChannel === 'room' ? (options.roomId ?? null) : null
 
@@ -56,6 +61,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
   const messageIdsRef = useRef<Set<string>>(new Set())
   const tokenRef = useRef<string | null>(null)
   const lastSentRef = useRef<number>(0)
+  const lastCooldownRef = useRef<number>(SEND_COOLDOWN_MS)
 
   const limit = options.limit ?? 20
 
@@ -111,7 +117,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
         return
       }
       const diff = Date.now() - lastSentRef.current
-      const remaining = Math.max(0, SEND_COOLDOWN_MS - diff)
+      const remaining = Math.max(0, lastCooldownRef.current - diff)
       setCooldownMs(remaining)
     }, 250)
 
@@ -140,9 +146,15 @@ export function useChat(options: UseChatOptions): UseChatResult {
     setIsLoading(true)
     try {
       const token = await resolveToken()
+      if (!token) {
+        setError('Chưa đăng nhập')
+        setStatus('error')
+        return
+      }
       const response = await fetchChatHistory({
         channel: resolvedChannel === 'room' ? undefined : resolvedChannel,
         roomId: effectiveRoomId,
+        targetUserId: resolvedChannel === 'friends' ? resolvedTarget : undefined,
         limit,
         cursor,
         token
@@ -152,8 +164,17 @@ export function useChat(options: UseChatOptions): UseChatResult {
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
       if (!cursor) {
-        messageIdsRef.current.clear()
-        pushMessages(ordered)
+        const ids = new Set<string>()
+        const deduped = ordered.filter((msg) => {
+          if (!msg?.id || ids.has(msg.id)) return false
+          ids.add(msg.id)
+          return true
+        })
+        messageIdsRef.current = ids
+        setMessages(() => {
+          if (deduped.length > MAX_BUFFER) deduped.splice(0, deduped.length - MAX_BUFFER)
+          return deduped
+        })
       } else {
         setMessages((prev) => {
           const merged = [...ordered, ...prev]
@@ -180,7 +201,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
     } finally {
       setIsLoading(false)
     }
-  }, [effectiveRoomId, limit, pushMessages, resolveToken, resolvedChannel])
+  }, [effectiveRoomId, limit, pushMessages, resolveToken, resolvedChannel, resolvedTarget])
 
   useEffect(() => {
     reset()
@@ -191,7 +212,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
     }
     setStatus('connecting')
     loadHistory()
-  }, [enabled, resolvedChannel, effectiveRoomId, loadHistory, reset, clearRealtime])
+  }, [enabled, resolvedChannel, effectiveRoomId, resolvedTarget, loadHistory, reset, clearRealtime])
 
   useEffect(() => {
     if (!enabled) return
@@ -228,28 +249,39 @@ export function useChat(options: UseChatOptions): UseChatResult {
     await loadHistory(oldest.created_at)
   }, [canLoadMore, enabled, isLoading, loadHistory, messages])
 
+  const refresh = useCallback(async () => {
+    if (!enabled) return
+    await loadHistory()
+  }, [enabled, loadHistory])
+
   const send = useCallback(async (rawContent: string, type: ChatMessageType = 'text') => {
-    if (!enabled) throw new Error('Chat đang tắt trong phiên này')
+    if (!enabled) throw new Error('Chat dang tat trong phien nay')
     const content = rawContent.trim()
-    if (!content) throw new Error('Nội dung truyền âm trống')
-    if (resolvedChannel === 'room' && !effectiveRoomId) throw new Error('Bạn chưa ở trong phòng nào')
+    if (!content) throw new Error('Noi dung truyen am trong')
+    if (resolvedChannel === 'room' && !effectiveRoomId) throw new Error('Ban chua o trong phong nay')
+    if (resolvedChannel === 'friends' && !resolvedTarget) throw new Error('Chon dao huu truoc khi gui')
 
     const now = Date.now()
-    if (now - lastSentRef.current < SEND_COOLDOWN_MS) {
-      setNotice('Đạo hữu chậm lại một nhịp')
-      throw new Error('Đạo hữu chậm lại một nhịp')
+    const cooldownWindow = resolvedChannel === 'global' ? GLOBAL_COOLDOWN_MS : SEND_COOLDOWN_MS
+    if (now - lastSentRef.current < cooldownWindow) {
+      const waitMsg = resolvedChannel === 'global'
+        ? 'Vui long cho 30s giua cac tin nhan The Gioi'
+        : 'Dao huu cho mot nhip truoc khi gui tiep'
+      setNotice(waitMsg)
+      throw new Error(waitMsg)
     }
 
     lastSentRef.current = now
-    setCooldownMs(SEND_COOLDOWN_MS)
+    lastCooldownRef.current = cooldownWindow
+    setCooldownMs(cooldownWindow)
 
     const token = await resolveToken()
-    if (!token) throw new Error('Bạn cần đăng nhập để truyền âm')
+    if (!token) throw new Error('Ban can dang nhap de truyen am')
 
     let prepared = content
     if (prepared.length > MAX_MESSAGE_LENGTH) {
-      prepared = `${prepared.slice(0, MAX_MESSAGE_LENGTH - 1)}…`
-      setNotice('Tin nhắn đã được rút gọn về 300 ký tự')
+      prepared = `${prepared.slice(0, MAX_MESSAGE_LENGTH - 1)}...`
+      setNotice('Tin nhan da duoc rut gon ve 300 ky tu')
     }
 
     const response = await sendChatMessage({
@@ -257,6 +289,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
       messageType: type,
       roomId: effectiveRoomId,
       channel: resolvedChannel === 'room' ? undefined : resolvedChannel,
+      targetUserId: resolvedChannel === 'friends' ? resolvedTarget : undefined,
       token
     })
 
@@ -264,10 +297,9 @@ export function useChat(options: UseChatOptions): UseChatResult {
       pushMessages(response.message)
     }
     if (response.truncated) {
-      setNotice('Tin nhắn trên máy chủ đã được rút gọn thêm để đảm bảo an toàn')
+      setNotice('Tin nhan phia server duoc rut gon them de dam bao an toan')
     }
-  }, [effectiveRoomId, enabled, pushMessages, resolveToken, resolvedChannel])
-
+  }, [effectiveRoomId, enabled, pushMessages, resolveToken, resolvedChannel, resolvedTarget])
   return {
     channel: resolvedChannel,
     roomId: effectiveRoomId,
@@ -280,7 +312,10 @@ export function useChat(options: UseChatOptions): UseChatResult {
     cooldownMs,
     sendMessage: send,
     loadOlder,
+    refresh,
     reset,
     clearNotice
   }
 }
+
+

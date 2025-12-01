@@ -714,9 +714,9 @@ export default function Profile() {
         </div>
       )}
       <nav className="breadcrumb-nav" style={{ paddingLeft: 0, paddingRight: 0 }}>
-        <a href="#home">Chánh Điện</a>
+        <a href="#home">{t('breadcrumb.home')}</a>
         <span>›</span>
-        <span className="breadcrumb-current">Tiên Phủ</span>
+        <span className="breadcrumb-current">{t('breadcrumb.profile')}</span>
       </nav>
       <div className="profile-grid">
         {/* Left Sidebar - Simple BangBang Style */}

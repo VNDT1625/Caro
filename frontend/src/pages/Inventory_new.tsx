@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useLanguage } from '../contexts/LanguageContext'
 
 type Item = { 
   id: string
@@ -202,6 +203,8 @@ function Card({
 }
 
 export default function Inventory() {
+  const { t } = useLanguage()
+  
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
   const [rarity, setRarity] = useState('all')

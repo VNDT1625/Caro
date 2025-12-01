@@ -4,7 +4,7 @@ import { joinMatchmakingQueue, findMatch, cancelMatchmaking, subscribeToMatchmak
 import { supabase } from '../lib/supabase'
 import { TrainingDifficulty, describeDifficulty } from '../lib/game/botAI'
 import { useFriendSystem } from '../hooks/useFriendSystem'
-import ChatPanel from '../components/chat/ChatPanel'
+import HomeChatOverlay from '../components/chat/HomeChatOverlay'
 
 interface HomeProps {
   mobileMenuOpen?: boolean
@@ -74,7 +74,7 @@ const getFeaturedEvents = (t: any): FeaturedEvent[] => [
 export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: HomeProps = {}) {
   const { t, language } = useLanguage()
   const FEATURED_EVENTS = React.useMemo(() => getFeaturedEvents(t), [t, language])
-  const [activeTab, setActiveTab] = React.useState<'friends' | 'chat' | 'info'>('friends')
+  const [activeTab, setActiveTab] = React.useState<'friends' | 'chat' | 'ai'>('friends')
   const [showSocialPopup, setShowSocialPopup] = React.useState(false)
   const [matchmaking, setMatchmaking] = React.useState<any>(null)
   const [username, setUsername] = React.useState<string>('')
@@ -89,6 +89,8 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     y: typeof window !== 'undefined' ? (window.innerHeight - 400) / 2 : 50 
   })
   const [isDragging, setIsDragging] = React.useState(false)
+  const [chatOverlayOpen, setChatOverlayOpen] = React.useState(false)
+  const [chatOverlayTab, setChatOverlayTab] = React.useState<'world' | 'friend' | 'ai'>('world')
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
   const [showUsernamePrompt, setShowUsernamePrompt] = React.useState(false)
   const [usernameInput, setUsernameInput] = React.useState('')
@@ -377,8 +379,18 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     setIsDragging(false)
   }
 
+  const openChatOverlay = React.useCallback((tab: 'world' | 'friend' | 'ai' = 'world') => {
+    setChatOverlayTab(tab)
+    setChatOverlayOpen(true)
+  }, [])
+
   const onlineFriendCount = React.useMemo(
     () => friends.filter((entry) => entry.profile?.is_online).length,
+    [friends]
+  )
+
+  const acceptedFriends = React.useMemo(
+    () => friends.filter((entry) => entry.status === 'accepted'),
     [friends]
   )
 
@@ -1424,7 +1436,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#shop'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">🏯</span>
         <span className="nav-label">{t('home.nav.shop')}</span>
-        <span className="nav-badge hot">HOT</span>
+        <span className="nav-badge hot">{t('home.nav.badgeHot')}</span>
       </button>
       <button className="nav-item" onClick={() => { window.location.hash = '#inventory'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">🎒</span>
@@ -1439,21 +1451,21 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#events'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">🎉</span>
         <span className="nav-label">{t('home.nav.events')}</span>
-        <span className="nav-badge hot">HOT</span>
+        <span className="nav-badge hot">{t('home.nav.badgeHot')}</span>
       </button>
       <button className="nav-item" onClick={() => { window.location.hash = '#khainhan'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">⚡</span>
         <span className="nav-label">{t('home.nav.khaiNhan')}</span>
-        <span className="nav-badge rank">RANK</span>
+        <span className="nav-badge rank">{t('home.nav.badgeRank')}</span>
       </button>
       <button className="nav-item" onClick={() => { window.location.hash = '#guide'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">📚</span>
         <span className="nav-label">{t('home.nav.guide')}</span>
       </button>
-      <button className="nav-item" onClick={() => { onCloseMobileMenu?.() }}>
+      <button className="nav-item" onClick={() => { window.location.hash = '#ai-analysis'; onCloseMobileMenu?.() }}>
         <span className="nav-icon">🧙</span>
         <span className="nav-label">{t('home.nav.mentor')}</span>
-        <span className="nav-badge new">NEW</span>
+        <span className="nav-badge new">{t('home.nav.badgeNew')}</span>
       </button>
     </>
   )
@@ -1629,9 +1641,27 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
             <button
               onClick={async () => {
                 await respondToRequest(friendRequestPopup.requestId, 'reject')
-                if (blockFor5Min) {
-                  // TODO: Implement 5-minute block logic in backend
-                  console.log('Block notifications for 5 minutes')
+                if (blockFor5Min && user?.id) {
+                  // Block user for 5 minutes
+                  const { blockUser: blockUserFunc } = await import('../lib/friends')
+                  const targetUserId = incomingRequests.find(r => r.id === friendRequestPopup.requestId)?.friend_id
+                  
+                  if (targetUserId) {
+                    const result = await blockUserFunc(user.id, targetUserId, 'Blocked for 5 minutes via friend request')
+                    
+                    if (result.success) {
+                      console.log('✓ User blocked for 5 minutes')
+                      setNotificationMessage(t('home.friends.userBlocked', { name: friendRequestPopup.from }))
+                      setShowFriendNotification(true)
+                      
+                      // Auto-unblock after 5 minutes
+                      setTimeout(async () => {
+                        const { unblockUser } = await import('../lib/friends')
+                        await unblockUser(user.id, targetUserId)
+                        console.log('✓ User automatically unblocked after 5 minutes')
+                      }, 5 * 60 * 1000)
+                    }
+                  }
                 }
                 setFriendRequestPopup(null)
                 setBlockFor5Min(false)
@@ -1822,8 +1852,8 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
                 {t('home.social.chat')}
               </button>
               <button 
-                className={`social-tab ${activeTab === 'info' ? 'active' : ''}`}
-                onClick={() => setActiveTab('info')}
+                className={`social-tab ${activeTab === 'ai' ? 'active' : ''}`}
+                onClick={() => setActiveTab('ai')}
               >
                 {t('home.social.info')}
               </button>
@@ -1833,18 +1863,42 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
               {activeTab === 'friends' && renderFriendsPanel()}
               {activeTab === 'chat' && (
                 <div className="chat-tab">
-                  <ChatPanel
-                    mode="home"
-                    userId={user?.id}
-                    displayName={userDisplayName}
-                    roomId={roomId}
-                    variant="card"
-                  />
+                  <div className="chat-overlay-trigger" onClick={() => openChatOverlay('world')}>
+                    <div className="chat-trigger-copy">
+                      <div className="chat-trigger-title">Truyền Âm nhanh</div>
+                      <div className="chat-trigger-sub">Nhấn để mở cửa sổ chat to giữa màn hình</div>
+                    </div>
+                    <button className="chat-send-btn" type="button">Mở</button>
+                  </div>
+                  <div className="chat-trigger-row">
+                    <input
+                      type="text"
+                      placeholder="Nhắn Thế giới..."
+                      onFocus={() => openChatOverlay('world')}
+                      readOnly
+                    />
+                    <input
+                      type="text"
+                      placeholder="Chọn bạn bè để trò chuyện"
+                      onFocus={() => openChatOverlay('friend')}
+                      readOnly
+                    />
+                    <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
+                      Hỏi Cao nhân
+                    </button>
+                  </div>
                 </div>
               )}
-              {activeTab === 'info' && (
-                <div className="info-tab">
-                  <div className="info-placeholder">Info coming soon...</div>
+              {activeTab === 'ai' && (
+                <div className="chat-tab">
+                  <div className="info-placeholder">
+                    Hỏi đáp Cao nhân AI theo các mức Basic / Trial / Pro.
+                    <div style={{ marginTop: 12 }}>
+                      <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
+                        Mở khung AI
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1903,8 +1957,8 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
               {t('home.social.chat')}
             </button>
             <button 
-              className={`social-tab ${activeTab === 'info' ? 'active' : ''}`}
-              onClick={() => setActiveTab('info')}
+              className={`social-tab ${activeTab === 'ai' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ai')}
             >
               {t('home.social.info')}
             </button>
@@ -1914,18 +1968,42 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
             {activeTab === 'friends' && renderFriendsPanel()}
             {activeTab === 'chat' && (
               <div className="chat-tab">
-                <ChatPanel
-                  mode="home"
-                  userId={user?.id}
-                  displayName={userDisplayName}
-                  roomId={roomId}
-                  variant="popup"
-                />
+                <div className="chat-overlay-trigger" onClick={() => openChatOverlay('world')}>
+                  <div className="chat-trigger-copy">
+                    <div className="chat-trigger-title">Truyền Âm nhanh</div>
+                    <div className="chat-trigger-sub">Nhấn để mở cửa sổ chat to giữa màn hình</div>
+                  </div>
+                  <button className="chat-send-btn" type="button">Mở</button>
+                </div>
+                <div className="chat-trigger-row">
+                  <input
+                    type="text"
+                    placeholder="Nhắn Thế giới..."
+                    onFocus={() => openChatOverlay('world')}
+                    readOnly
+                  />
+                  <input
+                    type="text"
+                    placeholder="Chọn bạn bè để trò chuyện"
+                    onFocus={() => openChatOverlay('friend')}
+                    readOnly
+                  />
+                  <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
+                    Hỏi Cao nhân
+                  </button>
+                </div>
               </div>
             )}
-            {activeTab === 'info' && (
-              <div className="info-tab">
-                <div className="info-placeholder">Info coming soon...</div>
+            {activeTab === 'ai' && (
+              <div className="chat-tab">
+                <div className="info-placeholder">
+                  Hỏi đáp Cao nhân AI theo các mức Basic / Trial / Pro.
+                  <div style={{ marginTop: 12 }}>
+                    <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
+                      Mở khung AI
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -2260,6 +2338,15 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
         </div>
       )}
 
+      <HomeChatOverlay
+        isOpen={chatOverlayOpen}
+        onClose={() => setChatOverlayOpen(false)}
+        userId={user?.id}
+        displayName={userDisplayName}
+        friends={acceptedFriends}
+        initialTab={chatOverlayTab}
+      />
+
       <style>{`
         @keyframes slideInRight {
           from {
@@ -2283,6 +2370,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
           }
         }
       `}</style>
+      {/* Removed floating AI Analysis trigger to avoid duplication */}
     </div>
     </>
   )

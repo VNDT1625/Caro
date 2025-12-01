@@ -1,8 +1,10 @@
 import React from 'react'
 import { supabase } from '../lib/supabase'
 import ChatPanel from '../components/chat/ChatPanel'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Room() {
+  const { t } = useLanguage()
   
   // User & Room info
   const [user, setUser] = React.useState<any>(null)
@@ -26,6 +28,7 @@ export default function Room() {
   const [hoveredCell, setHoveredCell] = React.useState<{x: number, y: number} | null>(null)
   const [showMoveInfo, setShowMoveInfo] = React.useState(false)
   const [moveHistory, setMoveHistory] = React.useState<Array<{x: number, y: number, player: 'X' | 'O', timestamp: number}>>([])
+  const [totalMoveCount, setTotalMoveCount] = React.useState(0)
   const [gameWinner, setGameWinner] = React.useState<'X' | 'O' | 'draw' | null>(null)
   const [matchWinner, setMatchWinner] = React.useState<'X' | 'O' | null>(null)
   const [showGameResultPopup, setShowGameResultPopup] = React.useState(false)
@@ -45,6 +48,7 @@ export default function Room() {
   const matchWinnerRef = React.useRef(matchWinner)
   const processingMoveRef = React.useRef<string | null>(null)
   const currentTurnRef = React.useRef<'X' | 'O'>('X')
+  const totalMoveCountRef = React.useRef(totalMoveCount)
 
   // Load user and match data on mount
   React.useEffect(() => {
@@ -68,6 +72,10 @@ export default function Room() {
   React.useEffect(() => {
     moveHistoryRef.current = moveHistory
   }, [moveHistory])
+
+  React.useEffect(() => {
+    totalMoveCountRef.current = totalMoveCount
+  }, [totalMoveCount])
 
   React.useEffect(() => {
     gameWinnerRef.current = gameWinner
@@ -187,6 +195,7 @@ export default function Room() {
         setMoveHistory([])
         setLastMovePosition(null)
         setCurrentTurn('X')
+        setTotalMoveCount(0)
         return
       }
 
@@ -207,6 +216,7 @@ export default function Room() {
 
       const lastMove = moves[moves.length - 1]
       const nextTurn = lastMove.turn_player === 'X' ? 'O' : 'X'
+      const lastMoveNumber = lastMove.move_number || moves.length
 
       setBoard(hydratedBoard)
       setMoveHistory(hydratedHistory)
@@ -214,6 +224,7 @@ export default function Room() {
       setCurrentTurn(nextTurn)
       setTimeLeft(30)
       setOpponentTimeLeft(30)
+      setTotalMoveCount(lastMoveNumber)
 
       console.log('✅ Hydrated board with', moves.length, 'moves. Next turn:', nextTurn)
     } catch (error) {
@@ -359,7 +370,7 @@ export default function Room() {
     }
 
     const shouldRecordMatch = options?.shouldRecordMatch ?? true
-    const totalMoves = options?.totalMoves ?? moveHistoryRef.current.length
+    const totalMoves = options?.totalMoves ?? totalMoveCountRef.current
 
     setGameWinner(winnerSymbol)
     gameWinnerRef.current = winnerSymbol
@@ -398,6 +409,7 @@ export default function Room() {
     const player = move.turn_player
     const movePlayerId = move.player_user_id
     const moveKey = `${move.match_id}-${move.move_number || ''}-${x}-${y}-${player}`
+    const incomingMoveNumber = move.move_number || totalMoveCountRef.current + 1
 
     console.log('🎮 Processing move from DB:', { 
       x, 
@@ -432,6 +444,11 @@ export default function Room() {
 
     console.log('✅ This is opponent move, updating board...')
 
+    if (incomingMoveNumber > totalMoveCountRef.current) {
+      totalMoveCountRef.current = incomingMoveNumber
+      setTotalMoveCount(incomingMoveNumber)
+    }
+
     // Update board synchronously
     setBoard(prevBoard => {
       const newBoard = prevBoard.map(row => [...row])
@@ -459,7 +476,7 @@ export default function Room() {
           console.log('🎉 Opponent won!', winner)
           void concludeGame(winner, 'move', {
             shouldRecordMatch: false,
-            totalMoves: move.move_number || moveHistoryRef.current.length + 1
+            totalMoves: move.move_number || totalMoveCountRef.current
           })
         } else {
           // No winner - switch turn
@@ -592,7 +609,7 @@ export default function Room() {
     console.log(`✅ Making move at (${x}, ${y})`)
 
     try {
-      const projectedMoveCount = moveHistoryRef.current.length + 1
+      const projectedMoveCount = totalMoveCountRef.current + 1
       const moveKey = `${matchId}-${projectedMoveCount}-${x}-${y}-${playerSymbol}`
       
       // Mark as processing to prevent duplicate from realtime
@@ -636,6 +653,9 @@ export default function Room() {
         processingMoveRef.current = null
         return
       }
+
+      totalMoveCountRef.current = projectedMoveCount
+      setTotalMoveCount(projectedMoveCount)
 
       if (winner) {
         console.log('🎉 GAME WINNER DETECTED:', winner)
@@ -1214,3 +1234,4 @@ export default function Room() {
     </div>
   )
 }
+

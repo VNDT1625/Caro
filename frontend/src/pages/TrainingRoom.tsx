@@ -1,5 +1,6 @@
 import React from 'react'
 import { getAIMove, TrainingDifficulty } from '../lib/game/botAI'
+import { useLanguage } from '../contexts/LanguageContext'
 
 type Cell = 'X' | 'O' | null
 
@@ -9,6 +10,7 @@ const createEmptyBoard = (): Cell[][] =>
   Array.from({ length: BOARD_SIZE }, () => Array<Cell>(BOARD_SIZE).fill(null))
 
 export default function TrainingRoom() {
+  const { t } = useLanguage()
   const [board, setBoard] = React.useState<Cell[][]>(() => createEmptyBoard())
   const [playerSymbol, setPlayerSymbol] = React.useState<'X' | 'O'>('X')
   const [currentTurn, setCurrentTurn] = React.useState<'X' | 'O'>('X')
@@ -172,7 +174,7 @@ export default function TrainingRoom() {
               handleLeave()
             }}
           >
-            Chánh Điện
+            {t('breadcrumb.home')}
           </a>
           <span>›</span>
           <span className="breadcrumb-current">Thí Luyện</span>

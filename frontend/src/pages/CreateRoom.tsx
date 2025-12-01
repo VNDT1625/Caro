@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { joinMatchmakingQueue } from '../lib/matchmaking'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function CreateRoom() {
+  const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'info' | 'settings'>('info')
@@ -72,16 +74,48 @@ export default function CreateRoom() {
   }
 
   async function loadFriends() {
+    if (!user?.id) return
+    
     try {
-      // TODO: Load friends from database
-      // Mock data for now
-      setFriends([
-        { id: 1, username: 'Player1', rank: 'Thiên Tài', mindpoint: 1200, avatar: '' },
-        { id: 2, username: 'Player2', rank: 'Cao Thủ', mindpoint: 980, avatar: '' },
-        { id: 3, username: 'Player3', rank: 'Kỳ Tài', mindpoint: 750, avatar: '' },
-        { id: 4, username: 'Player4', rank: 'Đại Sư', mindpoint: 650, avatar: '' },
-        { id: 5, username: 'Player5', rank: 'Vô Danh', mindpoint: 500, avatar: '' },
-      ])
+      // Load accepted friendships
+      const { data: friendships, error } = await supabase
+        .from('friendships')
+        .select(`
+          friend_id,
+          profiles:friend_id (
+            user_id,
+            username,
+            display_name,
+            current_rank,
+            mindpoint,
+            avatar_url
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'accepted')
+      
+      if (error) {
+        console.error('Error loading friends:', error)
+        return
+      }
+      
+      if (friendships && friendships.length > 0) {
+        const friendsList = friendships
+          .filter(f => f.profiles)
+          .map((f: any) => ({
+            id: f.profiles.user_id,
+            username: f.profiles.display_name || f.profiles.username,
+            rank: f.profiles.current_rank || 'Vô Danh',
+            mindpoint: f.profiles.mindpoint || 0,
+            avatar: f.profiles.avatar_url || ''
+          }))
+        
+        setFriends(friendsList)
+        console.log('✓ Loaded', friendsList.length, 'friends')
+      } else {
+        console.log('No friends found')
+        setFriends([])
+      }
     } catch (e) {
       console.error('Load friends failed:', e)
     }
@@ -108,33 +142,102 @@ export default function CreateRoom() {
   }
 
   async function handleCreateRoom() {
+    if (!user?.id) {
+      alert('Vui lòng đăng nhập để tạo phòng!')
+      return
+    }
+    
     console.log('Creating room:', { roomInfo, matchSettings })
     
-    // Check if it's matchmaking (no invited friends and not AI mode)
-    const isMatchmaking = invitedFriends.length === 0 && !selectedGuest && matchSettings.mode !== 'ai'
-    
-    if (isMatchmaking && user?.id) {
-      // Start real matchmaking
-      const result = await joinMatchmakingQueue(user.id, matchSettings)
+    try {
+      // Check if it's matchmaking (no invited friends and not AI mode)
+      const isMatchmaking = invitedFriends.length === 0 && !selectedGuest && matchSettings.mode !== 'ai'
       
-      if (result.success && result.queueId) {
-        localStorage.setItem('matchmaking', JSON.stringify({
-          active: true,
-          startTime: Date.now(),
-          queueId: result.queueId,
+      if (isMatchmaking) {
+        // Start real matchmaking
+        const result = await joinMatchmakingQueue(user.id, matchSettings)
+        
+        if (result.success && result.queueId) {
+          localStorage.setItem('matchmaking', JSON.stringify({
+            active: true,
+            startTime: Date.now(),
+            queueId: result.queueId,
+            roomInfo,
+            matchSettings
+          }))
+          
+          console.log('✓ Joined matchmaking queue:', result.queueId)
+          window.location.hash = 'home'
+        } else {
+          alert('Không thể tham gia hàng đợi: ' + (result.error || 'Unknown error'))
+          return
+        }
+      } else {
+        // Create private room with friends or AI
+        const { data: room, error: roomError } = await supabase
+          .from('rooms')
+          .insert({
+            name: roomInfo.name,
+            mode: matchSettings.mode,
+            host_id: user.id,
+            is_private: roomInfo.accessType !== 'public',
+            password: roomInfo.password || null,
+            max_players: 2,
+            game_settings: matchSettings,
+            status: 'waiting'
+          })
+          .select()
+          .single()
+        
+        if (roomError || !room) {
+          console.error('Error creating room:', roomError)
+          alert('Không thể tạo phòng: ' + (roomError?.message || 'Unknown error'))
+          return
+        }
+        
+        // Add host to room_players
+        const { error: playerError } = await supabase
+          .from('room_players')
+          .insert({
+            room_id: room.id,
+            user_id: user.id,
+            player_symbol: 'X',
+            is_ready: true
+          })
+        
+        if (playerError) {
+          console.error('Error adding player:', playerError)
+        }
+        
+        // Send invitations to friends if any
+        if (invitedFriends.length > 0) {
+          const invitations = invitedFriends.map(friendId => ({
+            room_id: room.id,
+            inviter_id: user.id,
+            invitee_id: friendId,
+            status: 'pending'
+          }))
+          
+          await supabase
+            .from('room_invitations')
+            .insert(invitations)
+        }
+        
+        console.log('✓ Room created:', room.id)
+        
+        // Store room info and redirect
+        localStorage.setItem('currentRoom', JSON.stringify({
+          roomId: room.id,
           roomInfo,
           matchSettings
         }))
         
-        console.log('Joined matchmaking queue:', result.queueId)
-      } else {
-        alert('Không thể tham gia hàng đợi: ' + (result.error || 'Unknown error'))
-        return
+        window.location.hash = `room/${room.id}`
       }
+    } catch (error) {
+      console.error('Create room error:', error)
+      alert('Có lỗi xảy ra khi tạo phòng!')
     }
-    
-    // TODO: Implement room creation
-    window.location.hash = 'home'
   }
 
   function handleClose() {

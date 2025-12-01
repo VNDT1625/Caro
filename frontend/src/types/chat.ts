@@ -11,6 +11,7 @@ export interface ChatProfileSummary {
 export interface ChatMessage {
   id: string
   sender_user_id: string
+  target_user_id?: string | null
   room_id?: string | null
   match_id?: string | null
   message_type: ChatMessageType
