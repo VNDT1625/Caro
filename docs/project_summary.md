@@ -703,7 +703,389 @@ cd ai && python -m pytest tests/ -v
 
 ---
 
-## 13. Cấu Trúc Thư Mục Đầy Đủ
+## 13. Luồng Hoạt Động User (User Flow)
+
+### 13.1 Luồng Đăng Ký & Onboarding
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         ĐĂNG KÝ & ONBOARDING                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. Truy cập web → AuthLanding (/auth)                                  │
+│         │                                                               │
+│         ▼                                                               │
+│  2. Chọn "Đăng ký" → Register (/register)                               │
+│         │                                                               │
+│         ├── Nhập Email + Password                                       │
+│         ├── Hoặc OAuth (Google/Discord)                                 │
+│         │                                                               │
+│         ▼                                                               │
+│  3. Xác nhận email (Supabase gửi link)                                  │
+│         │                                                               │
+│         ▼                                                               │
+│  4. Đăng nhập lần đầu → Onboarding Tour                                 │
+│         │                                                               │
+│         ├── Bước 1: Chọn ngôn ngữ (vi/en/zh/ja)                         │
+│         ├── Bước 2: Đặt Username                                        │
+│         ├── Bước 3: Upload Avatar (optional)                            │
+│         ├── Bước 4: Giới thiệu các tính năng                            │
+│         │                                                               │
+│         ▼                                                               │
+│  5. Hoàn thành → Home (/)                                               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 Luồng Đăng Nhập
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            ĐĂNG NHẬP                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. Truy cập web → Kiểm tra session                                     │
+│         │                                                               │
+│         ├── Có session hợp lệ → Home (/)                                │
+│         │                                                               │
+│         └── Không có session → Login (/login)                           │
+│                   │                                                     │
+│                   ├── Nhập Email + Password                             │
+│                   ├── Hoặc OAuth (Google/Discord)                       │
+│                   │                                                     │
+│                   ▼                                                     │
+│             Kiểm tra ban status (useBanCheck)                           │
+│                   │                                                     │
+│                   ├── Bị ban → BanNotificationModal                     │
+│                   │              ├── Hiển thị lý do + thời hạn          │
+│                   │              └── Nút "Kháng cáo" → Appeal           │
+│                   │                                                     │
+│                   └── Không bị ban → Home (/)                           │
+│                                                                         │
+│  * Quên mật khẩu:                                                       │
+│    Login → "Quên mật khẩu" → ForgotPassword → Email reset link          │
+│    → ResetPassword → Đặt mật khẩu mới → Login                           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.3 Luồng Chơi Game (Main Flow)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         LUỒNG CHƠI GAME                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  HOME (/) - Menu chính                                                  │
+│      │                                                                  │
+│      ├── [Xếp Hạng] → Matchmaking (/matchmaking?mode=ranked)            │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Vào queue → Tìm đối thủ cùng rank                              │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Match found → Room (/room/:id)                                 │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Swap 2 Opening (bắt buộc)                                      │
+│      │       │                                                          │
+│      │       ├── Phase 1: P1 đặt 3 quân                                 │
+│      │       ├── Phase 2: P2 chọn màu hoặc đặt thêm                     │
+│      │       ├── Phase 3-4: (nếu đặt thêm)                              │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Main Game (Bo3 Series)                                         │
+│      │       │                                                          │
+│      │       ├── Game 1 → Kết quả → SeriesScoreDisplay                  │
+│      │       ├── Game 2 → Kết quả → SeriesScoreDisplay                  │
+│      │       ├── Game 3 (nếu cần) → Kết quả                             │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Series kết thúc → SeriesResultModal                            │
+│      │       │                                                          │
+│      │       ├── Hiển thị MP thay đổi (RankChangeAnimation)             │
+│      │       ├── Nút "Phân tích" → AI Analysis                          │
+│      │       └── Nút "Về Home" → Home                                   │
+│      │                                                                  │
+│      ├── [Tiêu Dao] → Matchmaking (/matchmaking?mode=casual)            │
+│      │       │                                                          │
+│      │       └── Tương tự Ranked nhưng không tính MP                    │
+│      │                                                                  │
+│      ├── [Dị Biến Kỳ] → VariantMatch (/variant)                         │
+│      │       │                                                          │
+│      │       ├── Chọn variant: custom/hidden/skill/terrain              │
+│      │       └── Vào queue hoặc tạo phòng                               │
+│      │                                                                  │
+│      ├── [Thí Luyện] → TrainingRoom (/training)                         │
+│      │       │                                                          │
+│      │       ├── Chọn AI level: Nhập Môn/Kỳ Tài/Nghịch Thiên            │
+│      │       └── Chơi với AI (không tính điểm)                          │
+│      │                                                                  │
+│      ├── [Hotseat] → Hotseat (/hotseat)                                 │
+│      │       │                                                          │
+│      │       └── 2 người chơi trên 1 máy                                │
+│      │                                                                  │
+│      └── [Tạo Phòng] → CreateRoom (/create-room)                        │
+│              │                                                          │
+│              ├── Cài đặt: mode, swap2, timer, private                   │
+│              └── Tạo → Room (/room/:id) → Đợi người chơi                │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 Luồng Trong Trận Đấu
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       TRONG TRẬN ĐẤU (Room)                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Room (/room/:id)                                                       │
+│      │                                                                  │
+│      ├── Kết nối Socket.IO (useSocket)                                  │
+│      ├── Sync game state (useSeriesRealtime)                            │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Gameplay Loop:                                                         │
+│      │                                                                  │
+│      ├── Đến lượt → Click ô trống → Emit 'make_move'                    │
+│      │       │                                                          │
+│      │       ├── Server validate → Broadcast 'move_made'                │
+│      │       ├── Check winner → Nếu thắng: 'game_over'                  │
+│      │       └── Chuyển lượt                                            │
+│      │                                                                  │
+│      ├── Chat: Gõ tin nhắn → Emit 'chat_message'                        │
+│      │                                                                  │
+│      ├── Emote: Click emote → Emit 'emote'                              │
+│      │                                                                  │
+│      ├── Disconnect:                                                    │
+│      │       ├── Hiển thị DisconnectWarning (10s countdown)             │
+│      │       ├── Reconnect trong 10s → Tiếp tục                         │
+│      │       └── Quá 10s → Đối thủ thắng auto                           │
+│      │                                                                  │
+│      └── Skill Mode (nếu variant=skill):                                │
+│              ├── Mỗi lượt: Random 3 skill từ deck                       │
+│              ├── Đặt quân → Dùng skill (optional)                       │
+│              └── Mana: +3/lượt, max 15                                  │
+│                                                                         │
+│  Kết thúc game:                                                         │
+│      │                                                                  │
+│      ├── GameResultModal hiển thị                                       │
+│      ├── Ranked: Cập nhật series score                                  │
+│      │       ├── Series chưa kết thúc → NextGameCountdown → Game tiếp   │
+│      │       └── Series kết thúc → SeriesResultModal                    │
+│      │                                                                  │
+│      └── Casual: Hiển thị kết quả → Rematch hoặc Exit                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.5 Luồng Phân Tích AI
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         PHÂN TÍCH AI                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  AI Analysis (/ai-analysis)                                             │
+│      │                                                                  │
+│      ├── MatchListSidebar: Danh sách ván đấu đã chơi                    │
+│      │       │                                                          │
+│      │       └── Click ván đấu → Load analysis                          │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Analysis View:                                                         │
+│      │                                                                  │
+│      ├── InteractiveBoard: Bàn cờ tương tác                             │
+│      │       ├── Click nước đi → Jump to move                           │
+│      │       └── Hiển thị đánh giá từng nước                            │
+│      │                                                                  │
+│      ├── ScoreTimeline: Biểu đồ điểm theo thời gian                     │
+│      │       └── Hover → Xem chi tiết nước đi                           │
+│      │                                                                  │
+│      ├── MoveNavigation: Điều hướng nước đi                             │
+│      │       ├── ◀◀ First | ◀ Prev | Next ▶ | Last ▶▶                   │
+│      │       └── Auto-play mode                                         │
+│      │                                                                  │
+│      ├── ControlsBar: Chọn tier phân tích                               │
+│      │       ├── Basic (Free)                                           │
+│      │       ├── Pro (Subscription)                                     │
+│      │       └── God-tier (Premium)                                     │
+│      │                                                                  │
+│      └── ReplayAIPanel: Chat với AI về ván đấu                          │
+│              ├── Hỏi: "Tại sao nước này sai?"                           │
+│              └── AI trả lời với context ván đấu                         │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.6 Luồng Shop & Thanh Toán
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       SHOP & THANH TOÁN                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Home → Shop (/shop)                                                    │
+│      │                                                                  │
+│      ├── Tab Categories:                                                │
+│      │       ├── Bàn cờ (Board skins)                                   │
+│      │       ├── Quân cờ (Piece skins)                                  │
+│      │       ├── Khung avatar (Avatar frames)                           │
+│      │       ├── Nhạc nền (Music)                                       │
+│      │       └── Skill packages                                         │
+│      │                                                                  │
+│      ├── Click item → Xem chi tiết                                      │
+│      │       │                                                          │
+│      │       ├── Đủ Coins/Gems → Mua → Thêm vào Inventory               │
+│      │       │                                                          │
+│      │       └── Thiếu tiền → "Nạp thêm" → CurrencyShop                 │
+│      │                                                                  │
+│      └── Skill Packages:                                                │
+│              ├── Khai Xuân (70% common)                                 │
+│              ├── Khai Thiên (25% rare)                                  │
+│              └── Vô Cực (5% legendary)                                  │
+│                                                                         │
+│  CurrencyShop (/currency-shop)                                          │
+│      │                                                                  │
+│      ├── Chọn gói: 50k/100k/200k/500k VND                               │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Thanh toán VNPAY:                                                      │
+│      │                                                                  │
+│      ├── Redirect → VNPAY gateway                                       │
+│      ├── Chọn ngân hàng → Thanh toán                                    │
+│      │                                                                  │
+│      ▼                                                                  │
+│  PaymentResult (/payment-result)                                        │
+│      │                                                                  │
+│      ├── Thành công → Cộng Coins/Gems → Redirect Shop                   │
+│      └── Thất bại → Hiển thị lỗi → Thử lại                              │
+│                                                                         │
+│  Subscription (/subscription)                                           │
+│      │                                                                  │
+│      ├── Trial (Free): Basic analysis                                   │
+│      ├── Pro (99k/tháng): Pro analysis + perks                          │
+│      └── Pro Plus (199k/tháng): God-tier + all features                 │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.7 Luồng Social & Report
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       SOCIAL & REPORT                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Friend System:                                                         │
+│      │                                                                  │
+│      ├── Profile → Tìm user → "Kết bạn"                                 │
+│      ├── Inbox → Friend requests → Accept/Decline                       │
+│      └── Friends list → Chat/Invite/Block                               │
+│                                                                         │
+│  Report Flow:                                                           │
+│      │                                                                  │
+│      ├── Trong game/Profile → ReportButton                              │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      ├── ReportModal:                                                   │
+│      │       ├── Chọn loại: Cheat/Toxic/Spam/Other                      │
+│      │       ├── Nhập mô tả                                             │
+│      │       └── Submit → API tạo report                                │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Admin xử lý (Admin Panel):                                             │
+│      │                                                                  │
+│      ├── AdminReports: Danh sách reports                                │
+│      │       ├── AI Analysis tự động đánh giá                           │
+│      │       ├── Rule Engine check vi phạm                              │
+│      │       └── Admin review → Ban/Dismiss                             │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Nếu bị ban:                                                            │
+│      │                                                                  │
+│      ├── User đăng nhập → BanNotificationModal                          │
+│      │       ├── Hiển thị lý do + thời hạn                              │
+│      │       └── Nút "Kháng cáo"                                        │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Appeal Flow:                                                           │
+│      │                                                                  │
+│      ├── Nhập lý do kháng cáo → Submit                                  │
+│      ├── Admin review → AdminAppeals                                    │
+│      │       ├── Chấp nhận → Unban user                                 │
+│      │       └── Từ chối → Giữ nguyên ban                               │
+│      │                                                                  │
+│      └── User nhận thông báo kết quả                                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.8 Luồng Đăng Xuất
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          ĐĂNG XUẤT                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Bất kỳ trang nào → Menu → "Đăng xuất"                                  │
+│      │                                                                  │
+│      ├── Nếu đang trong game:                                           │
+│      │       ├── Cảnh báo: "Bạn sẽ thua nếu thoát"                      │
+│      │       ├── Xác nhận → Forfeit game → Logout                       │
+│      │       └── Hủy → Tiếp tục chơi                                    │
+│      │                                                                  │
+│      ├── Nếu không trong game:                                          │
+│      │       ├── Supabase signOut()                                     │
+│      │       ├── Clear local storage                                    │
+│      │       ├── Disconnect Socket.IO                                   │
+│      │       │                                                          │
+│      │       ▼                                                          │
+│      │   Redirect → AuthLanding (/auth)                                 │
+│      │                                                                  │
+│      └── Session timeout (auto):                                        │
+│              ├── Token hết hạn → Auto logout                            │
+│              └── Redirect → Login với message                           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.9 Tổng Quan Luồng Hoàn Chỉnh
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    USER JOURNEY OVERVIEW                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐          │
+│  │  Đăng ký │───►│Onboarding│───►│   Home   │───►│   Game   │          │
+│  └──────────┘    └──────────┘    └────┬─────┘    └────┬─────┘          │
+│                                       │               │                 │
+│                                       ▼               ▼                 │
+│                                  ┌─────────┐    ┌──────────┐           │
+│                                  │  Shop   │    │ Analysis │           │
+│                                  │ Profile │    │  Replay  │           │
+│                                  │ Friends │    └──────────┘           │
+│                                  └─────────┘                            │
+│                                       │                                 │
+│                                       ▼                                 │
+│                                  ┌─────────┐                            │
+│                                  │ Logout  │                            │
+│                                  └─────────┘                            │
+│                                                                         │
+│  Các luồng phụ:                                                         │
+│  • Report → Admin Review → Ban/Unban                                    │
+│  • Payment → VNPAY → Currency/Subscription                              │
+│  • Disconnect → Reconnect/Auto-lose                                     │
+│  • Ban → Appeal → Admin Review → Unban/Keep                             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 14. Cấu Trúc Thư Mục Đầy Đủ
 
 ```
 caro/
