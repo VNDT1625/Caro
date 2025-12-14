@@ -1085,7 +1085,325 @@ cd ai && python -m pytest tests/ -v
 
 ---
 
-## 14. Cấu Trúc Thư Mục Đầy Đủ
+## 14. Luồng Hoạt Động Admin (Admin Flow)
+
+### 14.1 Đăng Nhập Admin
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       ĐĂNG NHẬP ADMIN                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. Đăng nhập như user thường → Login (/login)                          │
+│         │                                                               │
+│         ▼                                                               │
+│  2. Kiểm tra quyền admin (profiles.is_admin = true)                     │
+│         │                                                               │
+│         ├── Không phải admin → Home (/) như user thường                 │
+│         │                                                               │
+│         └── Là admin → Hiển thị menu Admin trong sidebar                │
+│                   │                                                     │
+│                   ├── Admin Dashboard (/admin)                          │
+│                   ├── Quản lý Reports (/admin/reports)                  │
+│                   ├── Quản lý Appeals (/admin/appeals)                  │
+│                   └── Gửi Thông báo (/admin/notifications)              │
+│                                                                         │
+│  * Tạo admin mới:                                                       │
+│    - Chạy script: node server/scripts/create-admin.mjs                  │
+│    - Hoặc update trực tiếp trong Supabase: is_admin = true              │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.2 Admin Dashboard
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       ADMIN DASHBOARD                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Admin (/admin)                                                         │
+│      │                                                                  │
+│      ├── Statistics Overview:                                           │
+│      │       ├── Tổng số users                                          │
+│      │       ├── Users online hiện tại                                  │
+│      │       ├── Số trận đấu hôm nay                                    │
+│      │       ├── Doanh thu tháng này                                    │
+│      │       └── Reports pending                                        │
+│      │                                                                  │
+│      ├── Quick Actions:                                                 │
+│      │       ├── [Xem Reports] → AdminReports                           │
+│      │       ├── [Xem Appeals] → AdminAppeals                           │
+│      │       ├── [Gửi Thông báo] → AdminNotifications                   │
+│      │       └── [Quản lý Users] → User list                            │
+│      │                                                                  │
+│      └── Recent Activity:                                               │
+│              ├── Reports mới nhất                                       │
+│              ├── Appeals mới nhất                                       │
+│              └── Transactions gần đây                                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.3 Luồng Xử Lý Report
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       XỬ LÝ REPORT                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  AdminReports (/admin/reports)                                          │
+│      │                                                                  │
+│      ├── Danh sách reports với filters:                                 │
+│      │       ├── Status: pending/reviewed/resolved/dismissed            │
+│      │       ├── Type: cheat/toxic/spam/other                           │
+│      │       └── Date range                                             │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Click report → ReportDetailModal:                                      │
+│      │                                                                  │
+│      ├── Thông tin report:                                              │
+│      │       ├── Reporter: username, avatar                             │
+│      │       ├── Reported user: username, avatar                        │
+│      │       ├── Type: loại vi phạm                                     │
+│      │       ├── Description: mô tả từ reporter                         │
+│      │       ├── Match ID (nếu có): link đến replay                     │
+│      │       └── Created at: thời gian report                           │
+│      │                                                                  │
+│      ├── AI Analysis (tự động):                                         │
+│      │       ├── Severity score: 0-100                                  │
+│      │       ├── Confidence: độ tin cậy                                 │
+│      │       ├── Detected patterns: các pattern vi phạm                 │
+│      │       └── Recommendation: đề xuất hành động                      │
+│      │                                                                  │
+│      ├── Rule Engine Analysis:                                          │
+│      │       ├── Rules violated: danh sách rules bị vi phạm             │
+│      │       └── Evidence: bằng chứng cụ thể                            │
+│      │                                                                  │
+│      ├── Match History (nếu report về cheat):                           │
+│      │       ├── Link xem replay                                        │
+│      │       ├── Move analysis                                          │
+│      │       └── Suspicious patterns                                    │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Admin Actions:                                                         │
+│      │                                                                  │
+│      ├── [Dismiss] → Đóng report, không xử lý                           │
+│      │       └── Nhập lý do dismiss                                     │
+│      │                                                                  │
+│      ├── [Warn] → Gửi cảnh báo cho user                                 │
+│      │       └── Nhập nội dung cảnh báo                                 │
+│      │                                                                  │
+│      ├── [Ban] → Ban user                                               │
+│      │       ├── Chọn thời hạn: 1 ngày/7 ngày/30 ngày/Vĩnh viễn         │
+│      │       └── Nhập lý do ban                                         │
+│      │                                                                  │
+│      └── [View Profile] → Xem profile user bị report                    │
+│                                                                         │
+│  Sau khi xử lý:                                                         │
+│      │                                                                  │
+│      ├── Report status → resolved/dismissed                             │
+│      ├── Ghi log vào report_actions                                     │
+│      ├── Nếu ban → Tạo record trong user_bans                           │
+│      └── User bị report nhận notification                               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.4 Luồng Xử Lý Appeal
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       XỬ LÝ APPEAL                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  AdminAppeals (/admin/appeals)                                          │
+│      │                                                                  │
+│      ├── Danh sách appeals với filters:                                 │
+│      │       ├── Status: pending/approved/rejected                      │
+│      │       └── Date range                                             │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Click appeal → Appeal Detail:                                          │
+│      │                                                                  │
+│      ├── Thông tin appeal:                                              │
+│      │       ├── User: username, avatar                                 │
+│      │       ├── Ban reason: lý do bị ban                               │
+│      │       ├── Ban duration: thời hạn ban                             │
+│      │       ├── Appeal reason: lý do kháng cáo                         │
+│      │       └── Created at: thời gian gửi appeal                       │
+│      │                                                                  │
+│      ├── Original Report:                                               │
+│      │       ├── Link đến report gốc                                    │
+│      │       ├── AI Analysis của report                                 │
+│      │       └── Evidence đã thu thập                                   │
+│      │                                                                  │
+│      ├── User History:                                                  │
+│      │       ├── Số lần bị report trước đó                              │
+│      │       ├── Số lần bị ban trước đó                                 │
+│      │       └── Account age                                            │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Admin Actions:                                                         │
+│      │                                                                  │
+│      ├── [Approve] → Chấp nhận appeal                                   │
+│      │       ├── Nhập response cho user                                 │
+│      │       ├── Unban user ngay lập tức                                │
+│      │       └── User nhận notification                                 │
+│      │                                                                  │
+│      └── [Reject] → Từ chối appeal                                      │
+│              ├── Nhập lý do từ chối                                     │
+│              ├── Giữ nguyên ban                                         │
+│              └── User nhận notification                                 │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.5 Luồng Gửi Thông Báo
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       GỬI THÔNG BÁO                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  AdminNotifications (/admin/notifications)                              │
+│      │                                                                  │
+│      ├── Tab "Tạo mới":                                                 │
+│      │       │                                                          │
+│      │       ├── Nhập tiêu đề (title)                                   │
+│      │       ├── Nhập nội dung (content)                                │
+│      │       │                                                          │
+│      │       ├── Chọn đối tượng:                                        │
+│      │       │       ├── [Tất cả users] → Broadcast                     │
+│      │       │       └── [Chọn users] → UserSelectModal                 │
+│      │       │               ├── Tìm kiếm theo username                 │
+│      │       │               └── Chọn nhiều users                       │
+│      │       │                                                          │
+│      │       ├── Đính kèm quà (optional):                               │
+│      │       │       ├── Coins: số lượng                                │
+│      │       │       ├── Gems: số lượng                                 │
+│      │       │       └── Items: chọn từ danh sách                       │
+│      │       │                                                          │
+│      │       └── [Gửi] → Tạo notification                               │
+│      │                                                                  │
+│      └── Tab "Đã gửi":                                                  │
+│              │                                                          │
+│              ├── Danh sách notifications đã gửi                         │
+│              │       ├── Title, content preview                         │
+│              │       ├── Số người nhận                                  │
+│              │       ├── Số người đã đọc                                │
+│              │       └── Thời gian gửi                                  │
+│              │                                                          │
+│              └── Click → NotificationDetailModal                        │
+│                      ├── Chi tiết notification                          │
+│                      ├── Danh sách người nhận                           │
+│                      └── Trạng thái đọc/claim gift                      │
+│                                                                         │
+│  User nhận notification:                                                │
+│      │                                                                  │
+│      ├── InboxIcon hiển thị badge số thông báo mới                      │
+│      ├── Click → Inbox (/inbox)                                         │
+│      │       ├── Danh sách notifications                                │
+│      │       └── Click → Xem chi tiết                                   │
+│      │                                                                  │
+│      └── Nếu có gift:                                                   │
+│              ├── Hiển thị nút "Nhận quà"                                │
+│              ├── Click → Claim gift                                     │
+│              └── Coins/Gems/Items được cộng vào account                 │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.6 Luồng Quản Lý User
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       QUẢN LÝ USER                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Admin Dashboard → User Management                                      │
+│      │                                                                  │
+│      ├── Tìm kiếm user:                                                 │
+│      │       ├── Theo username                                          │
+│      │       ├── Theo email                                             │
+│      │       └── Theo user_id                                           │
+│      │                                                                  │
+│      ▼                                                                  │
+│  User Profile View:                                                     │
+│      │                                                                  │
+│      ├── Thông tin cơ bản:                                              │
+│      │       ├── Username, avatar, email                                │
+│      │       ├── MindPoint, current rank                                │
+│      │       ├── Coins, Gems balance                                    │
+│      │       ├── Subscription tier                                      │
+│      │       └── Account created date                                   │
+│      │                                                                  │
+│      ├── Statistics:                                                    │
+│      │       ├── Tổng số trận đấu                                       │
+│      │       ├── Win rate                                               │
+│      │       ├── Ranked series played                                   │
+│      │       └── Total playtime                                         │
+│      │                                                                  │
+│      ├── History:                                                       │
+│      │       ├── Reports received                                       │
+│      │       ├── Bans history                                           │
+│      │       ├── Appeals history                                        │
+│      │       └── Purchase history                                       │
+│      │                                                                  │
+│      ▼                                                                  │
+│  Admin Actions:                                                         │
+│      │                                                                  │
+│      ├── [Ban User] → Ban với lý do                                     │
+│      ├── [Unban User] → Gỡ ban (nếu đang bị ban)                        │
+│      ├── [Reset Password] → Gửi email reset                             │
+│      ├── [Add Coins/Gems] → Cộng tiền (compensation)                    │
+│      ├── [Remove Items] → Xóa items (nếu có lỗi)                        │
+│      └── [Make Admin] → Cấp quyền admin                                 │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.7 Tổng Quan Luồng Admin
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    ADMIN JOURNEY OVERVIEW                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────┐    ┌──────────┐    ┌──────────────────────────────┐      │
+│  │  Login   │───►│Dashboard │───►│  Daily Tasks                 │      │
+│  │ (Admin)  │    │ Overview │    │  ┌────────┐ ┌────────┐       │      │
+│  └──────────┘    └──────────┘    │  │Reports │ │Appeals │       │      │
+│                                   │  └───┬────┘ └───┬────┘       │      │
+│                                   │      │         │             │      │
+│                                   │      ▼         ▼             │      │
+│                                   │  ┌────────────────────┐      │      │
+│                                   │  │   Review & Action  │      │      │
+│                                   │  │  Ban/Warn/Dismiss  │      │      │
+│                                   │  │  Approve/Reject    │      │      │
+│                                   │  └────────────────────┘      │      │
+│                                   └──────────────────────────────┘      │
+│                                                                         │
+│  Các tác vụ admin:                                                      │
+│  • Xử lý reports hàng ngày                                              │
+│  • Review appeals từ users bị ban                                       │
+│  • Gửi thông báo/quà cho users                                          │
+│  • Monitor statistics và activity                                       │
+│  • Quản lý users (ban/unban/compensation)                               │
+│                                                                         │
+│  Workflow điển hình:                                                    │
+│  1. Login → Check Dashboard                                             │
+│  2. Xem pending reports → Review từng report                            │
+│  3. Xem pending appeals → Approve/Reject                                │
+│  4. Gửi thông báo nếu có event/maintenance                              │
+│  5. Logout                                                              │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 15. Cấu Trúc Thư Mục Đầy Đủ
 
 ```
 caro/
