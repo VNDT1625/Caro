@@ -1,0 +1,132 @@
+/* Avatar with Frame Component Styles */
+
+.avatar-with-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Hover effects */
+.avatar-with-frame:hover .frame-glow {
+  filter: brightness(1.15);
+  transform: scale(1.02);
+}
+
+.avatar-with-frame:hover .frame-custom-image {
+  filter: brightness(1.1) drop-shadow(0 0 8px rgba(255,255,255,0.3));
+}
+
+/* Glow animation for legendary */
+.legendary-glow {
+  animation: legendaryPulse 3s ease-in-out infinite, legendaryRotate 8s linear infinite;
+}
+
+@keyframes legendaryPulse {
+  0%, 100% { 
+    filter: brightness(1) saturate(1);
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.5), 0 0 50px rgba(239, 68, 68, 0.3);
+  }
+  50% { 
+    filter: brightness(1.2) saturate(1.2);
+    box-shadow: 0 0 35px rgba(245, 158, 11, 0.7), 0 0 70px rgba(239, 68, 68, 0.4), 0 0 100px rgba(168, 85, 247, 0.3);
+  }
+}
+
+@keyframes legendaryRotate {
+  from { background-position: 0deg; }
+  to { background-position: 360deg; }
+}
+
+/* Frame accents for epic/legendary */
+.frame-accent {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.frame-accent.accent-top {
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.frame-accent.accent-bottom {
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.frame-accent.epic {
+  background: radial-gradient(circle, #C084FC 0%, #A855F7 50%, #7C3AED 100%);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+  animation: accentPulse 2s ease-in-out infinite;
+}
+
+.frame-accent.legendary {
+  background: radial-gradient(circle, #FCD34D 0%, #F59E0B 50%, #D97706 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.9);
+  animation: accentPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes accentPulse {
+  0%, 100% { 
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: translateX(-50%) scale(1.3);
+    opacity: 0.8;
+  }
+}
+
+/* Rarity-specific glow colors */
+.rarity-rare .frame-glow {
+  animation: rarePulse 4s ease-in-out infinite;
+}
+
+.rarity-epic .frame-glow {
+  animation: epicPulse 3s ease-in-out infinite;
+}
+
+@keyframes rarePulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.7), 0 0 40px rgba(59, 130, 246, 0.3); }
+}
+
+@keyframes epicPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), 0 0 50px rgba(168, 85, 247, 0.3); }
+}
+
+/* Header avatar - compact, reduced effects */
+.header-avatar .frame-glow,
+.avatar-compact .frame-glow {
+  animation: none !important;
+}
+
+.header-avatar .frame-accent,
+.avatar-compact .frame-accent {
+  display: none;
+}
+
+/* Smooth transitions */
+.frame-glow {
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .legendary-glow {
+    animation-duration: 4s, 12s;
+  }
+  
+  .frame-accent {
+    width: 6px;
+    height: 6px;
+  }
+}

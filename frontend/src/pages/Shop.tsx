@@ -1,8 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLanguage } from '../contexts/LanguageContext'
+import { AudioManager } from '../lib/AudioManager'
+import SkillPackageSection from '../components/shop/SkillPackageSection'
+import '../components/shop/SkillPackageSection.css'
+import { MobileBreadcrumb, MobileQuickSettings } from '../components/layout'
 
-type Item = { id: string; title: string; subtitle?: string; price: number; currency?: 'coin' | 'gem'; media_url?: string; rarity?: string; type?: string; item_code?: string }
+type Item = {
+  id: string
+  title: string
+  title_en?: string
+  title_zh?: string
+  title_ja?: string
+  subtitle?: string
+  subtitle_en?: string
+  subtitle_zh?: string
+  subtitle_ja?: string
+  price: number
+  currency?: 'coin' | 'gem'
+  media_url?: string
+  rarity?: string
+  type?: string
+  item_code?: string
+}
 
 type Category = {
   id: string
@@ -13,6 +33,17 @@ type Category = {
   color?: string
   sort_order: number
   item_count?: number
+}
+
+type LanguageCode = 'vi' | 'en' | 'zh' | 'ja'
+
+function pickText(language: LanguageCode, vi?: string | null, en?: string | null, zh?: string | null, ja?: string | null): string {
+  switch (language) {
+    case 'en': return en || vi || zh || ja || ''
+    case 'zh': return zh || en || vi || ja || ''
+    case 'ja': return ja || en || vi || zh || ''
+    default: return vi || en || zh || ja || ''
+  }
 }
 
 // Note: These sample items use i18n keys for title/desc
@@ -36,13 +67,87 @@ function capitalize(str: string): string {
 
 // Helper to get category display name via i18n "shop.type.<id>"
 function getCategoryName(categoryId: string, t: (key: string) => string): string {
-  const key = `shop.type.${categoryId}`
-  const translated = t(key)
-  return capitalize(translated || categoryId)
+  const normalized = (categoryId || '').trim().toLowerCase()
+  // NOTE: "title" (danh hiệu) đã bị loại bỏ khỏi shop vì danh hiệu phải đạt được qua thành tích,
+  // không phải mua. Danh hiệu được quản lý qua hệ thống Achievement/Rank.
+  const mapping: Record<string, string> = {
+    piece_skin: 'shop.typePieceSkin',
+    skin_piece: 'shop.typePieceSkin',
+    board_skin: 'shop.typeBoardSkin',
+    skin_board: 'shop.typeBoardSkin',
+    avatar_frame: 'shop.typeAvatarFrame',
+    music: 'shop.typeMusic',
+    'âm nhạc': 'shop.typeMusic',
+    // title: REMOVED - Danh hiệu không bán, phải đạt được qua thành tích
+    emote: 'shop.typeEmote',
+    pass: 'shop.typePass',
+    package: 'shop.typePackage',
+    gifts: 'shop.typeGifts'
+  }
+
+  const candidates = [
+    mapping[normalized],
+    `shop.type.${normalized}`,
+    `shop.type${normalized.split('_').map(capitalize).join('')}`
+  ].filter(Boolean) as string[]
+
+  for (const key of candidates) {
+    const translated = t(key)
+    if (translated && translated !== key) {
+      return capitalize(translated)
+    }
+  }
+
+  return capitalize((normalized || categoryId || '').replace(/_/g, ' '))
 }
 
-function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { item: Item; onBuy: (it: Item)=>Promise<{ok: boolean; message?: string}> | Promise<any>; owned?: boolean; buying?: boolean; profile?: any; openInfo: (title: string, msg: string)=>Promise<void>; openConfirm: (title: string, msg: string)=>Promise<boolean> }) {
-  const { t } = useLanguage()
+// Validate media URL
+const isValidMediaUrl = (url?: string | null) => {
+  if (!url) return false
+  const trimmed = url.trim()
+  // Allow both http(s) URLs and local paths starting with /
+  if (!/^(https?:\/\/|\/)/i.test(trimmed)) return false
+  if (trimmed.includes('WebKitFormBoundary')) return false
+  return true
+}
+
+// Get icon for category placeholder
+const getCategoryIcon = (category?: string | null): string => {
+  const cat = (category || '').toLowerCase()
+  if (cat.includes('piece') || cat.includes('skin_piece') || cat.includes('piece_skin')) return '♟️'
+  if (cat.includes('board') || cat.includes('skin_board') || cat.includes('board_skin')) return '🎯'
+  if (cat.includes('music') || cat.includes('âm nhạc') || cat.includes('am nhac')) return '🎵'
+  if (cat.includes('avatar') || cat.includes('frame')) return '🖼️'
+  if (cat.includes('title') || cat.includes('danh hiệu')) return '👑'
+  if (cat.includes('emote')) return '😀'
+  return '📦'
+}
+
+function resolveItemText(
+  item: Item,
+  language: LanguageCode,
+  t: (key: string) => string,
+  kind: 'title' | 'desc'
+) {
+  const code = item.item_code || item.id
+  const key = `shop.item.${code}.${kind}`
+  const translated = t(key)
+  const normalized = translated?.toLowerCase()
+  const hasRealTranslation = translated && translated !== key && normalized !== kind
+
+  if (hasRealTranslation) return translated
+
+  const vi = kind === 'title' ? item.title : item.subtitle
+  const en = kind === 'title' ? item.title_en : item.subtitle_en
+  const zh = kind === 'title' ? item.title_zh : item.subtitle_zh
+  const ja = kind === 'title' ? item.title_ja : item.subtitle_ja
+  const localized = pickText(language, vi, en, zh, ja)
+  const direct = typeof vi === 'string' ? vi : ''
+  return localized || direct || code
+}
+
+function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm, dataTour }: { item: Item; onBuy: (it: Item)=>Promise<{ok: boolean; message?: string}> | Promise<any>; owned?: boolean; buying?: boolean; profile?: any; openInfo: (title: string, msg: string)=>Promise<void>; openConfirm: (title: string, msg: string)=>Promise<boolean>; dataTour?: string }) {
+  const { t, language } = useLanguage()
   const [hover, setHover] = React.useState(false)
   const [pos, setPos] = React.useState<{ left: number; top: number; width: number; height: number; side: 'left' | 'right' }>({ left: 0, top: 0, width: 280, height: 160, side: 'right' })
   // larger preview popup requested: ~1.5x previous
@@ -154,28 +259,64 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
   // NOTE: modal helpers `openInfo` and `openConfirm` are provided by parent `Shop` component
 
   return (
-    <div className={`shop-card ${clickedDbg ? 'debug-clicked' : ''}`} onClick={handleCardClickDebug} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseMove={handleMouseMove}>
+    <div className={`shop-card ${clickedDbg ? 'debug-clicked' : ''}`} data-tour={dataTour} onClick={handleCardClickDebug} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} onMouseMove={handleMouseMove}>
       <div className="shop-card-media">
         {item.rarity && <div className={`rarity-badge ${item.rarity ? `rarity-${item.rarity}` : ''}`}>{rarityLabel(item.rarity)}</div>}
-        {item.media_url ? '' : t('shop.preview')}
+        {item.media_url && isValidMediaUrl(item.media_url) ? (
+          isVideo ? (
+            <video 
+              src={item.media_url} 
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
+            />
+          ) : (
+            <img 
+              src={item.media_url} 
+              alt={item.title} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  const placeholder = document.createElement('div')
+                  placeholder.className = 'item-placeholder'
+                  placeholder.innerHTML = getCategoryIcon(item.type)
+                  parent.appendChild(placeholder)
+                }
+              }}
+            />
+          )
+        ) : (
+          <div className="item-placeholder" style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            fontSize: 36,
+            color: 'rgba(255,255,255,0.3)'
+          }}>
+            <span>{getCategoryIcon(item.type)}</span>
+            <span style={{ fontSize: 11, marginTop: 4 }}>{t('shop.preview')}</span>
+          </div>
+        )}
       </div>
       <div className="shop-card-body">
         <div className="shop-card-title">{
           (() => {
-            const code = item.item_code || item.id
-            const titleKey = `shop.item.${code}.title`
-            const translated = t(titleKey)
-            const direct = typeof item.title === 'string' ? t(item.title) : ''
-            return translated || direct || (typeof item.title === 'string' ? item.title : '')
+            const langCode = language as LanguageCode
+            return resolveItemText(item, langCode, t, 'title')
           })()
         }</div>
         <div className="shop-card-sub">{
           (() => {
-            const code = item.item_code || item.id
-            const descKey = `shop.item.${code}.desc`
-            const translated = t(descKey)
-            const direct = item.subtitle ? t(item.subtitle) : ''
-            return translated || direct || (item.subtitle || '')
+            const langCode = language as LanguageCode
+            return resolveItemText(item, langCode, t, 'desc')
           })()
         }</div>
         <div className="shop-card-footer">
@@ -193,6 +334,7 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
           </div>
           <button
             className="shop-buy"
+            data-tour={dataTour === 'free-chess' ? 'buy-chess-btn' : dataTour === 'free-board' ? 'buy-board-btn' : undefined}
             style={{ pointerEvents: 'auto', opacity: (owned || buying) ? 0.6 : (canAfford ? 1 : 0.6), cursor: (owned || buying) ? 'not-allowed' : (canAfford ? 'pointer' : 'not-allowed') }}
             disabled={Boolean(buying) || Boolean(owned)}
             onClick={async (e) => {
@@ -212,10 +354,6 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
                 return
               }
 
-              // show a quick debug info modal to confirm the button received the click
-              const debugLabel = item.price === 0 ? t('shop.buy') : `${t('shop.buy')} (${item.price} ${item.currency === 'gem' ? t('shop.gems') : t('shop.coins')})`
-              await openInfo(t('common.debug'), t('shop.debugClicked', { label: debugLabel }))
-
               const label = item.price === 0 ? t('shop.buy') : `${t('shop.buy')} (${item.price} ${item.currency === 'gem' ? t('shop.gems') : t('shop.coins')})`
               const ok = await openConfirm(t('shop.confirmPurchase'), t('shop.confirmPurchaseMessage', { action: label }))
               if (!ok) return
@@ -234,6 +372,7 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
                   okRes = true
                 }
                 if (okRes) {
+                  AudioManager.playSoundEffect('purchase')
                   await openInfo(t('shop.purchaseSuccess'), t('shop.purchaseSuccessMessage', { item: item.title }))
                 } else {
                   await openInfo(t('shop.purchaseFailed'), msg || t('shop.purchaseFailed'))
@@ -295,9 +434,10 @@ function Card({ item, onBuy, owned, buying, profile, openInfo, openConfirm }: { 
 }
 
 export default function Shop() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
+  const [collectionFilter, setCollectionFilter] = useState<'all' | 'sale' | 'gifts' | 'package'>('all')
   const [rarity, setRarity] = useState('all')
   const [priceCurrency, setPriceCurrency] = useState('all')
   // (slider removed) price filters use currency and global sort only
@@ -317,6 +457,48 @@ export default function Shop() {
   const [error, setError] = useState<string | null>(null)
   const [fetchDebug, setFetchDebug] = useState<string | null>(null)
   
+  // Mobile filter popup state
+  const [filterPopupOpen, setFilterPopupOpen] = useState(false)
+  // Temp filter values for popup (apply on confirm)
+  const [tempType, setTempType] = useState('all')
+  const [tempRarity, setTempRarity] = useState('all')
+  const [tempPriceCurrency, setTempPriceCurrency] = useState('all')
+  const [tempGlobalSort, setTempGlobalSort] = useState<'none' | 'price_asc' | 'price_desc'>('none')
+  
+  // Count active filters for badge
+  const activeFilterCount = [
+    type !== 'all' ? 1 : 0,
+    rarity !== 'all' ? 1 : 0,
+    priceCurrency !== 'all' ? 1 : 0,
+    globalSort !== 'none' ? 1 : 0
+  ].reduce((a, b) => a + b, 0)
+  
+  // Open filter popup with current values
+  const openFilterPopup = () => {
+    setTempType(type)
+    setTempRarity(rarity)
+    setTempPriceCurrency(priceCurrency)
+    setTempGlobalSort(globalSort)
+    setFilterPopupOpen(true)
+  }
+  
+  // Apply filters from popup
+  const applyFilters = () => {
+    setType(tempType)
+    setRarity(tempRarity)
+    setPriceCurrency(tempPriceCurrency)
+    setGlobalSort(tempGlobalSort)
+    setFilterPopupOpen(false)
+  }
+  
+  // Reset filters
+  const resetFilters = () => {
+    setTempType('all')
+    setTempRarity('all')
+    setTempPriceCurrency('all')
+    setTempGlobalSort('none')
+  }
+  
 
   // Load categories from DB
   useEffect(() => {
@@ -330,7 +512,12 @@ export default function Shop() {
           .order('sort_order')
         
         if (!cancelled && !error && data) {
-          setCategories(data)
+          // Loại bỏ category "title" - danh hiệu không bán trong shop
+          const filteredCategories = data.filter((c: Category) => {
+            const id = (c.id || '').toLowerCase()
+            return id !== 'title' && id !== 'titles'
+          })
+          setCategories(filteredCategories)
         }
       } catch (err) {
         console.warn('Failed to load categories:', err)
@@ -339,6 +526,14 @@ export default function Shop() {
     loadCategories()
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (type === 'all') return
+    const availableIds = categories.map(c => c.id)
+    if (!availableIds.includes(type)) {
+      setType('all')
+    }
+  }, [type, categories])
 
   useEffect(() => {
     // fetch items from Supabase when filters change
@@ -350,18 +545,20 @@ export default function Shop() {
       try {
         // Read from the actual `items` table (schema uses plural `items`).
         // Map columns from items -> UI Item shape. use `preview_url` (exists in schema)
-        let qb: any = supabase.from('items').select('id,name,description,price_coins,price_gems,category,rarity,is_available,item_code,preview_url')
+        // Fetch with name_en for multi-language search
+        let qb: any = supabase.from('items').select('id,name,description,price_coins,price_gems,category,rarity,is_available,item_code,preview_url,name_en,name_zh,name_ja,description_en,description_zh,description_ja')
         if (type !== 'all') {
           // Filter by exact category match when specific type selected
           qb = qb.eq('category', type)
         }
         if (rarity !== 'all') qb = qb.eq('rarity', rarity)
-        if (query && query.trim()) qb = qb.ilike('name', `%${query.trim()}%`)
+        // Remove server-side search - will filter client-side for i18n support
         qb = qb.order ? qb.order('created_at', { ascending: false }) : qb
 
         const { data, error } = await qb
         if (error) throw error
         if (!cancelled && Array.isArray(data)) {
+          const lang = language as LanguageCode
           const mapped = data.map((i: any) => {
             const priceCoins = Number(i.price_coins ?? 0)
             const priceGems = Number(i.price_gems ?? 0)
@@ -369,11 +566,25 @@ export default function Shop() {
             const price = priceGems > 0 ? priceGems : priceCoins
             const cat: string = (i.category || 'other').toString().trim()
             const code: string = (i.item_code || i.id || '').toString()
+            const titleVi = i.name || code || 'Item'
+            const titleEn = i.name_en || ''
+            const titleZh = i.name_zh || ''
+            const titleJa = i.name_ja || ''
+            const descVi = i.description || ''
+            const descEn = i.description_en || ''
+            const descZh = i.description_zh || ''
+            const descJa = i.description_ja || ''
             return {
               id: i.id,
               // Store raw for fallback, but prefer i18n keys by code
-              title: i.name || i.item_code || 'Item',
-              subtitle: i.description || '',
+              title: pickText(lang, titleVi, titleEn, titleZh, titleJa) || titleVi,
+              title_en: titleEn,
+              title_zh: titleZh,
+              title_ja: titleJa,
+              subtitle: pickText(lang, descVi, descEn, descZh, descJa) || descVi,
+              subtitle_en: descEn,
+              subtitle_zh: descZh,
+              subtitle_ja: descJa,
               price,
               currency: currency as 'coin' | 'gem',
               media_url: i.preview_url || '',
@@ -383,17 +594,72 @@ export default function Shop() {
             }
           })
 
+          if (mapped.length === 0) {
+            // Không có sản phẩm - hiển thị empty state thay vì lỗi
+            setError(null)
+            setFetchDebug(null)
+            setItemsByCategory({})
+            setAvailableCategories([])
+            return
+          }
+
+          // Loại bỏ category "title" - danh hiệu phải đạt được qua thành tích, không bán
+          let filtered = mapped.filter((it: any) => {
+            const cat = (it.type || '').toLowerCase()
+            return cat !== 'title' && cat !== 'titles'
+          })
+          
           // apply client-side price filters (currency)
-          let filtered = mapped
           if (priceCurrency !== 'all') {
             filtered = filtered.filter((it: any) => it.currency === priceCurrency)
           }
+          
+          // Client-side search with i18n support
+          if (query && query.trim()) {
+            const q = query.trim().toLowerCase()
+            filtered = filtered.filter((it: any) => {
+              // Search in original name
+              const nameMatch = (it.title || '').toLowerCase().includes(q)
+              // Search in English name
+              const nameEnMatch = (it.title_en || '').toLowerCase().includes(q)
+              const nameZhMatch = (it.title_zh || '').toLowerCase().includes(q)
+              const nameJaMatch = (it.title_ja || '').toLowerCase().includes(q)
+              // Search in i18n translated name
+              const code = it.item_code || it.id
+              const i18nKey = `shop.item.${code}.title`
+              const i18nName = t(i18nKey)
+              const i18nMatch = i18nName !== i18nKey && i18nName.toLowerCase().includes(q)
+              // Search in description too
+              const descMatch = (it.subtitle || '').toLowerCase().includes(q)
+              const descEnMatch = (it.subtitle_en || '').toLowerCase().includes(q)
+              const descZhMatch = (it.subtitle_zh || '').toLowerCase().includes(q)
+              const descJaMatch = (it.subtitle_ja || '').toLowerCase().includes(q)
+              return nameMatch || nameEnMatch || nameZhMatch || nameJaMatch || i18nMatch || descMatch || descEnMatch || descZhMatch || descJaMatch
+            })
+          }
+
+          // Apply marketing / collection filter (sale, gifts, etc.) after basic filters
+          const marketingFiltered = (() => {
+            switch (collectionFilter) {
+              case 'sale':
+                return filtered.filter((item: Item) => (item.price ?? 0) > 0)
+              case 'gifts':
+                return filtered.filter((item: Item) => (item.price ?? 0) === 0)
+              case 'package':
+                // Package tab chỉ hiển thị SkillPackageSection, không filter items
+                return []
+              default:
+                return filtered
+            }
+          })()
+
+          const displayItems = marketingFiltered.length > 0 ? marketingFiltered : filtered
 
           // Group items by category dynamically
           const grouped: Record<string, Item[]> = {}
           const categories = new Set<string>()
           
-          filtered.forEach((item: Item) => {
+          displayItems.forEach((item: Item) => {
             const cat = item.type || 'other'
             categories.add(cat)
             if (!grouped[cat]) grouped[cat] = []
@@ -424,7 +690,7 @@ export default function Shop() {
 
     fetchItems()
     return () => { cancelled = true }
-  }, [query, type, rarity, priceCurrency])
+  }, [query, type, rarity, priceCurrency, collectionFilter, language])
 
   // load current user & profile & owned items
   useEffect(() => {
@@ -463,7 +729,17 @@ export default function Shop() {
       setUser(u)
       if (!u) return
       const { data: prof } = await supabase.from('profiles').select('coins,gems,user_id').eq('user_id', u.id).maybeSingle()
-      if (prof) setProfile(prof)
+      if (prof) {
+        setProfile(prof)
+        // Dispatch event to update header coins/gems display
+        window.dispatchEvent(new CustomEvent('profileUpdated', {
+          detail: {
+            field: 'currency',
+            coins: prof.coins,
+            gems: prof.gems
+          }
+        }))
+      }
       const { data: ui } = await supabase.from('user_items').select('item_id').eq('user_id', u.id)
       if (Array.isArray(ui)) {
         const map: Record<string, boolean> = {}
@@ -535,8 +811,15 @@ export default function Shop() {
 
       // paid item -> check profile funds (ensure profile exists)
       const prof = await ensureProfileExists(uid)
+      if (!prof) {
+        console.error('Cannot load/create profile for user', uid)
+        return { ok: false, message: t('shop.dbError') + 'Profile not found' }
+      }
+      
       const coins = Number(prof?.coins ?? 0)
       const gems = Number(prof?.gems ?? 0)
+      console.log('[Shop] Current balance:', { coins, gems, itemPrice: item.price, currency: item.currency })
+      
       if (item.currency === 'coin' && coins < item.price) {
         return { ok: false, message: t('shop.notEnoughCoins') }
       }
@@ -547,12 +830,40 @@ export default function Shop() {
       // attempt deduct and assign (optimistic)
       if (item.currency === 'coin') {
         const newCoins = coins - item.price
-        const { error: updErr } = await supabase.from('profiles').update({ coins: newCoins }).eq('user_id', uid)
-        if (updErr) throw updErr
+        console.log('[Shop] Deducting coins:', { oldCoins: coins, newCoins, price: item.price })
+        const { data: updateData, error: updErr } = await supabase
+          .from('profiles')
+          .update({ coins: newCoins })
+          .eq('user_id', uid)
+          .select('coins')
+        console.log('[Shop] Coin update result:', { updateData, updErr })
+        if (updErr) {
+          console.error('[Shop] Failed to deduct coins:', updErr)
+          throw updErr
+        }
+        // Cập nhật local + header ngay lập tức (tránh chờ refresh/realtime)
+        setProfile((prev: any) => ({ ...(prev || {}), coins: newCoins, gems }))
+        window.dispatchEvent(new CustomEvent('profileUpdated', {
+          detail: { field: 'currency', coins: newCoins, gems }
+        }))
       } else if (item.currency === 'gem') {
         const newGems = gems - item.price
-        const { error: updErr } = await supabase.from('profiles').update({ gems: newGems }).eq('user_id', uid)
-        if (updErr) throw updErr
+        console.log('[Shop] Deducting gems:', { oldGems: gems, newGems, price: item.price })
+        const { data: updateData, error: updErr } = await supabase
+          .from('profiles')
+          .update({ gems: newGems })
+          .eq('user_id', uid)
+          .select('gems')
+        console.log('[Shop] Gem update result:', { updateData, updErr })
+        if (updErr) {
+          console.error('[Shop] Failed to deduct gems:', updErr)
+          throw updErr
+        }
+        // Cập nhật local + header ngay lập tức
+        setProfile((prev: any) => ({ ...(prev || {}), gems: newGems, coins }))
+        window.dispatchEvent(new CustomEvent('profileUpdated', {
+          detail: { field: 'currency', coins, gems: newGems }
+        }))
       }
 
       const { error: insErr } = await supabase.from('user_items').upsert([{ user_id: uid, item_id: item.id }], { onConflict: 'user_id,item_id' })
@@ -627,16 +938,57 @@ export default function Shop() {
 
   return (
     <div className="app-container">
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span 
+          style={{ fontSize: 13, color: 'var(--color-muted)', cursor: 'pointer' }}
+          onClick={() => window.location.hash = '#home'}
+        >
+          {t('breadcrumb.home')}
+        </span>
+        <span style={{ color: 'var(--color-muted)' }}>›</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}>
+          {t('breadcrumb.shop')}
+        </span>
+      </div>
+      
+      {/* Mobile Category Pills */}
+      <div className="shop-category-pills-mobile">
+        <button 
+          className={`category-pill ${collectionFilter === 'all' ? 'active' : ''}`} 
+          onClick={() => setCollectionFilter('all')}
+        >
+          {t('shop.categoryAll')}
+        </button>
+        <button 
+          className={`category-pill ${collectionFilter === 'sale' ? 'active' : ''}`} 
+          onClick={() => setCollectionFilter('sale')}
+        >
+          🔥 {t('shop.categorySaleHot')}
+        </button>
+        <button 
+          className={`category-pill ${collectionFilter === 'gifts' ? 'active' : ''}`} 
+          onClick={() => setCollectionFilter('gifts')}
+        >
+          🎁 {t('shop.categoryGiftsCurrency')}
+        </button>
+        <button 
+          className={`category-pill ${collectionFilter === 'package' ? 'active' : ''}`} 
+          onClick={() => setCollectionFilter('package')}
+        >
+          📦 {t('shop.categoryPackage')}
+        </button>
+      </div>
+      
       <div className="shop-page" style={{ gap: 18 }}>
         <aside className="panel shop-sidebar">
           {/* Category pills matching mock (All, Sale & Hot, GIFTS, Pass, Package) */}
           <div style={{ marginBottom: 8 }}>
             <div className="category-pills">
-              <button className={`category-pill ${type === 'all' ? 'active' : ''}`} onClick={() => setType('all')}>{t('shop.categoryAll')}</button>
-              <button className={`category-pill ${type === 'sale' ? 'active' : ''}`} onClick={() => setType('sale')}>{t('shop.categorySaleHot')}</button>
-              <button className={`category-pill ${type === 'gifts' ? 'active' : ''}`} onClick={() => setType('gifts')}>{t('shop.categoryGiftsCurrency')}</button>
-              <button className={`category-pill ${type === 'pass' ? 'active' : ''}`} onClick={() => setType('pass')}>{t('shop.categoryPass')}</button>
-              <button className={`category-pill ${type === 'package' ? 'active' : ''}`} onClick={() => setType('package')}>{t('shop.categoryPackage')}</button>
+              <button className={`category-pill ${collectionFilter === 'all' ? 'active' : ''}`} onClick={() => setCollectionFilter('all')}>{t('shop.categoryAll')}</button>
+              <button className={`category-pill ${collectionFilter === 'sale' ? 'active' : ''}`} onClick={() => setCollectionFilter('sale')}>{t('shop.categorySaleHot')}</button>
+              <button className={`category-pill ${collectionFilter === 'gifts' ? 'active' : ''}`} onClick={() => setCollectionFilter('gifts')}>{t('shop.categoryGiftsCurrency')}</button>
+              <button className={`category-pill ${collectionFilter === 'package' ? 'active' : ''}`} onClick={() => setCollectionFilter('package')}>{t('shop.categoryPackage')}</button>
             </div>
           </div>
 
@@ -690,31 +1042,6 @@ export default function Shop() {
         
 
         <main className="panel shop-main">
-          {/* Breadcrumb navigation */}
-          <nav style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontSize: '13px', 
-            color: 'var(--color-muted)',
-            marginBottom: '12px'
-          }}>
-            <a 
-              href="#home" 
-              style={{ 
-                color: 'var(--color-muted)', 
-                textDecoration: 'none',
-                transition: 'color 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
-            >
-              {t('breadcrumb.home')}
-            </a>
-            <span style={{ color: 'var(--color-muted)' }}>›</span>
-            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('breadcrumb.shop')}</span>
-          </nav>
-
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0 }}>{t('shop.pageTitle')}</h2>
           </div>
@@ -730,8 +1057,30 @@ export default function Shop() {
           {loading && <div style={{ color: 'var(--color-muted)', marginTop: 12 }}>{t('common.loading')}</div>}
           {error && <div style={{ color: '#F97373', marginTop: 12 }}>{error}</div>}
 
-          {/* Dynamic sections: auto-generate from itemsByCategory */}
-          {Object.entries(itemsByCategory).map(([categoryId, items]) => {
+          {/* Skill Packages Section - chỉ hiển thị khi chọn tab Package */}
+          {collectionFilter === 'package' && (
+            <SkillPackageSection profile={profile} onPurchaseComplete={refreshUserState} />
+          )}
+
+          {/* Empty state khi không có sản phẩm - không hiển thị khi đang ở tab package */}
+          {!loading && !error && collectionFilter !== 'package' && Object.keys(itemsByCategory).length === 0 && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '60px 20px',
+              color: 'rgba(255,255,255,0.6)'
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🛒</div>
+              <div style={{ fontSize: 18, marginBottom: 8, color: 'rgba(255,255,255,0.8)' }}>
+                {t('shop.noProducts')}
+              </div>
+              <div style={{ fontSize: 14 }}>
+                {t('shop.noProductsHint')}
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic sections: auto-generate from itemsByCategory - ẩn khi ở tab package */}
+          {collectionFilter !== 'package' && Object.entries(itemsByCategory).map(([categoryId, items]) => {
             if (!items || items.length === 0) return null
             
             // Sort items based on globalSort
@@ -757,7 +1106,7 @@ export default function Shop() {
                   }}>{categoryDisplay}</h3>
                 </div>
                 <div className={showScroll ? 'shop-grid shop-grid-scroll' : 'shop-grid'}>
-                  {sortedItems.map(item => (
+                  {sortedItems.map((item, index) => (
                     <Card 
                       key={item.id} 
                       item={item} 
@@ -766,7 +1115,15 @@ export default function Shop() {
                       buying={Boolean(purchasing[item.id])} 
                       profile={profile} 
                       openInfo={openInfo} 
-                      openConfirm={openConfirm} 
+                      openConfirm={openConfirm}
+                      dataTour={
+                        // Match free items: first free item in skin_piece = free-chess, first free in skin_board = free-board
+                        (item.price === 0 && categoryId === 'skin_piece' && index === sortedItems.findIndex(i => i.price === 0)) ? 'free-chess' : 
+                        (item.price === 0 && categoryId === 'skin_board' && index === sortedItems.findIndex(i => i.price === 0)) ? 'free-board' : 
+                        (item.id === 'skin1' || item.item_code === 'skin1') ? 'free-chess' : 
+                        (item.id === 'board1' || item.item_code === 'board1') ? 'free-board' : 
+                        undefined
+                      }
                     />
                   ))}
                 </div>
@@ -779,22 +1136,121 @@ export default function Shop() {
       {/* Global modal rendered at Shop level to avoid stacking/context issues with card previews */}
       {modalOpen && (
         <div className="mp-modal-overlay">
-          <div className="mp-modal">
+          <div className="mp-modal" data-tour="shop-confirm-modal">
             {modalTitle && <div className="mp-modal-title">{modalTitle}</div>}
             <div className="mp-modal-message">{modalMessage}</div>
             <div className="mp-modal-actions">
               {modalMode === 'confirm' ? (
                 <>
                   <button className="mp-btn mp-btn-secondary" onClick={() => closeModal(false)}>{t('common.cancel')}</button>
-                  <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>{t('common.confirm')}</button>
+                  <button className="mp-btn mp-btn-primary" data-tour="shop-confirm-btn" onClick={() => closeModal(true)}>{t('common.confirm')}</button>
                 </>
               ) : (
-                <button className="mp-btn mp-btn-primary" onClick={() => closeModal(true)}>{t('common.ok')}</button>
+                <button className="mp-btn mp-btn-primary" data-tour="shop-success-btn" onClick={() => closeModal(true)}>{t('common.ok')}</button>
               )}
             </div>
           </div>
         </div>
       )}
+      
+      {/* Mobile Filter Button */}
+      <button 
+        className="shop-filter-toggle-mobile"
+        onClick={openFilterPopup}
+        aria-label={t('shop.filterTitle')}
+      >
+        <span>⚙️</span>
+        {activeFilterCount > 0 && (
+          <span className="filter-badge">{activeFilterCount}</span>
+        )}
+      </button>
+      
+      {/* Mobile Filter Popup */}
+      <div 
+        className={`shop-filter-popup-overlay ${filterPopupOpen ? 'open' : ''}`}
+        onClick={() => setFilterPopupOpen(false)}
+      >
+        <div 
+          className="shop-filter-popup"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="shop-filter-popup-header">
+            <h3>{t('shop.filterTitle')}</h3>
+            <button 
+              className="shop-filter-popup-close"
+              onClick={() => setFilterPopupOpen(false)}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="shop-filter-popup-content">
+            {/* Search */}
+            <div>
+              <label>{t('shop.searchPlaceholder')}</label>
+              <input 
+                type="search"
+                placeholder={t('shop.searchPlaceholder')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            
+            {/* Type filter */}
+            <div>
+              <label>{t('shop.filterType')}</label>
+              <select value={tempType} onChange={(e) => setTempType(e.target.value)}>
+                <option value="all">{capitalize(t('shop.typeAll'))}</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {getCategoryName(cat.id, t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Rarity filter */}
+            <div>
+              <label>{t('shop.filterRarity')}</label>
+              <select value={tempRarity} onChange={(e) => setTempRarity(e.target.value)}>
+                <option value="all">{t('common.all')}</option>
+                <option value="common">{t('shop.rarityCommon')}</option>
+                <option value="rare">{t('shop.rarityRare')}</option>
+                <option value="legendary">{t('shop.rarityLegendary')}</option>
+              </select>
+            </div>
+            
+            {/* Currency filter */}
+            <div>
+              <label>{t('shop.filterPrice')}</label>
+              <select value={tempPriceCurrency} onChange={(e) => setTempPriceCurrency(e.target.value)}>
+                <option value="all">{t('common.all')}</option>
+                <option value="coin">{t('shop.coins')}</option>
+                <option value="gem">{t('shop.gems')}</option>
+              </select>
+            </div>
+            
+            {/* Sort */}
+            <div>
+              <label>{t('shop.sortLabel')}</label>
+              <select value={tempGlobalSort} onChange={(e) => setTempGlobalSort(e.target.value as any)}>
+                <option value="none">{t('shop.sortDefault')}</option>
+                <option value="price_asc">{t('shop.sortPriceAsc')}</option>
+                <option value="price_desc">{t('shop.sortPriceDesc')}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="shop-filter-popup-actions">
+            <button className="shop-filter-reset" onClick={resetFilters}>
+              {t('common.reset')}
+            </button>
+            <button className="shop-filter-apply" onClick={applyFilters}>
+              {t('common.apply')}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

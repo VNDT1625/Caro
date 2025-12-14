@@ -1,0 +1,11 @@
+{
+  "name": "Auto Continue on Error",
+  "description": "When Kiro encounters an error, automatically try alternative approach",
+  "trigger": {
+    "type": "onAgentComplete"
+  },
+  "action": {
+    "type": "sendMessage",
+    "message": "Nếu vừa gặp lỗi, hãy thử cách khác: 1) Dùng fsWrite thay vì executePwsh nếu lỗi shell, 2) Kiểm tra path nếu file not found, 3) Đọc lại file và sửa nếu syntax error. Tiếp tục task trong scripts/ai-orchestrator/prompts/for_kiro.md. KHÔNG DỪNG."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "moves": [
+    {"x": 7, "y": 7, "player": "X"},
+    {"x": 7, "y": 8, "player": "O"},
+    {"x": 6, "y": 7, "player": "X"},
+    {"x": 6, "y": 9, "player": "O"},
+    {"x": 5, "y": 7, "player": "X"}
+  ],
+  "expected_analysis": {
+    "rating": "fork",
+    "threats": ["open_three"]
+  }
+}

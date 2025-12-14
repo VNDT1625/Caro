@@ -1,296 +1,753 @@
-# MindPoint Arena — Tóm tắt dự án (Toàn bộ)
+# MindPoint Arena — Tài Liệu Kỹ Thuật Toàn Diện
 
-## 1. Ý tưởng chung
-MindPoint Arena là web game Cờ Caro (Five in a Row) phong cách anime cổ trang, hỗ trợ chơi online 1v1 (Rank), phòng mời bạn, nhiều chế độ giải trí, AI đa mức độ và khả năng phân tích ván đấu.
+> **Cập nhật lần cuối:** 15/12/2024 (Đã đồng bộ hoàn chỉnh với codebase thực tế)
 
-Mục tiêu đồ án: xây được một bản web chơi được thực tế (MVP) với tối thiểu các tính năng chính: tạo phòng, mời bạn, tìm trận + ghép trận rank, gameplay mượt, lưu ván đấu và UI cơ bản.
+## 1. Tổng Quan Dự Án
 
-## Thông tin chuyên sâu (kỹ thuật)
- Phần này mô tả chi tiết các quyết định kỹ thuật để AI hoặc bất kỳ kỹ sư nào đọc hiểu toàn bộ cấu trúc, stack và các điểm cần chú ý khi phát triển/MVP hóa dự án.
+**MindPoint Arena** là web game Cờ Caro (Gomoku) phong cách anime cổ trang, hỗ trợ chơi online 1v1 với nhiều chế độ: Ranked (Bo3), Casual, Tournament, AI Training, Caro Skill (60 skill chiến thuật), và Variant modes (Dị Biến Kỳ).
 
-    ### Frontend
-    - **Stack:** React + TypeScript + Vite. Dự trữ `Three.js` cho phần 3D (bàn/quân) nhưng khởi tạo demo bằng `2D canvas`/SVG/HTML để tiết kiệm thời gian.
-    - **Cấu trúc thư mục gợi ý:**
-        - `src/pages` — `Lobby`, `Room`, `Profile`, `Store`, `Auth`.
-        - `src/components` — `Board`, `Cell`, `Chat`, `Timer`, `PlayerBadge`, `Modal`.
-        - `src/lib` — `supabase.ts`, `api.ts`, `socket.ts`, `game/checkWinner.ts`.
-        - `src/state` — global state via `Zustand` hoặc `React Context` (lưu player session, current room, match state).
-    - **Networking:** `@supabase/supabase-js` for auth/DB. `socket.io-client` (or native WebSocket) to connect realtime server for moves/presence/chat.
-    - **Build / Dev:** `npm install` → `npm run dev`; `npm run build` để build production. Thêm `vitest` cho unit test `checkWinner`.
-    - **Env vars (frontend):** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`, `VITE_SOCKET_URL`.
-
-    ### Backend
-    - **Stack khuyến nghị (MVP):** Laravel (PHP) cho tốc độ phát triển nếu quen PHP; nếu muốn nhanh hơn với realtime, tách thành Node.js + Socket.IO microservice.
-    - **Chức năng chính / API endpoints (REST + WebSocket events):**
-        - `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`.
-        - `POST /api/rooms` — tạo phòng; `GET /api/rooms` — danh sách phòng; `POST /api/rooms/:id/join`.
-        - `POST /api/matches` — khởi tạo trận; `GET /api/matches/:id` — trạng thái/ replay.
-        - `POST /api/matches/:id/move` — gửi nước (server-side validate bằng `GameEngine`).
-        - WebSocket events: `joinRoom`, `leaveRoom`, `playerMove`, `matchStart`, `matchEnd`, `chatMessage`, `presence`.
-    - **GameEngine:** server-authoritative module (validate move legality, apply move, detect win/draw, enforce timers). Có thể port `checkWinner` từ TypeScript sang PHP.
-    - **Data models (core):** `User`, `Room`, `Match`, `Move`, `Rating`, `Item(Skin)`, `Achievement`.
-    - **Env vars (backend):** `DATABASE_URL`, `SUPABASE_SERVICE_KEY` (if using Supabase on server), `APP_URL`, `JWT_SECRET`.
-
-    ### Realtime / Presence
-    - **Option A (fast MVP):** Node.js + Socket.IO microservice (lightweight, easy to test locally). Use it to handle move broadcasting, presence, matchmaking queue.
-    - **Option B:** Laravel WebSockets (integrated) — chọn nếu muốn keep everything PHP.
-    - **Presence & scaling:** Redis for pub/sub and presence when scaling to multiple instances.
-
-    ### AI service
-    - **Stack:** Python + FastAPI for endpoints; GPU optional if using large local models. `requirements.txt` includes `fastapi`, `uvicorn`, `numpy`, plus client libs for LLMs (OpenAI or local LLM SDK).
-    - **Endpoints:** `POST /ai/suggest_move` (input: board state, turn, mode), `POST /ai/analyze` (return evaluation, suggested lines), `POST /ai/chat` (assistant/coach).
-    - **Auth & quota:** issue API key per frontend user or proxy via backend to protect model keys.
-
-    ### Database & Storage
-    - **MVP:** Supabase (Postgres) for users, matches, moves, storage for replays and assets. Use Supabase Auth for quick auth flow.
-    - **Schema (high level):**
-        - `users(id,email,display_name,avatar,rank,elo,created_at)`
-        - `rooms(id,owner_id,mode,board_size,win_length,is_private,created_at)`
-        - `matches(id,room_id,player_x,player_o,state,started_at,ended_at)`
-        - `moves(id,match_id,player,position_x,position_y,move_index,timestamp)`
-    - **Caching/Queues:** Redis for matchmaking queue, timers, and ephemeral presence.
-
-    ### Infra & Deployment
-    - **Local dev:** `docker-compose` for Postgres/Redis (optional) — Supabase can be used instead of local DB.
-    - **Deploy:** Frontend → Vercel/Netlify; Backend → Heroku/Render/VPS; AI → dedicated host or cloud GPU; Socket service → render/VPS with sticky sessions or behind Redis adapter.
-
-    ### Dev commands (quick)
-    ```
-    cd frontend
-    npm install
-    npm run dev
-
-    # backend (Laravel example)
-    cd backend
-    composer install
-    cp .env.example .env
-    php artisan key:generate
-    php artisan migrate
-
-    # AI service
-    cd ai
-    python -m venv .venv
-    .venv\Scripts\Activate.ps1  ; # on Windows PowerShell
-    pip install -r requirements.txt
-    uvicorn ai.main:app --reload
-    ```
-
-    ### API contract (example `playerMove` payload)
-    ```
-    {
-        "match_id": "uuid",
-        "player_id": "uuid",
-        "x": 7,
-        "y": 5,
-        "client_move_index": 12
-    }
-    ```
-
-    ### Testing & Quality
-    - Unit-test `checkWinner` & `GameEngine` logic (Vitest/Jest for frontend, PHPUnit for backend).
-    - Linting: `eslint` + `prettier` for frontend; `phpcs` for backend if desired.
-
-    ### Notes / trade-offs
-    - For a 4‑day demo, prefer: `React (2D Board)` + `Supabase` + lightweight `Node Socket.IO` for realtime. Port `GameEngine` server-side later for authoritative validation.
-
-    ---
-    *Phần này được viết để AI/một dev khác đọc nhanh và hiểu các quyết định kỹ thuật, các biến môi trường cần cấu hình, endpoints chính và các file quan trọng trong repo.*
-## 2. Gameplay chính
-- Luật cơ bản: 2 người (X/O) luân phiên; ai xếp được 5 quân liên tiếp (ngang/dọc/chéo) thắng.
-- Board: chế độ Rank là board mở rộng (không giới hạn ô), một số chế độ có board cố định (3x3, 9x9, 15x15).
-- Timer: Rank có giới hạn thời gian mỗi nước (30s → 15s theo rank); phòng giải trí có thể tùy chỉnh (tối thiểu 5s hoặc không giới hạn).
-
-## 3. Các chế độ phụ / biến thể
-- Caro Skill: một số quân có skill đặc biệt (hoán vị, chặn hàng, xóa nước...).
-- Caro Ẩn: quân mờ sau mỗi 3 nước.
-- Caro theo ô: kích thước cố định (3x3, 9x9,...).
-- Caro theo hàng: số quân nối tiếp để thắng (3/4/5/...).
-- Caro theo cặp (2v2): 4 người, đánh luân phiên A1→B1→A2→B2.
-- Caro Địa Hình: ô đặc biệt, tính điểm thay vì 5 liên tiếp.
-
-## 4. Hệ thống Rank (MindPoint)
-- Các bậc: Vô danh → Tân Kỳ → Học Kỳ → Kỳ Lão → Cao Kỳ → Tam Kỳ → Đệ Nhị → Vô Đối.
-
-- Giai đoạn dưới ( vô danh -> học kỳ (Cao kỳ 3)): 
-    + chia nhánh : 
-        ++ vô danh -> Tân Kỳ :  
-            +++ Sơ kỳ : 1 -> 2 -> 3
-            +++ Trung kỳ : 1 -> 2 -> 3
-            +++ Cao kỳ : 1 -> 2 -> 3
-        ++ Học Kỳ : 
-            +++ Sơ kỳ : 1 -> 2 -> 3
-            +++ Trung kỳ : 1 -> 2 -> 3
-            +++ Cao kỳ : 1 -> 2 -> 3
-            +++ Vượt Cấp : Matchpoint ( leader board ) -- tính điểm theo giai đoạn cao
-    + cách tính điểm =  ( tính điểm theo lượt  + chênh lệch thời gian + rank + 5 ) x Kết Quả 
-                            -> Max = 35 , min = 20 , 20 -> 35đ .
-        ++ Theo Lượt : lượt <10 = 10 , lượt < 20 = 7 , lượt > 20 = 5
-        ++ Thời gian chênh lệch : chênh > gấp đôi = 10 , > chênh x1.5 = 7 , còn lại = 5
-        ++ Rank : vô danh = 10 , Tân Kỳ = 7 , Học Kỳ = 5
-        ++ Kết Quả :  Thắng : 1 , Thua : (-1) -> tức là thắng thì sẽ được ( + điểm ) theo cách tính điểm đó còn thua thì trừ điểm đi , trừ và cộng (cách tính điểm theo trận ) với điểm hiện tại đang có , điểm hiện tại bắt đầu từ 0 với người mới
-    +  Điều kiện lên rank : 100 điểm sẽ lên 1 nhánh . Ví dụ : 
-        ++ Vô danh - sơ kỳ 1 -> Vô danh - sơ kỳ 2 
-        ++ Vô danh - sơ kỳ 3 -> Vô danh trung kỳ 1
-        ++ Vô danh - cao kỳ 3 -> Tân Kỳ - sơ kỳ 1 
-- Giai đoạn cao(học kỳ - vượt cấp): tập trung điểm cá nhân + leaderboard.
-    + điểm cá nhân = ( tính điểm theo lượt  + chênh lệch thời gian + 5 ) x chênh lệch rank
-        ++ Chênh lệch rank :    +++ Player cao hơn đối thủ  
-                                        ++++  Player win : 0.5
-                                        ++++ Player lose : (-1.5)
-                                +++ Player thấp hơn đối thủ 
-                                        ++++  Player win : 1.5
-                                        ++++ Player lose : (-0.5)
-- Matchmaking: ghép rank ngang/hơi thấp hơn.
-- Decay system (hạ rank theo mùa): hệ thống hạ rank được thiết kế để giữ người chơi hoạt động và làm mới bảng xếp hạng sau mỗi mùa (một mùa = 3–4 tháng). Dưới đây là quy tắc chi tiết, công thức và ví dụ áp dụng.
-
-            **Mục tiêu:** khuyến khích người chơi tham gia đều đặn; tránh hạ rank quá nặng cho người chơi vẫn hoạt động; đảm bảo rớt hạng do bất hoạt rõ ràng và có cơ chế bảo vệ mềm (soft-protection).
-
-            **Nguyên tắc chính**
-            - Mùa kết thúc: thực hiện bước tính decay cho mọi tài khoản.
-            - Thước đo hoạt động (activity): số trận đã chơi trong mùa (matches_played).
-            - Decay phụ thuộc vào cấp bậc hiện tại (rank tier) và activity. Cấp cao hơn có decay theo tỷ lệ nhỏ hơn.
-            - Nếu decay đưa người chơi xuống bậc thấp hơn, áp dụng "soft demotion" (cần thêm điều kiện để chính thức rớt tiếp).
-
-            **Công thức**
-            - Định nghĩa:
-                - P = điểm hiện tại của người chơi (season points hoặc elo-like score).
-                - B = điểm tối thiểu để giữ ở rank hiện tại (rank floor).
-                - base_decay_pct[rank] = tỷ lệ decay cơ bản theo rank (tham số cấu hình).
-                - activity_multiplier = hệ số theo mức hoạt động.
-            - Decay amount = (P - B) * base_decay_pct[rank] * activity_multiplier
-            - Điểm sau decay: P' = max(B, P - Decay amount)
-
-            **Giá trị gợi ý (cấu hình mặc định)**
-            - base_decay_pct (theo rank):
-                - `Vô danh`: 0% (không hạ)  
-                - `Tân Kỳ`: 20%  
-                - `Học Kỳ`: 18%  
-                - `Kỳ Lão`: 15%  
-                - `Cao Kỳ`: 12%  
-                - `Tam Kỳ`: 10%  
-                - `Đệ Nhị`: 8%  
-                - `Vô Đối`: 5%
-            - activity_multiplier (theo matches_played trong mùa):
-                - matches_played >= 20 → multiplier = 0.0 (không decay)
-                - 10 <= matches_played < 20 → multiplier = 0.5 (decay giảm một nửa)
-                - 1 <= matches_played < 10 → multiplier = 1.0 (decay đầy đủ)
-                - matches_played = 0 → multiplier = 1.5 (penalty tăng do bất hoạt hoàn toàn)
-
-            **Soft-demotion (bảo vệ mềm)**
-            - Nếu P' < floor_of_lower_rank (tức là rớt về rank thấp hơn) thì:
-                - Gắn cờ "soft-demoted" cho tài khoản; soft-demoted players có 1 mùa probation (hoặc 14 ngày) để lấy lại điểm bằng chiến thắng; trong thời gian này, hệ thống sẽ không cho phép rớt tiếp nếu người chơi thắng đủ để vượt mốc.
-                - Nếu sau probation người chơi vẫn dưới ngưỡng rank cũ thì rớt chính thức.
-
-            **Ví dụ**
-            - Giả sử bậc `Cao Kỳ` có floor B = 2400, người chơi có P = 2600, base_decay_pct = 12%.
-                - Nếu matches_played = 0 → multiplier = 1.5 → Decay = (2600-2400)*0.12*1.5 = 200*0.18 = 36 → P' = 2564.
-                - Nếu matches_played = 15 → multiplier = 0.5 → Decay = 200*0.12*0.5 = 12 → P' = 2588.
-            - Nếu P' rơi xuống dưới ngưỡng rank thấp hơn, người chơi sẽ bị soft-demoted (xem trên) thay vì bị rớt ngay lập tức.
-
-            **Điều chỉnh & vận hành**
-            - Các thông số `base_decay_pct` và thresholds matches_played nên được lưu trong cấu hình (DB / admin panel) để điều chỉnh theo dữ liệu thực tế.
-            - Có thể bổ sung bonus hoạt động (activity bonus) cộng điểm cho người chơi quá active (ví dụ +10 pts nếu matches_played >= 50) để khuyến khích retention.
-            - Log chi tiết mỗi lần decay (pre_point, post_point, matches_played, multiplier, reason) để audit và điều chỉnh sau mùa.
-
-            **Tóm tắt ngắn gọn:** hệ thống trừ một phần điểm vượt ngưỡng rank theo tỷ lệ cấu hình, giảm nhẹ hoặc bỏ qua nếu người chơi đủ hoạt động; nếu decay đưa xuống rank thấp hơn thì áp dụng cơ chế soft-demotion để tránh rớt đột ngột do bất hoạt tạm thời.
-- Cách chống smurfing/boosting trong rank :  là chống người chơi rất giỏi (rank cao) nhưng tạo acc mới (acc phụ) để chơi ở rank thấp ( smurfing ) và chống người khác chơi hộ hoặc cày thuê cho bạn để đẩy rank lên cao ( boosting ).
-    + Rank từ Cao kỳ trở lên chở thành leaderboard nhằm khuyến khích thi đấu nhiều để kiếm điểm cũng có nghĩa việc tạo acc để chơi sẽ gây mất rank mất thành tựu khả năng đánh đổi này người dùng sẽ hạn chế tạo lại acc ( smurfing ) . Điều này đồng nghĩa ở mức rank từ học kỳ - cao kỳ 1 trở xuống thì người dùng có thể tạo acc đánh với vô danh nhưng sự chênh lệch này không quá cao giúp vô danh phát triển khi đánh với người mạnh nhưng sẽ không hẳn là thế trận 1 chiều và nó vô tình lại biến thành lợi ích chung . 
-    + Khi đăng nhập sẽ yêu cầu face id để chồng cày rank hộ ( boosting ) . Đa số cày game onlien đưa tài khoảng mật khẩu để cày , hiếm khi trực tiếp . Đồng thời không can thiệp vào lúc trong trận tránh gây lag 
-    + Hạn chế tạo acc :  chỉ cho phép đăng nhập bằng số điện thoại + cccd -> nếu mất acc có thể dùng số điện thoại + cccd để yêu cầu gửi lại mật khẩu .
-    + Hậu Kiểm :
-         1. Phân tích hành vi bất thường (hậu kiểm)
-                Log các trận có:
-                Tỉ lệ thắng bất thường quá cao khi ở rank thấp
-                Thời gian phản ứng (đặt nước) siêu nhanh
-                IP thiết bị / Browser fingerprint khác so với bình thường
-                Nếu nghi ngờ → gắn cờ đánh giá, yêu cầu xác minh lại Face ID hoặc thông báo cảnh báo.
-
-        2. Giới hạn hành vi nghi ngờ ở acc mới
-            Acc mới tạo nhưng có win streak quá cao → đưa vào queue “smurf suspected”
-            Trong queue này: ưu tiên match với người win streak tương đương để tránh phá newbie
-
-        3. Thêm logic “khóa rank cao khi bị nghi boost”
-            Nếu acc đang từ rank cao → tự nhiên giảm phong độ cực mạnh trong 5–10 trận
-            → Gắn cờ và đóng băng tạm rank, yêu cầu xác thực (Face ID, OTP)
-    + Báo lỗi khi có nghi vấn : có nút báo lỗi khi thông báo acc đó có nghi vấn và được admin kiểm duyệt lại bằng cách trong n admin ngẫu nhiên 1 trong n admin nhận báo cáo lỗi đó và chấp nhận hoặc bác bỏ tùy vào trường hợp hoặc gửi lại cho người dùng kiểm tra faceid lại lần nữa nếu có vấn đề . Giành cho trường hợp cùng 1 người nhưng faceid không hoạt động như mong đợi . Trong thời gian kiểm duyệt ( trong vòng 7 ngày ) admin sẽ duyệt báo cáo lỗi , phía người dùng trong thời gian này vẫn leo rank bình thường nhưng được lưu trữ điểm tại database nếu có hành vi gian dối thì sẽ trừ gấp đôi và khóa acc trong 1 thười gian hoặc vĩnh viễn 
-## 5. Giao diện & trang chức năng
-Trang chính: Landing, Đăng nhập/Đăng ký, Home (Rank, Giải trí, Đấu với máy), Store, Profile, Events, Settings, Room (lobby), In-match (bàn, timer, chat), Loading, Admin.
-
-Phong cách: anime cổ trang + hiện đại; 3D cho bàn và quân, có option 2D cho máy yếu.
-
-## 5.1 Chức năng (Các tính năng chính)
-- **Auth:** Đăng ký / Đăng nhập (email, OAuth), quản lý phiên, bảo mật.
-- **Lobby & Social:** Danh sách phòng, bạn bè, mời bạn, tìm ngẫu nhiên, profile, hệ thống lời mời.
-- **Tạo & Quản lý phòng:** Tạo phòng công khai/riêng tư, cài đặt board (kích thước, win length), thời gian/mode, khởi động trận.
-- **Matchmaking:** Hệ ghép trận rank/casual, queue đơn giản, tìm đối thủ ngang rank.
-- **Gameplay (In-match):**
-    - Board 2D/3D, đặt nước, hiển thị lượt, timer per-move, undo (chỉ local hoặc thỏa thuận), chat trong phòng, spectator mode.
-    - Rule engine: xác thực nước, kiểm tra thắng/thua/hòa, ghi lại history moves.
-- **AI:** Chế độ chơi với máy (multi-level : Nhập Môn - Kỳ Tài - Nghịch Thiên), gợi ý nước và phân tích ván sau trận.
-- **Lưu & Replay:** Lưu ván đấu, xem lại từng nước, tải xuống / chia sẻ ván.
-- **Profile & Progress:** Lịch sử trận, thống kê, ranking, achievements.
-- **Store & Monetization:** Mua skins, cosmetics, gói AI, battle pass.
-- **Admin & Moderation:** Quản lý người dùng, phòng, báo cáo, log trận.
-
-## 6. Hệ thống & Module
-- Frontend (React + TypeScript + Three.js cho 3D, Vite dev).
-- Backend (PHP — Laravel khuyến nghị; hiện skeleton có sẵn). Server-authoritative game engine.
-- Realtime: Laravel WebSockets (ban đầu) hoặc Node.js + Socket.IO (tách khi scale).
-- AI: service Python (FastAPI) cho move suggestion, phân tích ván, AI chat.
-- DB: Supabase (Postgres) cho MVP; production chuyển sang PostgreSQL managed + Redis cho queues/presence.
-- Storage: S3 / Supabase Storage cho assets lớn.
-
-## 7. Monetization (các nguồn doanh thu)
-1. Bán skins & cosmetics (chủ lực).  
-2. Premium AI analysis / coach (mua theo ván hoặc subscription).  
-3. Battle pass / season pass.  
-4. Tournament entry fees.  
-5. Quảng cáo nhẹ (khi cần).
-
-## 8. MVP & Roadmap (Ưu tiên)
-**Phase 0 — Chuẩn bị (1–2 tuần)**
-- Chọn stack (Supabase cho MVP nhanh).  
-- Tạo repo, scaffold frontend + backend skeleton (đã xong phần frontend).  
-- Thiết kế data model cơ bản: User, Match, Move, Item, Skin.
-
-**Phase 1 — MVP cơ bản (3–6 tuần)**
-- Backend: auth, API tạo phòng, lưu match, ranking đơn giản.  
-- Realtime: room + gửi move (Laravel WebSockets hoặc Node Socket).  
-- Frontend: Lobby, Room (2D board), Store, Profile.  
-- Test: local e2e, 5 người chơi thử nghiệm.
-
-**Phase 2 — Kiểm chứng thị trường (4–8 tuần)**
-- Thu thập analytics, event, A/B test pricing.  
-- Nếu traction, nâng cấp DB, Redis, CDN.
-
-**Phase 3 — Scale & Monetize**
-- Tách realtime, nâng infra, phát triển hệ store, battle pass, subscription AI.
-
-## 9. KPI & Mục tiêu kinh doanh cơ bản
-- DAU mục tiêu ban đầu: 100–500.  
-- Retention D1 ≥ 25%, D7 ≥ 8%.  
-- Conversion rate: 0.5%–2%.  
-- ARPU tham khảo: $0.5/ngày với 1000 DAU → $500/tháng.
-
-## 10. Rủi ro & Giải pháp
-- Rủi ro realtime lag/scale → tách socket layer, dùng Redis cho pub/sub.  
-- Rủi ro retention thấp → ưu tiên UX, tutorial, event, reward system.  
-- Rủi ro chi phí assets/hosting → bắt đầu bằng free tier Supabase/Vercel, assets tối giản.
-
-## 11. Kế hoạch kỹ thuật ngắn hạn (các việc ưu tiên)
-- Hoàn thiện `GameEngine` server-side (validate move, check win).  
-- Implement Room UI 2D & client-side move handling (mock server).  
-- Auth basics + create/join room API (backend).  
-- Basic matchmaking queue (Redis or simple DB queue).
-
-## 12. Tài liệu & tham chiếu hiện có
-- File `thongtin.txt`, `docs/thongtindoan1.md`: mô tả chi tiết gameplay và yêu cầu.  
-- Frontend skeleton đã tạo trong `frontend/`.  
-- Backend skeleton và `.env.supabase.example` đã có trong `backend/`.
-
-## 13. Gợi ý triển khai cho đồ án (ngắn gọn)
-- Nếu mục tiêu là đồ án/đề tài: ưu tiên hoàn thiện MVP (Phase 1) dùng Supabase để tiết kiệm thời gian.  
-- Nếu mục tiêu thương mại lâu dài: triển khai như roadmap, chuẩn bị chuyển DB, Redis, tách service.
+### Mục Tiêu
+- Web game caro online hoàn chỉnh với realtime multiplayer
+- Hệ thống xếp hạng MindPoint với Bo3 series
+- AI phân tích ván đấu chuyên sâu (Basic + Pro + God-tier)
+- Hệ thống skill chiến thuật 60 skill theo ngũ hành
+- Hệ thống Report/Ban/Appeal hoàn chỉnh
+- Admin panel với notification broadcast
 
 ---
-*File này là bản tổng hợp ngắn gọn — tôi có thể mở rộng thành bản spec chi tiết (API list, DB schema, sequence diagrams) nếu bạn yêu cầu.*
+
+## 2. System Architecture
+
+### 2.1 Công Nghệ Sử Dụng
+
+| Layer | Technology | Port | Mục đích |
+|-------|------------|------|----------|
+| **Frontend** | React 18 + TypeScript + Vite | 5173 | SPA với hot reload, type safety |
+| **Realtime** | Socket.IO (Node.js) | 8000 | Game events, chat, presence |
+| **Backend API** | PHP 8 (PSR-4) | 8001 | REST API, business logic |
+| **AI Service** | Python FastAPI | 8004 | Match analysis, AI opponent |
+| **Database** | Supabase (PostgreSQL) | - | Data persistence, auth, RLS |
+| **Cache** | Redis (optional) | - | Analysis cache, session |
+
+### 2.2 Service Communication Flow
+
+```
+┌─────────────┐     WebSocket      ┌─────────────┐
+│   Frontend  │◄──────────────────►│   Socket    │
+│   (React)   │                    │   Server    │
+│  :5173      │                    │   :8000     │
+└──────┬──────┘                    └──────┬──────┘
+       │ HTTP                             │
+       ▼                                  │
+┌─────────────┐     HTTP           ┌──────▼──────┐
+│   PHP API   │◄──────────────────►│  Supabase   │
+│   :8001     │                    │  (Postgres) │
+└──────┬──────┘                    └─────────────┘
+       │ HTTP
+       ▼
+┌─────────────┐
+│  AI Service │
+│   :8004     │
+└─────────────┘
+```
+
+---
+
+## 3. Cấu Trúc Dự Án (Project Structure)
+
+### 3.1 Frontend (`frontend/src/`)
+
+```
+frontend/src/
+├── pages/                    # Route pages
+│   ├── Home.tsx              # Menu chính
+│   ├── Room.tsx              # Gameplay chính
+│   ├── TrainingRoom.tsx      # AI Training mode
+│   ├── VariantMatch.tsx      # Dị Biến Kỳ modes
+│   ├── Hotseat.tsx           # 2 người 1 máy
+│   ├── AiAnalysis.tsx        # Phân tích ván đấu
+│   ├── Shop.tsx              # Mua items
+│   ├── CurrencyShop.tsx      # Mua Coin/Gem
+│   ├── CurrencyResult.tsx    # Kết quả mua currency
+│   ├── Inventory.tsx         # Kho đồ
+│   ├── Titles.tsx            # Danh hiệu
+│   ├── Profile.tsx           # Thông tin cá nhân
+│   ├── Inbox.tsx             # Hộp thư
+│   ├── Tournament.tsx        # Giải đấu
+│   ├── Admin.tsx             # Admin dashboard
+│   ├── AdminReports.tsx      # Quản lý reports
+│   ├── AdminAppeals.tsx      # Quản lý appeals
+│   ├── AdminNotifications.tsx # Gửi thông báo
+│   ├── Login.tsx             # Đăng nhập
+│   ├── Register.tsx          # Đăng ký
+│   ├── AuthLanding.tsx       # Landing page auth
+│   ├── ForgotPassword.tsx    # Quên mật khẩu
+│   ├── ResetPassword.tsx     # Reset mật khẩu
+│   ├── Lobby.tsx             # Danh sách phòng
+│   ├── CreateRoom.tsx        # Tạo phòng
+│   ├── Matchmaking.tsx       # Queue matchmaking
+│   ├── Subscription.tsx      # Gói subscription
+│   ├── PaymentResult.tsx     # Kết quả thanh toán
+│   ├── Guide.tsx             # Hướng dẫn chơi
+│   ├── Quests.tsx            # Nhiệm vụ
+│   ├── Events.tsx            # Sự kiện
+│   ├── KhaiNhan.tsx          # Khai nhân (gacha)
+│   ├── InMatch.tsx           # Trong trận đấu
+│   └── TestAI.tsx            # Test AI (dev)
+│
+├── components/               # Reusable UI components
+│   ├── board/                # GomokuBoard, Cell
+│   ├── series/               # SeriesScoreDisplay, GameResultModal, RematchFlow
+│   ├── swap2/                # Swap2PhaseIndicator, ColorChoiceModal, TentativeStoneDisplay, Swap2GameWrapper
+│   ├── skill/                # SkillCard, InGameSkillPanel, SkillComboBuilder, SkillEffectOverlay, SkillTargetSelector
+│   ├── analysis/             # InteractiveBoard, ScoreTimeline, ReplayAIPanel, ComparisonPanel, OnlinePlayersPanel
+│   ├── chat/                 # ChatPanel, HomeChatOverlay
+│   ├── rank/                 # RankBadgeV2, RankProgressV2, RankChangeAnimationV2, PointsBreakdown
+│   ├── report/               # ReportModal, ReportButton, BanNotificationModal, ReportDetailModal
+│   ├── notification/         # InboxIcon, NotificationDetailModal, UserSelectModal
+│   ├── avatar/               # AvatarWithFrame
+│   ├── title/                # TitleCard
+│   ├── shop/                 # SkillPackageSection
+│   ├── tournament/           # TournamentModal
+│   ├── settings/             # MusicSelector
+│   ├── layout/               # MobileQuickSettings, MobileBreadcrumb
+│   │
+│   ├── Board.tsx             # Legacy board component
+│   ├── GameBoard.tsx         # Game board wrapper
+│   ├── OnboardingTour.tsx    # Onboarding tour
+│   ├── UsernamePopup.tsx     # Username popup
+│   ├── EmotePicker.tsx       # Emote picker
+│   └── ShopGrid.tsx          # Shop grid layout
+│
+├── hooks/                    # Custom React hooks
+│   ├── useSocket.ts          # Socket.IO connection singleton
+│   ├── useSeriesRealtime.ts  # Ranked series events
+│   ├── useSwap2State.ts      # Swap 2 opening rule FSM
+│   ├── useSwap2Local.ts      # Local Swap 2 (Hotseat)
+│   ├── useSwap2Integration.ts # Swap 2 integration helper
+│   ├── useSkillSystem.ts     # Skill deck management
+│   ├── useRankV2.ts          # Rank calculation from mindpoint
+│   ├── useAnalysisState.ts   # Analysis data management
+│   ├── useReplayAI.ts        # Replay session with AI
+│   ├── useRematch.ts         # Rematch flow
+│   ├── useNotifications.ts   # Inbox notifications
+│   ├── useBanCheck.ts        # Check user ban status
+│   ├── useRankedDisconnect.ts # Ranked disconnect handling
+│   ├── useOnlinePlayers.ts   # Online players list
+│   ├── useEquippedMusic.ts   # Equipped music track
+│   ├── useEquippedFrame.ts   # Equipped avatar frame
+│   ├── useTitles.ts          # User titles
+│   ├── useChat.ts            # Chat functionality
+│   └── useFriendSystem.ts    # Friend system
+│
+├── lib/                      # Utilities & API clients
+│   ├── supabase.ts           # Supabase client
+│   ├── apiBase.ts            # Base API configuration
+│   ├── analysisApi.ts        # AI analysis API
+│   ├── replayApi.ts          # Replay session API
+│   ├── seriesApi.ts          # Series management API
+│   ├── skillApi.ts           # Skill system API
+│   ├── skillData.ts          # 60 skills definition (local)
+│   ├── matchmaking.ts        # Matchmaking queue
+│   ├── notificationApi.ts    # Notification API
+│   ├── titleApi.ts           # Title API
+│   ├── adminActions.ts       # Admin actions
+│   ├── AudioManager.ts       # Audio singleton
+│   ├── NotificationManager.ts # System notifications
+│   ├── caroDataset.ts        # AI chat dataset
+│   ├── question_dataset.ts   # Question dataset for AI
+│   ├── chat.ts               # Chat utilities
+│   ├── friends.ts            # Friend system API
+│   ├── username.ts           # Username utilities
+│   └── game/                 # Game logic utilities
+│
+├── contexts/                 # React Context providers
+│   └── LanguageContext.tsx   # i18n (vi, en, zh, ja)
+│
+└── types/                    # TypeScript definitions
+    ├── rankV2.ts             # Rank system types
+    ├── swap2.ts              # Swap 2 types
+    └── chat.ts               # Chat types
+```
+
+### 3.2 Backend PHP (`backend/app/`)
+
+```
+backend/app/
+├── Controllers/              # HTTP request handlers
+│   ├── SeriesController.php      # Ranked Bo3 series
+│   ├── Swap2Controller.php       # Swap 2 opening rule
+│   ├── AnalysisController.php    # AI analysis proxy
+│   ├── SkillController.php       # Skill system
+│   ├── PaymentController.php     # VNPAY subscription
+│   ├── CurrencyController.php    # Coin/Gem purchase
+│   ├── ReportController.php      # Report violations
+│   ├── AppealController.php      # Ban appeals
+│   ├── BanController.php         # User bans
+│   ├── NotificationController.php # Admin notifications
+│   ├── TitleController.php       # User titles
+│   ├── AIProxyController.php     # AI service proxy
+│   └── DatasetController.php     # Dataset search
+│
+├── Services/                 # Business logic (60+ files: Service + Interface + DTOs)
+│   │   # Series & Ranked
+│   ├── SeriesManagerService.php / SeriesManagerServiceInterface.php
+│   ├── ScoringEngineService.php / ScoringEngineServiceInterface.php
+│   ├── ScoringEngineV2Service.php    # MP calculation v2
+│   ├── RankManagerService.php / RankManagerServiceInterface.php
+│   ├── RankSystemV2Service.php       # Rank system v2
+│   ├── DisconnectHandlerService.php / DisconnectHandlerServiceInterface.php
+│   │   # Swap 2
+│   ├── Swap2ManagerService.php / Swap2ManagerServiceInterface.php
+│   ├── Swap2State.php, Swap2Action.php, ColorAssignment.php, TentativeStone.php
+│   │   # Skill System
+│   ├── SkillService.php / SkillServiceInterface.php
+│   ├── SkillEngineService.php / SkillEngineServiceInterface.php
+│   ├── SkillRandomizerService.php / SkillRandomizerServiceInterface.php
+│   ├── ManaService.php / ManaServiceInterface.php
+│   ├── MatchSkillStateService.php, SkillEffectResult.php
+│   ├── ComboService.php / ComboServiceInterface.php
+│   ├── SeasonService.php / SeasonServiceInterface.php
+│   │   # Game State
+│   ├── GameStateService.php / GameStateServiceInterface.php
+│   ├── RoomConfigService.php / RoomConfigServiceInterface.php
+│   ├── StateRecoveryResult.php
+│   │   # Report/Ban/Appeal
+│   ├── ReportService.php / ReportServiceInterface.php
+│   ├── AppealService.php / AppealServiceInterface.php
+│   ├── BanService.php / BanServiceInterface.php
+│   ├── UserBanStatus.php
+│   │   # Notifications & Titles
+│   ├── NotificationService.php / NotificationServiceInterface.php
+│   ├── TitleService.php              # Titles (no interface)
+│   │   # Payment & Currency
+│   ├── PaymentService.php / PaymentServiceInterface.php
+│   ├── CurrencyService.php / CurrencyServiceInterface.php
+│   ├── SubscriptionService.php / SubscriptionServiceInterface.php
+│   ├── UsageService.php / UsageServiceInterface.php
+│   │   # AI Integration
+│   ├── AIBridgeService.php / AIBridgeServiceInterface.php
+│   ├── AIAnalysisService.php / AIAnalysisServiceInterface.php
+│   ├── AnalysisCacheService.php / AnalysisCacheServiceInterface.php
+│   ├── RuleEngineService.php / RuleEngineServiceInterface.php
+│   ├── AIAnalysisResult.php, RuleAnalysisResult.php, ValidationResult.php
+│   │   # Infrastructure
+│   └── SupabaseClient.php            # Supabase client wrapper
+│
+├── Models/                   # Data models (7 models)
+│   ├── BaseModel.php             # Base model class
+│   ├── Report.php                # Report model
+│   ├── Appeal.php                # Appeal model
+│   ├── UserBan.php               # User ban model
+│   ├── ReportAction.php          # Report action model
+│   ├── AdminNotification.php     # Admin notification model
+│   └── UserAdminNotification.php # User-admin notification junction
+│
+├── Middleware/               # Request middleware
+│   ├── RateLimiter.php
+│   └── AdminAuthorization.php
+│
+├── GameEngine.php            # Game logic
+├── MatchmakingService.php    # Matchmaking
+├── Database.php              # Database interface
+└── SupabaseDatabase.php      # Supabase implementation
+```
+
+### 3.3 AI Service Python (`ai/`)
+
+```
+ai/
+├── main.py                   # FastAPI application (endpoints)
+│
+├── analysis/                 # Analysis modules
+│   ├── basic_analyzer.py         # Rule-based analysis
+│   ├── pro_analyzer.py           # AI-enhanced analysis
+│   ├── pro_analyzer_v2.py        # God-tier analysis (VCF/VCT deep)
+│   ├── god_tier_mistake_analyzer.py # Advanced mistake detection
+│   │
+│   ├── threat_detector.py        # Threat pattern detection
+│   ├── threat_space.py           # Threat space search
+│   ├── pattern_evaluator.py      # Pattern recognition
+│   ├── position_evaluator.py     # Position evaluation
+│   ├── advanced_evaluator.py     # Advanced evaluation
+│   │
+│   ├── vcf_search.py             # Victory by Continuous Four
+│   ├── vct_search.py             # Victory by Continuous Threat
+│   ├── vcf_detector.py           # VCF detection
+│   ├── basic_vcf_search.py       # Basic VCF search
+│   │
+│   ├── basic_search.py           # Alpha-beta search
+│   ├── dbs_search.py             # Dependency-based search
+│   ├── bitboard.py               # Bitboard representation
+│   ├── transposition_table.py    # Position cache
+│   │
+│   ├── opening_book.py           # Opening recognition
+│   ├── opening_evaluator.py      # Opening evaluation
+│   ├── endgame_analyzer.py       # Endgame analysis
+│   │
+│   ├── mistake_analyzer.py       # Mistake detection
+│   ├── basic_mistake_analyzer.py # Basic mistake detection
+│   ├── move_scorer.py            # Move scoring
+│   ├── role_evaluator.py         # Player role evaluation
+│   │
+│   ├── comment_generator.py      # Multi-language comments
+│   ├── lesson_generator.py       # Learning lessons
+│   ├── alternative_lines.py      # Alternative move lines
+│   │
+│   ├── tempo_analyzer.py         # Tempo analysis
+│   ├── defensive_patterns.py     # Defensive patterns
+│   ├── game_metadata.py          # Game metadata
+│   ├── coordinate_utils.py       # Coordinate utilities
+│   ├── board_validation.py       # Board validation
+│   │
+│   ├── redis_cache.py            # Redis caching
+│   ├── analysis_cache.py         # In-memory cache
+│   ├── cache_warmer.py           # Cache warming
+│   ├── parallel_search.py        # Parallel search
+│   ├── numba_core.py             # Numba JIT acceleration
+│   │
+│   ├── basic_analysis_lite.py    # Lightweight analysis
+│   ├── basic_analysis_optimized.py # Optimized analysis
+│   ├── serialization.py          # Data serialization
+│   ├── types.py                  # Type definitions
+│   │
+│   ├── metrics_logger.py         # Metrics logging
+│   ├── player_profile.py         # Player profile analysis
+│   ├── what_if_simulator.py      # What-if scenario simulation
+│   └── gomoku_basic/             # Basic gomoku utilities subfolder
+│
+├── replay/                   # Replay engine
+│   └── replay_engine.py          # Replay session management
+│
+└── tests/                    # Property-based tests (Hypothesis)
+    ├── test_basic_analyzer_props.py
+    ├── test_pro_analyzer_props.py
+    ├── test_vcf_search_props.py
+    ├── test_vct_search_props.py
+    ├── test_threat_detector_property.py
+    ├── test_pattern_evaluator_props.py
+    ├── test_opening_book_props.py
+    ├── test_comment_generator_props.py
+    ├── test_role_evaluator_props.py
+    └── ... (50+ test files)
+```
+
+### 3.4 Socket Server (`server/`)
+
+```
+server/
+├── index.js              # Main Socket.IO server
+├── game.js               # Game API endpoints
+├── friends.js            # Friend system routes
+├── game/
+│   └── checkWinner.js    # Win detection logic
+└── scripts/
+    └── create-admin.mjs  # Admin creation script
+```
+
+---
+
+## 4. Gameplay Systems
+
+### 4.1 Các Chế Độ Chơi
+
+| Mode | Mô tả | Swap 2 | Board |
+|------|-------|--------|-------|
+| **Ranked** | Xếp hạng Bo3, tính MindPoint | Bắt buộc | 15x15 |
+| **Casual** | Chơi thoải mái, không tính điểm | Tùy chọn | 15x15 |
+| **Tournament** | Giải đấu theo bracket | Tùy chọn | 15x15 |
+| **AI Training** | Đấu với AI (3 levels) | Không | 15x15 |
+| **Hotseat** | 2 người 1 máy | Tùy chọn | 15x15 |
+
+### 4.2 Dị Biến Kỳ (Variant Modes)
+
+Các chế độ chơi đặc biệt với luật chơi khác biệt:
+
+| Variant | Tên | Mô tả | Swap 2 |
+|---------|-----|-------|--------|
+| **custom** | Tùy Chỉnh | Caro cơ bản với cài đặt tùy chỉnh (board size, win length, time) | ✅ Có |
+| **hidden** | Caro Ẩn | Quân cờ bị ẩn, chỉ hiện khi có quân xung quanh | ✅ Có |
+| **skill** | Caro Skill | Sử dụng 60 skill chiến thuật, mana system, deck 15 lá | ❌ Không |
+| **terrain** | Địa Hình | Bàn cờ có các ô đặc biệt với hiệu ứng ngẫu nhiên | ❌ Không |
+
+**Terrain Types (Caro Địa Hình):**
+| Icon | Type | Hiệu ứng |
+|------|------|----------|
+| 💣 | bomb | Xóa quân xung quanh |
+| ❄️ | freeze | Đóng băng ô xung quanh 2 lượt |
+| 🌀 | teleport | Di chuyển quân đến ô trống ngẫu nhiên |
+| 🛡️ | shield | Bảo vệ quân không bị bomb/swap |
+| ❓ | skill | Nhận skill ngẫu nhiên |
+| ⭐ | double | Đi thêm lượt |
+| 🚧 | block | Ô bị khóa vĩnh viễn |
+| 🎁 | mystery | Hiệu ứng ngẫu nhiên (tốt hoặc xấu) |
+| 💎 | score | Cộng 1 điểm bonus |
+
+**Terrain Scoring System:**
+- Mỗi quân cờ đơn = 1 điểm
+- Chuỗi n quân (n≥2) = n điểm
+- Giao điểm chuỗi = bonus x2
+- Ô 💎 = +1 điểm bonus
+
+### 4.2 Hệ Thống Swap 2 Opening
+
+**Luồng Swap 2:**
+```
+Phase 1: PLACEMENT
+  └── Player 1 đặt 3 quân (2 Đen + 1 Trắng)
+
+Phase 2: CHOICE
+  └── Player 2 chọn:
+      ├── "black" → Chơi Đen
+      ├── "white" → Chơi Trắng
+      └── "place_more" → Đặt thêm 2 quân
+
+Phase 3: EXTRA (nếu chọn place_more)
+  └── Player 2 đặt thêm 2 quân (1 Đen + 1 Trắng)
+
+Phase 4: FINAL_CHOICE
+  └── Player 1 chọn màu
+
+Phase 5: COMPLETE
+  └── Bắt đầu main game
+```
+
+### 4.3 Hệ Thống Ranked Bo3
+
+**Rank Tiers (7 cấp):**
+```
+Vô Danh → Tân Kỳ → Học Kỳ → Kỳ Lão → Cao Kỳ → Kỳ Thánh → Truyền Thuyết
+   0        50       200      600     1500     3000        5500 MP
+```
+
+**Ranked Disconnect Auto-Win:**
+- Grace period: 10 giây
+- Nếu disconnect quá 10s → đối thủ thắng tự động
+- MP change: ±20 fixed
+
+---
+
+## 5. Hệ Thống Skill (60 Skills)
+
+### 5.1 Phân Loại
+- **31 Skill Thường** (Common) - 70% drop rate
+- **22 Skill Hiếm** (Rare) - 25% drop rate  
+- **7 Skill Cực Hiếm** (Legendary) - 5% drop rate
+
+### 5.2 Cơ Chế Gameplay
+```
+Mana: Bắt đầu 5, hồi +3/lượt, tối đa 15
+
+Mỗi lượt:
+1. Random 3 skill từ deck 15 lá
+2. Đặt quân (bắt buộc)
+3. Dùng 1 skill (tùy chọn, nếu đủ mana)
+4. Giữ lại bài (tốn mana theo rarity)
+5. Kết thúc lượt → Random 3 skill mới
+```
+
+### 5.3 Skill Packages
+- **Khai Xuân** (5 cards, 70% common)
+- **Khai Thiên** (5 cards, 25% rare)
+- **Vô Cực** (5 cards, 5% legendary)
+
+---
+
+## 6. AI Analysis System
+
+### 6.1 Analysis Tiers
+
+| Tier | Mô tả | Features |
+|------|-------|----------|
+| **Basic** | Free, rule-based | Pattern detection, basic mistakes |
+| **Pro** | Paid, AI-enhanced | VCF/VCT search, deep analysis |
+| **God-tier** | Premium | Pro Analyzer V2, advanced mistake detection |
+
+### 6.2 Core Modules
+
+| Module | Mục đích |
+|--------|----------|
+| `basic_analyzer.py` | Rule-based analysis |
+| `pro_analyzer.py` | AI-enhanced analysis |
+| `pro_analyzer_v2.py` | God-tier analysis |
+| `vcf_search.py` | Victory by Continuous Four |
+| `vct_search.py` | Victory by Continuous Threat |
+| `threat_detector.py` | Threat pattern recognition |
+| `opening_book.py` | Opening recognition |
+| `comment_generator.py` | Multi-language comments (vi, en, zh, ja) |
+| `role_evaluator.py` | Player role evaluation |
+| `replay_engine.py` | Replay session with AI Q&A |
+
+### 6.3 API Endpoints
+
+```
+POST /analyze      → Match analysis
+POST /ask          → Q&A about match
+POST /replay/create → Create replay session
+POST /replay/navigate → Navigate replay
+POST /replay/play  → Play move in replay
+GET  /usage        → Usage tracking
+GET  /health       → Health check
+```
+
+---
+
+## 7. Database Schema (Key Tables)
+
+```sql
+-- Core
+profiles (user_id, username, mindpoint, current_rank, coins, gems, equipped_avatar_frame)
+matches (id, player_x_user_id, player_o_user_id, winner_user_id, series_id, swap2_history)
+ranked_series (id, player1_id, player2_id, player1_wins, player2_wins, status)
+moves (match_id, player_user_id, position_x, position_y, move_number)
+
+-- Skill System
+skills (id, skill_code, name_vi, mana_cost, cooldown, effect_type, rarity)
+user_skills (user_id, skill_id, quantity)
+user_skill_combos (user_id, combo_name, skill_ids)
+match_skill_state (match_id, state)
+match_skill_logs (match_id, user_id, turn_number, selected_skill_id)
+skill_packages (id, package_code, cards_count, common_rate, rare_rate, legendary_rate)
+seasons (id, season_number, name, is_active)
+
+-- Economy
+items (id, item_code, category, price_coins, price_gems)
+user_items (user_id, item_id, is_equipped)
+currency_packages (id, currency_type, amount, price_vnd)
+currency_purchases (user_id, package_id, txn_ref, status)
+subscriptions (user_id, tier, expires_at)
+usage_logs (user_id, feature, count)
+analysis_cache (match_id, tier, result)
+
+-- Social
+friends (user_id, friend_id, status)
+chat_messages (sender_user_id, content, channel_scope, room_id, target_user_id)
+reports (reporter_id, reported_user_id, type, status, rule_analysis, ai_analysis)
+appeals (report_id, user_id, reason, status, admin_response)
+user_bans (user_id, reason, expires_at, is_permanent)
+report_actions (report_id, admin_id, action, notes)
+
+-- Notifications
+admin_notifications (id, admin_id, title, content, is_broadcast)
+user_admin_notifications (user_id, notification_id, is_read, gift_claimed)
+notifications (user_id, type, title, message, is_read)
+
+-- Rooms & Matchmaking
+rooms (id, room_code, owner_user_id, mode, swap2_enabled, game_state)
+room_players (room_id, user_id, player_side, is_ready)
+matchmaking_queue (user_id, mode, status)
+
+-- Categories & Items
+categories (id, name_vi, name_en, max_equipped)
+```
+
+---
+
+## 8. Tổng Hợp Chức Năng
+
+### 8.1 Authentication & Profile
+- Đăng ký/Đăng nhập (Email, OAuth)
+- Quên mật khẩu, Reset password
+- Profile: Avatar, Username, Display name, Avatar Frame
+- Onboarding tour cho user mới
+- Title system (danh hiệu)
+
+### 8.2 Gameplay
+- Tạo phòng (public/private)
+- Matchmaking queue (Ranked/Casual/Variant)
+- Bàn cờ 15x15 với timer
+- Swap 2 opening rule
+- Chat trong phòng
+- Spectator mode
+- Hotseat (2 người 1 máy)
+- Variant modes (Dị Biến Kỳ)
+
+### 8.3 Ranked System
+- Bo3 series với MindPoint
+- 7 rank tiers
+- Disconnect auto-win (10s grace)
+- Rematch flow
+
+### 8.4 AI Features
+- AI opponent (3 levels: Nhập Môn, Kỳ Tài, Nghịch Thiên)
+- Post-match analysis (Basic/Pro/God-tier)
+- Move-by-move evaluation
+- Mistake detection (VCF/VCT missed)
+- Replay với AI Q&A
+- Multi-language comments
+
+### 8.5 Shop & Economy
+- Tiền tệ: Coins, Gems, Tinh Thạch, Nguyên Thần
+- Mua skins (Board, Piece, Avatar Frame)
+- Mua nhạc nền
+- Skill packages (Khai Xuân, Khai Thiên, Vô Cực)
+- Currency packages (VNPAY)
+- Subscription plans (Trial, Pro, Pro Plus)
+
+### 8.6 Social
+- Friend system (Add, Accept, Block)
+- Chat (Global, Friends, Room)
+- Report/Ban system với AI analysis
+- Appeal system
+
+### 8.7 Admin Panel
+- User management
+- Report review với AI summary
+- Ban management
+- Notification broadcast (all/specific users)
+- Gift notifications (coins, gems, items)
+- Statistics dashboard
+
+### 8.8 Inventory & Customization
+- Equipped items (Board, Piece, Frame, Music)
+- Title system
+- Achievement badges
+
+---
+
+## 9. Các Trang Frontend
+
+| Page | Route | Chức năng |
+|------|-------|-----------|
+| Home | `/` | Menu chính, quick actions |
+| Login | `/login` | Đăng nhập |
+| Register | `/register` | Đăng ký |
+| AuthLanding | `/auth` | Landing page auth |
+| ForgotPassword | `/forgot-password` | Quên mật khẩu |
+| ResetPassword | `/reset-password` | Reset mật khẩu |
+| Lobby | `/lobby` | Danh sách phòng |
+| CreateRoom | `/create-room` | Tạo phòng |
+| Room | `/room/:id` | Gameplay chính |
+| Training | `/training` | AI Training mode |
+| Variant | `/variant` | Dị Biến Kỳ modes |
+| Hotseat | `/hotseat` | 2 người 1 máy |
+| Matchmaking | `/matchmaking` | Queue ranked/casual |
+| InMatch | `/in-match` | Trong trận đấu |
+| AI Analysis | `/ai-analysis` | Phân tích ván đấu |
+| Shop | `/shop` | Mua items |
+| Currency Shop | `/currency-shop` | Mua Coin/Gem |
+| CurrencyResult | `/currency-result` | Kết quả mua currency |
+| Subscription | `/subscription` | Gói subscription |
+| PaymentResult | `/payment-result` | Kết quả thanh toán |
+| Profile | `/profile` | Thông tin cá nhân |
+| Inventory | `/inventory` | Kho đồ |
+| Titles | `/titles` | Danh hiệu |
+| Inbox | `/inbox` | Hộp thư |
+| Quests | `/quests` | Nhiệm vụ |
+| Events | `/events` | Sự kiện |
+| KhaiNhan | `/khai-nhan` | Khai nhân (gacha) |
+| Guide | `/guide` | Hướng dẫn chơi |
+| Tournament | `/tournament` | Giải đấu |
+| Admin | `/admin` | Admin dashboard |
+| Admin Reports | `/admin/reports` | Quản lý reports |
+| Admin Appeals | `/admin/appeals` | Quản lý appeals |
+| Admin Notifications | `/admin/notifications` | Gửi thông báo |
+| TestAI | `/test-ai` | Test AI (dev only) |
+
+---
+
+## 10. Development Commands
+
+```bash
+# Frontend (port 5173)
+cd frontend && npm run dev
+
+# Socket Server (port 8000)
+cd server && npm start
+
+# PHP Backend (port 8001)
+cd backend/public && php -S localhost:8001 router.php
+
+# AI Service (port 8004)
+cd ai && uvicorn main:app --port 8004
+
+# Run all (PowerShell)
+./scripts/ai-orchestrator/START_ALL.ps1
+```
+
+---
+
+## 11. Testing
+
+```bash
+# Frontend
+cd frontend && npm test
+
+# Backend (PHPUnit + Eris property tests)
+cd backend && ./vendor/bin/phpunit --testdox
+
+# AI (pytest + Hypothesis)
+cd ai && python -m pytest tests/ -v
+```
+
+---
+
+## 12. MVP Hoàn Thành
+
+- ✅ Gameplay cơ bản (Room, Board, Timer)
+- ✅ Ranked Bo3 với MindPoint
+- ✅ Swap 2 opening rule
+- ✅ AI Analysis (Basic + Pro + God-tier)
+- ✅ Shop & Payment (VNPAY)
+- ✅ 60 Skills system
+- ✅ Report/Ban/Appeal system
+- ✅ Admin panel với notification broadcast
+- ✅ Multi-language (4 languages: vi, en, zh, ja)
+- ✅ Ranked disconnect auto-win
+- ✅ Title system
+- ✅ Avatar frame system
+- ✅ Music selection system
+- ✅ Variant modes (Dị Biến Kỳ)
+
+---
+
+---
+
+## 13. Cấu Trúc Thư Mục Đầy Đủ
+
+```
+caro/
+├── frontend/                 # React + Vite + TypeScript
+│   ├── src/
+│   │   ├── pages/            # 35+ route pages
+│   │   ├── components/       # 15+ component folders
+│   │   ├── hooks/            # 20 custom hooks
+│   │   ├── lib/              # 18+ utility modules
+│   │   ├── contexts/         # React contexts
+│   │   └── types/            # TypeScript definitions
+│   ├── public/               # Static assets
+│   └── styles.css            # Global styles
+│
+├── backend/                  # PHP 8 + PSR-4
+│   ├── app/
+│   │   ├── Controllers/      # 13 controllers
+│   │   ├── Services/         # 40+ services
+│   │   ├── Models/           # 7 models
+│   │   └── Middleware/       # 2 middleware
+│   ├── public/               # HTTP entry
+│   └── tests/                # PHPUnit + Eris tests
+│
+├── ai/                       # Python FastAPI
+│   ├── analysis/             # 45+ analysis modules
+│   ├── replay/               # Replay engine
+│   └── tests/                # 50+ property tests
+│
+├── server/                   # Node.js Socket.IO
+│   ├── index.js              # Main server
+│   ├── game.js               # Game routes
+│   ├── friends.js            # Friend routes
+│   └── game/                 # Game utilities
+│
+├── infra/                    # Database
+│   ├── supabase_schema.sql   # Main schema
+│   └── migrations/           # 50+ migrations
+│
+├── docs/                     # Documentation
+├── scripts/                  # Utility scripts
+├── shared/                   # Shared types
+└── assets/                   # Static assets
+```
+
+---
+
+*Tài liệu này được đồng bộ hoàn chỉnh với codebase thực tế của MindPoint Arena (15/12/2024).*

@@ -16,6 +16,7 @@ export interface UseChatOptions {
   channel?: ChatChannelScope
   roomId?: string | null
   targetUserId?: string | null
+  userId?: string | null
   limit?: number
   enabled?: boolean
 }
@@ -46,6 +47,7 @@ export function useChat(options: UseChatOptions): UseChatResult {
   }, [options.channel, options.mode, options.roomId])
 
   const resolvedTarget = useMemo(() => options.targetUserId ?? null, [options.targetUserId])
+  const effectiveUserId = useMemo(() => options.userId ?? null, [options.userId])
 
   const effectiveRoomId = resolvedChannel === 'room' ? (options.roomId ?? null) : null
 
@@ -203,6 +205,9 @@ export function useChat(options: UseChatOptions): UseChatResult {
     }
   }, [effectiveRoomId, limit, pushMessages, resolveToken, resolvedChannel, resolvedTarget])
 
+  // Debounce loadHistory to prevent rapid re-fetching
+  const loadHistoryTimeoutRef = useRef<number | null>(null)
+  
   useEffect(() => {
     reset()
     clearRealtime()
@@ -211,20 +216,49 @@ export function useChat(options: UseChatOptions): UseChatResult {
       return
     }
     setStatus('connecting')
-    loadHistory()
+    
+    // Debounce: wait 300ms before loading to prevent rapid re-fetching
+    if (loadHistoryTimeoutRef.current) {
+      window.clearTimeout(loadHistoryTimeoutRef.current)
+    }
+    loadHistoryTimeoutRef.current = window.setTimeout(() => {
+      loadHistory()
+    }, 300)
+    
+    return () => {
+      if (loadHistoryTimeoutRef.current) {
+        window.clearTimeout(loadHistoryTimeoutRef.current)
+      }
+    }
   }, [enabled, resolvedChannel, effectiveRoomId, resolvedTarget, loadHistory, reset, clearRealtime])
 
   useEffect(() => {
     if (!enabled) return
-    const filter = effectiveRoomId ? `room_id=eq.${effectiveRoomId}` : `channel_scope=eq.${resolvedChannel}`
     const channelKey = effectiveRoomId ? `chat:room:${effectiveRoomId}` : `chat:${resolvedChannel}`
 
+    // Dựa vào RLS để lọc đúng user; chỉ áp filter room để giảm tải
     const channel = supabase
       .channel(channelKey)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter }, (payload) => {
-        const next = payload.new as ChatMessage
-        if (next) pushMessages(next)
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          ...(effectiveRoomId ? { filter: `room_id=eq.${effectiveRoomId}` } : {})
+        },
+        (payload) => {
+          // Debug realtime payload để xác minh event có về từ Supabase
+          console.debug('[chat realtime] incoming', {
+            scope: resolvedChannel,
+            roomId: effectiveRoomId,
+            filter: effectiveRoomId ? `room_id=eq.${effectiveRoomId}` : undefined,
+            payload
+          })
+          const next = payload.new as ChatMessage
+          if (next) pushMessages(next)
+        }
+      )
 
     channel.subscribe((subscriptionStatus) => {
       if (subscriptionStatus === 'SUBSCRIBED') {
@@ -263,14 +297,6 @@ export function useChat(options: UseChatOptions): UseChatResult {
 
     const now = Date.now()
     const cooldownWindow = resolvedChannel === 'global' ? GLOBAL_COOLDOWN_MS : SEND_COOLDOWN_MS
-    if (now - lastSentRef.current < cooldownWindow) {
-      const waitMsg = resolvedChannel === 'global'
-        ? 'Vui long cho 30s giua cac tin nhan The Gioi'
-        : 'Dao huu cho mot nhip truoc khi gui tiep'
-      setNotice(waitMsg)
-      throw new Error(waitMsg)
-    }
-
     lastSentRef.current = now
     lastCooldownRef.current = cooldownWindow
     setCooldownMs(cooldownWindow)

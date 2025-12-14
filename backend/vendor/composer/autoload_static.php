@@ -9,6 +9,7 @@ class ComposerStaticInitb47eb917cf3a36226baeb082164c7180
     public static $files = array (
         '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
         '6124b4c8570aa390c21fafd04a26c69f' => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
+        'a84de8315bd92c71bcb39ff2ace7383d' => __DIR__ . '/..' . '/giorgiosironi/eris/src/Generator/functions.php',
         'ec07570ca5a812141189b1fa81503674' => __DIR__ . '/..' . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
     );
 
@@ -26,6 +27,10 @@ class ComposerStaticInitb47eb917cf3a36226baeb082164c7180
             'Prophecy\\' => 9,
             'PhpParser\\' => 10,
             'PHPStan\\PhpDocParser\\' => 21,
+        ),
+        'E' =>
+        array (
+            'Eris\\' => 5,
         ),
         'D' =>
         array (
@@ -61,6 +66,10 @@ class ComposerStaticInitb47eb917cf3a36226baeb082164c7180
         'PHPStan\\PhpDocParser\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpstan/phpdoc-parser/src',
+        ),
+        'Eris\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/giorgiosironi/eris/src',
         ),
         'Doctrine\\Instantiator\\' =>
         array (
@@ -703,6 +712,7 @@ class ComposerStaticInitb47eb917cf3a36226baeb082164c7180
         'TheSeer\\Tokenizer\\NamespaceUriException' => __DIR__ . '/..' . '/theseer/tokenizer/src/NamespaceUriException.php',
         'TheSeer\\Tokenizer\\Token' => __DIR__ . '/..' . '/theseer/tokenizer/src/Token.php',
         'TheSeer\\Tokenizer\\TokenCollection' => __DIR__ . '/..' . '/theseer/tokenizer/src/TokenCollection.php',
+        'TheSeer\\Tokenizer\\TokenCollectionException' => __DIR__ . '/..' . '/theseer/tokenizer/src/TokenCollectionException.php',
         'TheSeer\\Tokenizer\\Tokenizer' => __DIR__ . '/..' . '/theseer/tokenizer/src/Tokenizer.php',
         'TheSeer\\Tokenizer\\XMLSerializer' => __DIR__ . '/..' . '/theseer/tokenizer/src/XMLSerializer.php',
     );

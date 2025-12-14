@@ -1,21 +1,23 @@
-# Node
-node_modules/
+# Dependencies downloaded from the internet
+**/node_modules/
+**/vendor/
+**/.venv/
 
-# Composer / PHP
-/vendor/
-/.env
-/.env.*
-/storage/
-/.idea/
-/.vscode/
+# Build outputs
+**/dist/
+**/build/
 
-# OS
+# Caches and compiled artifacts
+**/__pycache__/
+**/.pytest_cache/
+**/.hypothesis/
+**/.cache/
 Thumbs.db
 .DS_Store
 
-# Build
-dist/
-build/
+# Logs and runtime data
+backend/storage/
+**/*.log
 
-# Backend env
-backend/.env
+# Test artifacts
+**/coverage/

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLanguage } from '../contexts/LanguageContext'
+import { AudioManager } from '../lib/AudioManager'
+import { MobileBreadcrumb } from '../components/layout'
 
 type Item = { 
   id: string
+  item_code?: string
   title: string
   subtitle?: string
   media_url?: string
@@ -11,6 +14,8 @@ type Item = {
   type?: string
   is_equipped?: boolean
   acquired_at?: string
+  name_vi?: string
+  name_en?: string
 }
 
 type Category = {
@@ -22,16 +27,71 @@ type Category = {
   sort_order: number
 }
 
+// Helpers to localize category names similar to Shop
+function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function getCategoryName(categoryId: string, t: (key: string) => string): string {
+  const normalized = categoryId === 'title' ? 'titles' : categoryId
+  const key = `shop.type.${normalized}`
+  const translated = t(key)
+  return capitalize(translated || categoryId)
+}
+
+const normalize = (val?: string | null) => (val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const MUSIC_ALIASES = ['music', 'âm nhạc', 'am nhac']
+const isMusicCategory = (cat?: string | null) => {
+  if (!cat) return false
+  const normalized = normalize(cat)
+  return MUSIC_ALIASES.some(alias => normalize(alias) === normalized)
+}
+
+const resolveItemText = (t: (key: string)=>string, code: string, fallback: string, kind: 'title' | 'desc') => {
+  const key = `shop.item.${code}.${kind}`
+  const translated = t(key)
+  const normalized = translated?.toLowerCase()
+  if (translated && translated !== key && normalized !== kind) return translated
+  return fallback
+}
+const isValidMediaUrl = (url?: string | null) => {
+  if (!url) return false
+  const trimmed = url.trim()
+  // Allow both http(s) URLs and local paths starting with /
+  if (!/^(https?:\/\/|\/)/i.test(trimmed)) return false
+  if (trimmed.includes('WebKitFormBoundary')) return false
+  return true
+}
+
+// Get icon for category placeholder
+const getCategoryIcon = (category?: string | null): string => {
+  const cat = (category || '').toLowerCase()
+  if (cat.includes('piece') || cat.includes('skin_piece') || cat.includes('piece_skin')) return '♟️'
+  if (cat.includes('board') || cat.includes('skin_board') || cat.includes('board_skin')) return '🎯'
+  if (cat.includes('music') || cat.includes('âm nhạc') || cat.includes('am nhac')) return '🎵'
+  if (cat.includes('avatar') || cat.includes('frame')) return '🖼️'
+  if (cat.includes('title') || cat.includes('danh hiệu')) return '👑'
+  if (cat.includes('emote')) return '😀'
+  return '📦'
+}
+
 function Card({ 
   item, 
   onUse, 
-  using 
+  using,
+  onPreview,
+  isPreviewing
 }: { 
   item: Item
   onUse: (it: Item) => Promise<{ ok: boolean; message?: string }>
   using?: boolean
+  onPreview?: (it: Item) => void
+  isPreviewing?: boolean
 }) {
   const [hover, setHover] = React.useState(false)
+  // Check for music category - id is 'Music' in database
+  const isMusic = isMusicCategory(item.type)
   const [pos, setPos] = React.useState<{ left: number; top: number; width: number; height: number }>({ 
     left: 0, 
     top: 0, 
@@ -134,18 +194,99 @@ function Card({
             {rarityLabel(item.rarity)}
           </div>
         )}
-        {item.media_url ? '' : 'Preview'}
+        {item.media_url && isValidMediaUrl(item.media_url) ? (
+          isVideo ? (
+            <video 
+              src={item.media_url} 
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
+            />
+          ) : (
+            <img 
+              src={item.media_url} 
+              alt={item.title} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  const placeholder = document.createElement('div')
+                  placeholder.className = 'item-placeholder'
+                  placeholder.innerHTML = getCategoryIcon(item.type)
+                  parent.appendChild(placeholder)
+                }
+              }}
+            />
+          )
+        ) : (
+          <div className="item-placeholder" style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            fontSize: 36,
+            color: 'rgba(255,255,255,0.3)'
+          }}>
+            <span>{getCategoryIcon(item.type)}</span>
+            <span style={{ fontSize: 11, marginTop: 4 }}>{t('shop.preview')}</span>
+          </div>
+        )}
       </div>
       <div className="shop-card-body">
-        <div className="shop-card-title">{item.title}</div>
-        <div className="shop-card-sub">{item.subtitle}</div>
+        <div className="shop-card-title">{
+          (() => {
+            const code = item.item_code || item.id
+            const direct = typeof item.title === 'string' ? item.title : ''
+            return resolveItemText(t, code, direct || code, 'title')
+          })()
+        }</div>
+        <div className="shop-card-sub">{
+          (() => {
+            const code = item.item_code || item.id
+            const desc = item.subtitle || ''
+            return resolveItemText(t, code, desc, 'desc')
+          })()
+        }</div>
         {item.acquired_at && (
           <div className="acquired-date">
             {t('inventory.acquired')}: {new Date(item.acquired_at).toLocaleDateString('vi-VN')}
           </div>
         )}
         <div className="shop-card-footer">
-          <div className="shop-card-price"></div>
+          <div className="shop-card-price">
+            {/* Preview button for music items */}
+            {isMusic && onPreview && (
+              <button
+                className="preview-btn"
+                style={{
+                  padding: '6px 12px',
+                  background: isPreviewing 
+                    ? 'linear-gradient(135deg, rgba(239,68,68,0.3), rgba(239,68,68,0.2))'
+                    : 'linear-gradient(135deg, rgba(34,211,238,0.2), rgba(59,130,246,0.2))',
+                  border: `1px solid ${isPreviewing ? 'rgba(239,68,68,0.5)' : 'rgba(34,211,238,0.4)'}`,
+                  borderRadius: 6,
+                  color: isPreviewing ? '#EF4444' : '#22D3EE',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPreview(item)
+                }}
+              >
+                {isPreviewing ? '⏹' : '▶'} {isPreviewing ? t('inventory.stopPreview') : t('inventory.preview')}
+              </button>
+            )}
+          </div>
           <button
             className="shop-buy inventory-use"
             style={{ 
@@ -197,7 +338,7 @@ function Card({
             />
           )
         ) : (
-          <div className="shop-card-preview-fallback">No preview</div>
+          <div className="shop-card-preview-fallback">{t('shop.noPreview')}</div>
         )}
       </div>
     </div>
@@ -227,12 +368,141 @@ export default function Inventory() {
   const [using, setUsing] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Music preview state
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
+  const previewAudioRef = React.useRef<HTMLAudioElement | null>(null)
+  
+  // Mobile filter popup state
+  const [filterPopupOpen, setFilterPopupOpen] = useState(false)
+  const [tempType, setTempType] = useState('all')
+  const [tempRarity, setTempRarity] = useState('all')
+  const [tempEquipped, setTempEquipped] = useState('all')
+  
+  // Count active filters
+  const activeFilterCount = [
+    type !== 'all' ? 1 : 0,
+    rarity !== 'all' ? 1 : 0,
+    equipped !== 'all' ? 1 : 0
+  ].reduce((a, b) => a + b, 0)
+  
+  const openFilterPopup = () => {
+    setTempType(type)
+    setTempRarity(rarity)
+    setTempEquipped(equipped)
+    setFilterPopupOpen(true)
+  }
+  
+  const applyFilters = () => {
+    setType(tempType)
+    setRarity(tempRarity)
+    setEquipped(tempEquipped)
+    setFilterPopupOpen(false)
+  }
+  
+  const resetFilters = () => {
+    setTempType('all')
+    setTempRarity('all')
+    setTempEquipped('all')
+  }
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState<string | null>(null)
   const [modalMessage, setModalMessage] = useState<string | null>(null)
   const modalResolveRef = React.useRef<((val: boolean) => void) | null>(null)
+
+  // Cleanup preview audio on unmount
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause()
+        previewAudioRef.current = null
+      }
+    }
+  }, [])
+
+  // Handle music preview
+  async function handlePreview(item: Item) {
+    // If same item, toggle off
+    if (previewingId === item.id) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause()
+        previewAudioRef.current = null
+      }
+      setPreviewingId(null)
+      return
+    }
+
+    // Stop current preview
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause()
+      previewAudioRef.current = null
+    }
+
+    // Start new preview
+    if (isValidMediaUrl(item.media_url)) {
+      const url = item.media_url!
+      console.log('[Inventory] Starting preview for:', url)
+      
+      try {
+        // For Supabase URLs, fetch as blob to bypass MIME type issues
+        if (url.includes('supabase.co/storage')) {
+          console.log('[Inventory] Fetching Supabase audio as blob...')
+          const response = await fetch(url)
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+          const blob = await response.blob()
+          console.log('[Inventory] Blob received:', { size: blob.size, type: blob.type })
+          
+          // Create blob with correct audio type
+          const audioBlob = blob.type.startsWith('audio/') 
+            ? blob 
+            : new Blob([blob], { type: 'audio/mpeg' })
+          const blobUrl = URL.createObjectURL(audioBlob)
+          
+          const audio = new Audio(blobUrl)
+          audio.volume = 0.5
+          audio.loop = true
+          audio.onended = () => {
+            URL.revokeObjectURL(blobUrl)
+            setPreviewingId(null)
+            previewAudioRef.current = null
+          }
+          audio.onerror = () => {
+            URL.revokeObjectURL(blobUrl)
+            console.warn('[Inventory] Preview audio error')
+            setPreviewingId(null)
+            previewAudioRef.current = null
+          }
+          await audio.play()
+          previewAudioRef.current = audio
+          setPreviewingId(item.id)
+        } else {
+          // For other URLs, use standard approach
+          const audio = new Audio()
+          audio.src = url
+          audio.volume = 0.5
+          audio.loop = true
+          audio.play().catch(err => {
+            console.warn('Preview play failed:', err)
+          })
+          audio.onended = () => {
+            setPreviewingId(null)
+            previewAudioRef.current = null
+          }
+          previewAudioRef.current = audio
+          setPreviewingId(item.id)
+        }
+      } catch (err) {
+        console.warn('[Inventory] Preview failed:', err)
+        alert('Không thể phát preview. File có thể bị lỗi hoặc không tồn tại.')
+      }
+    } else {
+      console.warn('Preview skipped invalid media URL', item.media_url)
+    }
+  }
 
   function openInfo(title: string, message: string) {
     return new Promise<void>((resolve) => {
@@ -299,6 +569,7 @@ export default function Inventory() {
             acquired_at,
             items (
               id,
+              item_code,
               name,
               description,
               category,
@@ -320,13 +591,16 @@ export default function Inventory() {
               const i = ui.items
               return {
                 id: ui.item_id,
+                item_code: i.item_code || ui.item_id,
                 title: getLocalizedItemText(i.name || 'Unknown Item', i.name_en),
                 subtitle: getLocalizedItemText(i.description || '', i.description_en),
                 media_url: i.preview_url || '',
                 rarity: i.rarity || 'common',
                 type: i.category || 'other',
                 is_equipped: ui.is_equipped || false,
-                acquired_at: ui.acquired_at
+                acquired_at: ui.acquired_at,
+                name_vi: i.name || '',
+                name_en: i.name_en || ''
               }
             })
 
@@ -383,10 +657,22 @@ export default function Inventory() {
           }
           if (query && query.trim()) {
             const q = query.trim().toLowerCase()
-            filtered = filtered.filter((it: Item) => 
-              it.title.toLowerCase().includes(q) || 
-              it.subtitle?.toLowerCase().includes(q)
-            )
+            filtered = filtered.filter((it: Item) => {
+              // Search in displayed title (already localized)
+              const titleMatch = it.title.toLowerCase().includes(q)
+              // Search in subtitle
+              const subtitleMatch = it.subtitle?.toLowerCase().includes(q)
+              // Search in original Vietnamese name
+              const nameViMatch = (it.name_vi || '').toLowerCase().includes(q)
+              // Search in English name
+              const nameEnMatch = (it.name_en || '').toLowerCase().includes(q)
+              // Search in i18n translated name using item_code
+              const code = it.item_code || it.id
+              const i18nKey = `shop.item.${code}.title`
+              const i18nName = t(i18nKey)
+              const i18nMatch = i18nName !== i18nKey && i18nName.toLowerCase().includes(q)
+              return titleMatch || subtitleMatch || nameViMatch || nameEnMatch || i18nMatch
+            })
           }
 
           setItems(filtered)
@@ -451,7 +737,38 @@ export default function Inventory() {
         is_equipped: it.id === item.id ? true : (it.type === item.type ? false : it.is_equipped)
       })))
 
-      await openInfo(t('inventory.modalSuccess'), `${t('inventory.successEquipped')} "${item.title}"`)
+      // If this is a music item, update AudioManager
+      const isMusicItem = isMusicCategory(item.type)
+      console.log('[Inventory] Equipping item:', { 
+        id: item.id, 
+        type: item.type, 
+        isMusicItem, 
+        media_url: item.media_url,
+        media_url_length: item.media_url?.length || 0,
+        isValidUrl: item.media_url ? /^https?:\/\//i.test(item.media_url) : false
+      })
+      if (isMusicItem && item.media_url) {
+        // Stop any preview
+        if (previewAudioRef.current) {
+          previewAudioRef.current.pause()
+          previewAudioRef.current = null
+          setPreviewingId(null)
+        }
+        // Set as background music
+        console.log('[Inventory] Setting background music:', item.media_url)
+        AudioManager.setBackgroundMusic(item.media_url, item.id)
+        AudioManager.playBackgroundMusic()
+      } else if (isMusicItem && !item.media_url) {
+        console.warn('[Inventory] Music item has no media_url:', item)
+      }
+
+      // Get localized item name for success message
+      const code = item.item_code || item.id
+      const i18nKey = `shop.item.${code}.title`
+      const i18nName = t(i18nKey)
+      const displayName = (i18nName && i18nName !== i18nKey) ? i18nName : item.title
+
+      await openInfo(t('inventory.modalSuccess'), `${t('inventory.successEquipped')} "${displayName}"`)
       return { ok: true }
     } catch (err: any) {
       console.error('Use item failed', err)
@@ -472,11 +789,39 @@ export default function Inventory() {
 
   return (
     <div className="app-container">
-      <nav className="breadcrumb-nav">
-        <a href="#home">{t('breadcrumb.home')}</a>
-        <span>›</span>
-        <span className="breadcrumb-current">{t('inventory.breadcrumbInventory')}</span>
-      </nav>
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span 
+          style={{ fontSize: 13, color: 'var(--color-muted)', cursor: 'pointer' }}
+          onClick={() => window.location.hash = '#home'}
+        >
+          {t('breadcrumb.home')}
+        </span>
+        <span style={{ color: 'var(--color-muted)' }}>›</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}>
+          {t('inventory.breadcrumbInventory')}
+        </span>
+      </div>
+      
+      {/* Mobile Category Pills */}
+      <div className="inventory-category-pills-mobile">
+        <button 
+          className={`category-pill ${type === 'all' ? 'active' : ''}`}
+          onClick={() => setType('all')}
+        >
+          {t('inventory.all')}
+        </button>
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            className={`category-pill ${type === cat.id ? 'active' : ''}`}
+            onClick={() => setType(cat.id)}
+          >
+            {cat.icon} {getCategoryName(cat.id, t)}
+          </button>
+        ))}
+      </div>
+      
       <div className="shop-page" style={{ gap: 18 }}>
         <aside className="panel shop-sidebar">
           <div style={{ marginBottom: 16 }}>
@@ -513,7 +858,7 @@ export default function Inventory() {
               <option value="all">{t('inventory.all')}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.icon} {language === 'vi' ? cat.name_vi : (cat.name_en || cat.name_vi)}
+                  {cat.icon} {getCategoryName(cat.id, t)}
                 </option>
               ))}
             </select>
@@ -549,31 +894,6 @@ export default function Inventory() {
         </aside>
 
         <main className="panel shop-main">
-          {/* Breadcrumb navigation */}
-          <nav style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontSize: '13px', 
-            color: 'var(--color-muted)',
-            marginBottom: '12px'
-          }}>
-            <a 
-              href="#home" 
-              style={{ 
-                color: 'var(--color-muted)', 
-                textDecoration: 'none',
-                transition: 'color 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
-            >
-              {t('inventory.breadcrumbHome')}
-            </a>
-            <span style={{ color: 'var(--color-muted)' }}>›</span>
-            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('inventory.breadcrumbInventory')}</span>
-          </nav>
-
           <h2 className="section-title">{t('inventory.yourCollection')}</h2>
 
           {loading && (
@@ -638,12 +958,7 @@ export default function Inventory() {
           {!loading && user && Object.keys(itemsByCategory).length > 0 && (
             Object.entries(itemsByCategory).map(([categoryId, categoryItems]) => {
               const category = categories.find(c => c.id === categoryId)
-              const displayName = 
-                language === 'vi' ? (category?.name_vi || categoryId) :
-                language === 'en' ? (category?.name_en || category?.name_vi || categoryId) :
-                language === 'zh' ? (category?.name_en || category?.name_vi || categoryId) :
-                language === 'ja' ? (category?.name_en || category?.name_vi || categoryId) :
-                (category?.name_vi || categoryId)
+              const displayName = getCategoryName(categoryId, t)
               const icon = category?.icon || '📦'
               const color = category?.color || '#22D3EE'
               
@@ -666,6 +981,8 @@ export default function Inventory() {
                         item={item} 
                         onUse={handleUse}
                         using={using[item.id]}
+                        onPreview={isMusicCategory(item.type) ? handlePreview : undefined}
+                        isPreviewing={previewingId === item.id}
                       />
                     ))}
                   </div>
@@ -761,6 +1078,96 @@ export default function Inventory() {
           </div>
         </div>
       )}
+      
+      {/* Mobile Filter Button */}
+      <button 
+        className="inventory-filter-toggle-mobile"
+        onClick={openFilterPopup}
+        aria-label={t('inventory.filterTitle')}
+      >
+        <span>⚙️</span>
+        {activeFilterCount > 0 && (
+          <span className="filter-badge">{activeFilterCount}</span>
+        )}
+      </button>
+      
+      {/* Mobile Filter Popup */}
+      <div 
+        className={`inventory-filter-popup-overlay ${filterPopupOpen ? 'open' : ''}`}
+        onClick={() => setFilterPopupOpen(false)}
+      >
+        <div 
+          className="inventory-filter-popup"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="inventory-filter-popup-header">
+            <h3>{t('inventory.filterTitle')}</h3>
+            <button 
+              className="inventory-filter-popup-close"
+              onClick={() => setFilterPopupOpen(false)}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="inventory-filter-popup-content">
+            {/* Search */}
+            <div>
+              <label>{t('inventory.search')}</label>
+              <input 
+                type="search"
+                placeholder={t('inventory.search')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            
+            {/* Type filter */}
+            <div>
+              <label>{t('inventory.filterType')}</label>
+              <select value={tempType} onChange={(e) => setTempType(e.target.value)}>
+                <option value="all">{t('inventory.all')}</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {getCategoryName(cat.id, t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Rarity filter */}
+            <div>
+              <label>{t('inventory.filterRarity')}</label>
+              <select value={tempRarity} onChange={(e) => setTempRarity(e.target.value)}>
+                <option value="all">{t('inventory.all')}</option>
+                <option value="common">{t('inventory.rarityCommon')}</option>
+                <option value="rare">{t('inventory.rarityRare')}</option>
+                <option value="epic">{t('inventory.rarityEpic')}</option>
+                <option value="legendary">{t('inventory.rarityLegendary')}</option>
+              </select>
+            </div>
+            
+            {/* Status filter */}
+            <div>
+              <label>{t('inventory.filterStatus')}</label>
+              <select value={tempEquipped} onChange={(e) => setTempEquipped(e.target.value)}>
+                <option value="all">{t('inventory.all')}</option>
+                <option value="equipped">{t('inventory.statusEquipped')}</option>
+                <option value="unequipped">{t('inventory.statusUnequipped')}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="inventory-filter-popup-actions">
+            <button className="inventory-filter-reset" onClick={resetFilters}>
+              {t('common.reset')}
+            </button>
+            <button className="inventory-filter-apply" onClick={applyFilters}>
+              {t('common.apply')}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

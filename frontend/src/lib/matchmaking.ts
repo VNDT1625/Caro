@@ -3,10 +3,12 @@ import { supabase } from './supabase'
 export interface MatchmakingSettings {
   mode: 'rank' | 'casual' | 'ai' | 'tournament'
   gameType: string
+  skillMode?: 'ranked' | 'matchmaking' // Sub-option khi gameType = 'skill'
   boardSize: string
   winCondition: number
   turnTime: number
   totalTime: number
+  swap2Enabled?: boolean // Optional Swap 2 opening rule - always true for rank/skill online
 }
 
 export interface MatchmakingResult {
@@ -171,14 +173,24 @@ export async function joinMatchmakingQueue(
     // Default ELO for new users
     const userElo = profile.elo_rating || profile.mindpoint || 1000
 
-    // Insert into matchmaking queue
+    // Swap2 bắt buộc cho rank, hoặc skill online (ranked/matchmaking)
+    const isSkillOnline = settings.gameType === 'skill' && (settings.skillMode === 'ranked' || settings.skillMode === 'matchmaking')
+    const isSwap2Mandatory = settings.mode === 'rank' || isSkillOnline
+    
+    // Determine effective mode for queue (skill_ranked hoặc skill_matchmaking nếu là skill online)
+    const effectiveMode = isSkillOnline ? `skill_${settings.skillMode}` : settings.mode
+    
+    // Insert into matchmaking queue with swap2 preference
     const { data: queueEntry, error } = await supabase
       .from('matchmaking_queue')
       .insert({
         user_id: userId,
-        mode: settings.mode,
+        mode: effectiveMode,
         elo_rating: userElo,
-        preferred_settings: settings,
+        preferred_settings: {
+          ...settings,
+          swap2_enabled: isSwap2Mandatory ? true : (settings.swap2Enabled ?? false)
+        },
         status: 'waiting',
         joined_at: new Date().toISOString()
       })
@@ -442,13 +454,43 @@ export function subscribeToMatchmaking(
 }
 
 /**
+ * Create series for ranked matches via PHP backend
+ */
+async function createSeriesForRankedMatch(
+  player1Id: string,
+  player2Id: string
+): Promise<{ seriesId?: string; series?: any; error?: string }> {
+  try {
+    const phpBackendUrl = (import.meta.env as any).VITE_PHP_BACKEND_URL || 'http://localhost:8001'
+    const response = await fetch(`${phpBackendUrl}/api/series/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player1_id: player1Id, player2_id: player2Id })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log('✅ Series created:', data.series?.id || data.id)
+      return { seriesId: data.series?.id || data.id, series: data.series || data }
+    }
+
+    const errText = await response.text()
+    console.error('❌ Failed to create series:', errText)
+    return { error: errText }
+  } catch (err: any) {
+    console.error('❌ createSeriesForRankedMatch error:', err.message)
+    return { error: err.message }
+  }
+}
+
+/**
  * Create room when both players are ready
  */
 export async function createMatchRoom(
   userId: string,
   opponentId: string,
   settings: MatchmakingSettings
-): Promise<{ success: boolean; roomId?: string; error?: string }> {
+): Promise<{ success: boolean; roomId?: string; seriesId?: string; series?: any; error?: string }> {
   try {
     console.log('Creating room for match...', { userId, opponentId })
 
@@ -467,21 +509,67 @@ export async function createMatchRoom(
       return { success: true, roomId }
     }
 
-    // Create room
+    // For ranked or skill online mode, create a series first
+    let seriesId: string | undefined
+    let seriesData: any
+    let player1Side = 'X'
+    let player2Side = 'O'
+
+    // Create series for competitive modes (rank hoặc skill online)
+    const isSkillOnlineForSeries = settings.gameType === 'skill' && (settings.skillMode === 'ranked' || settings.skillMode === 'matchmaking')
+    const needsSeries = settings.mode === 'rank' || isSkillOnlineForSeries
+    if (needsSeries) {
+      console.log('🏆 Creating series for ranked match...')
+      const seriesResult = await createSeriesForRankedMatch(userId, opponentId)
+      if (seriesResult.seriesId) {
+        seriesId = seriesResult.seriesId
+        seriesData = seriesResult.series
+        // Use series-assigned sides
+        if (seriesData) {
+          if (seriesData.player1_id === userId) {
+            player1Side = seriesData.player1_side || 'X'
+            player2Side = seriesData.player2_side || 'O'
+          } else {
+            player1Side = seriesData.player2_side || 'O'
+            player2Side = seriesData.player1_side || 'X'
+          }
+        }
+        console.log('✅ Series created:', seriesId, 'Sides:', { player1Side, player2Side })
+      } else {
+        console.warn('⚠️ Failed to create series, continuing without it:', seriesResult.error)
+      }
+    }
+
+    // Determine swap2 enabled status
+    // Ranked mode or Skill Online (ranked/matchmaking): always enabled
+    // Other modes: based on settings
+    const isSkillOnline = settings.gameType === 'skill' && (settings.skillMode === 'ranked' || settings.skillMode === 'matchmaking')
+    const isSwap2Mandatory = settings.mode === 'rank' || isSkillOnline
+    const swap2Enabled = isSwap2Mandatory ? true : (settings.swap2Enabled ?? false)
+
+    // Create room (series_id is stored in matches table, not rooms)
+    const roomInsertData: any = {
+      owner_user_id: userId,
+      room_name: `Match ${new Date().getTime()}`,
+      mode: settings.mode === 'rank' ? 'ranked' : 
+            (settings.gameType === 'skill' && settings.skillMode === 'ranked') ? 'skill_ranked' : 
+            (settings.gameType === 'skill' && settings.skillMode === 'matchmaking') ? 'skill_matchmaking' : settings.mode,
+      is_private: false,
+      max_players: 2,
+      current_players: 0,
+      status: 'waiting',
+      board_size: parseInt(settings.boardSize) || 15,
+      win_length: settings.winCondition || 5,
+      time_per_move: settings.turnTime || 30,
+      game_config: {
+        swap2_enabled: swap2Enabled,
+        game_type: settings.gameType || 'normal'
+      }
+    }
+
     const { data: room, error: roomError } = await supabase
       .from('rooms')
-      .insert({
-        owner_user_id: userId,
-        room_name: `Match ${new Date().getTime()}`,
-        mode: settings.mode === 'rank' ? 'ranked' : settings.mode,
-        is_private: false,
-        max_players: 2,
-        current_players: 0,
-        status: 'waiting',
-        board_size: parseInt(settings.boardSize) || 15,
-        win_length: settings.winCondition || 5,
-        time_per_move: settings.turnTime || 30
-      })
+      .insert(roomInsertData)
       .select()
       .single()
 
@@ -490,20 +578,20 @@ export async function createMatchRoom(
       return { success: false, error: roomError?.message || 'Failed to create room' }
     }
 
-    // Add both players to room
+    // Add both players to room with series-assigned sides
     const { error: playersError } = await supabase
       .from('room_players')
       .insert([
         {
           room_id: room.id,
           user_id: userId,
-          player_side: 'X',
+          player_side: player1Side,
           is_ready: false
         },
         {
           room_id: room.id,
           user_id: opponentId,
-          player_side: 'O',
+          player_side: player2Side,
           is_ready: false
         }
       ])
@@ -521,19 +609,29 @@ export async function createMatchRoom(
       .update({ current_players: 2, status: 'full' })
       .eq('id', room.id)
 
-    // CRITICAL: Create match record immediately
+    // CRITICAL: Create match record immediately with series_id
     console.log('Creating match record for room:', room.id)
+    const matchInsertData: any = {
+      room_id: room.id,
+      match_type: settings.mode === 'rank' ? 'ranked' : 
+                  (settings.gameType === 'skill' && settings.skillMode === 'ranked') ? 'skill_ranked' :
+                  (settings.gameType === 'skill' && settings.skillMode === 'matchmaking') ? 'skill_matchmaking' : 'casual',
+      player_x_user_id: player1Side === 'X' ? userId : opponentId,
+      player_o_user_id: player1Side === 'O' ? userId : opponentId,
+      board_size: parseInt(settings.boardSize) || 15,
+      win_length: settings.winCondition || 5,
+      started_at: new Date().toISOString()
+    }
+
+    // Add series_id and game_number if we have a series
+    if (seriesId) {
+      matchInsertData.series_id = seriesId
+      matchInsertData.game_number = 1
+    }
+
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .insert({
-        room_id: room.id,
-        match_type: settings.mode === 'rank' ? 'ranked' : 'casual',
-        player_x_user_id: userId,
-        player_o_user_id: opponentId,
-        board_size: parseInt(settings.boardSize) || 15,
-        win_length: settings.winCondition || 5,
-        started_at: new Date().toISOString()
-      })
+      .insert(matchInsertData)
       .select('id')
       .single()
 
@@ -544,8 +642,8 @@ export async function createMatchRoom(
       console.log('✅ Match created:', match.id)
     }
 
-    console.log('✅ Room created successfully:', room.id)
-    return { success: true, roomId: room.id }
+    console.log('✅ Room created successfully:', room.id, seriesId ? `with series ${seriesId}` : '')
+    return { success: true, roomId: room.id, seriesId, series: seriesData }
   } catch (err: any) {
     console.error('createMatchRoom error:', err)
     return { success: false, error: err.message }

@@ -1,3 +1,4 @@
+import { test, expect } from 'vitest'
 import { checkWinner } from './checkWinner'
 
 test('no winner on empty board', () => {

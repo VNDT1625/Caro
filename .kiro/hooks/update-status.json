@@ -1,0 +1,11 @@
+{
+  "name": "Update Kiro Status",
+  "description": "Automatically update kiro_status.json when agent completes execution",
+  "trigger": {
+    "type": "onAgentComplete"
+  },
+  "action": {
+    "type": "sendMessage",
+    "message": "Cập nhật scripts/ai-orchestrator/kiro_status.json với trạng thái hiện tại. Nếu vừa hoàn thành task, set status='completed'. Nếu gặp lỗi, set status='error' và ghi error vào errors array."
+  }
+}

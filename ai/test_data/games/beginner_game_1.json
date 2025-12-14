@@ -1,0 +1,13 @@
+{
+  "moves": [
+    {"x": 7, "y": 7, "player": "X"},
+    {"x": 7, "y": 8, "player": "O"},
+    {"x": 8, "y": 7, "player": "X"},
+    {"x": 8, "y": 8, "player": "O"},
+    {"x": 6, "y": 6, "player": "X"}
+  ],
+  "expected_analysis": {
+    "rating": "learning",
+    "mistakes": 1
+  }
+}

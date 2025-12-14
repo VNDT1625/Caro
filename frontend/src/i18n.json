@@ -23,25 +23,59 @@
       "preview": "Xem trước",
       "debug": "Gỡ lỗi",
       "clicked": "Đã nhấn",
-      "ok": "OK"
+      "ok": "OK",
+      "clickToContinue": "Nhấn để tiếp tục",
+      "seconds": "giây",
+      "askCaoNhan": "Hỏi Cao nhân về Caro...",
+      "reset": "Đặt lại",
+      "apply": "Áp dụng"
     },
     "breadcrumb": {
       "home": "Chánh Điện",
-      "shop": "Tiêu Bảo Các",
-      "inventory": "Bộ Sưu Tập",
-      "quests": "Nhiệm Vụ",
-      "events": "Sự Kiện",
+      "shop": "Tiêu Bảo Cát",
+      "inventory": "Túi Trữ Vật",
+      "quests": "Tiên Duyên",
+      "events": "Thiên Cơ Biến",
       "guide": "Bí Tịch",
-      "leaderboard": "Khai Nhãn"
+      "leaderboard": "Khai Nhãn",
+      "profile": "Hồ Sơ",
+      "titles": "Danh Hiệu",
+      "room": "Phòng Đấu",
+      "createRoom": "Tạo Phòng",
+      "match": "Trận Đấu",
+      "settings": "Cài Đặt",
+      "training": "Thí Luyện",
+      "variant": "Dị Biến Kỳ",
+      "admin": "Quản Trị",
+      "notifications": "Thông Báo"
+    },
+    "nav": {
+      "sectionTreasure": "Tiêu Bảo",
+      "sectionEvents": "Sự kiện & Tiên duyên",
+      "sectionTraining": "Tu luyện",
+      "sectionGameModes": "Chế Độ Chơi",
+      "aiAnalysis": "Cao Nhân Chỉ Điểm",
+      "shop": "Tiêu Bảo Cát",
+      "inventory": "Túi Trữ Vật",
+      "quests": "Tiên Duyên",
+      "events": "Thiên Cơ Biến",
+      "khaiNhan": "Khai Nhãn",
+      "guide": "Bí Tịch",
+      "aiTraining": "Thí Luyện",
+      "variantMode": "Dị Biến Kỳ",
+      "tournament": "Vạn Môn Tranh Đấu",
+      "badgeHot": "HOT",
+      "badgeNew": "MỚI",
+      "badgeRank": "RANK"
     },
     "shop": {
       "title": "Cửa Hàng",
       "pageTitle": "Cửa Hàng",
+      "filterTitle": "Bộ Lọc",
       "categoryAll": "Tất Cả",
       "categorySaleHot": "Sale & Hot",
       "categoryGiftsCurrency": "Tinh Thạch & Nguyên Thần",
-      "categoryPass": "Pass",
-      "categoryPackage": "Gói Ưu Đãi",
+      "categoryPackage": "Gói",
       "searchPlaceholder": "Tìm Kiếm...",
       "filterType": "Loại",
       "filterRarity": "Độ Hiếm",
@@ -77,6 +111,13 @@
       "usingSampleData": "Đang dùng dữ liệu mẫu",
       "cannotLoadShopData": "Không thể tải dữ liệu cửa hàng từ server",
       "detailsDev": "Chi tiết (dev):",
+      "noProducts": "Không có sản phẩm",
+      "noProductsHint": "Danh mục này chưa có sản phẩm nào. Hãy thử chọn danh mục khác.",
+      "skillPackages": "Gói Skill",
+      "skillPackagesDesc": "Mở gói để nhận skill ngẫu nhiên cho deck của bạn",
+      "cards": "thẻ",
+      "openPack": "Mở Gói",
+      "youReceived": "Bạn nhận được:",
       "debugClicked": "Đã Nhấn: {label}",
       "classicWoodPieces": "Quân Cờ Gỗ Cổ Điển",
       "classicWoodPiecesDesc": "Gỗ cổ điển truyền thống",
@@ -91,32 +132,110 @@
       "spaceBoard": "Bàn Cờ Vũ Trụ",
       "spaceBoardDesc": "Bàn cờ không gian vũ trụ",
       "item": {
-        "skin1": { "title": "Quân Cờ Gỗ Cổ Điển", "desc": "Gỗ cổ điển truyền thống" },
-        "skin2": { "title": "Quân Cờ Ngọc Bích", "desc": "Quân cờ ngọc bích quý giá" },
-        "skin3": { "title": "Quân Cờ Hoàng Kim", "desc": "Quân cờ vàng huyền thoại" },
-        "board1": { "title": "Bàn Cờ Cổ Điển", "desc": "Bàn gỗ truyền thống" },
-        "board2": { "title": "Bàn Cờ Hoa Anh Đào", "desc": "Bàn cờ hoa anh đào Nhật Bản" },
-        "board3": { "title": "Bàn Cờ Vũ Trụ", "desc": "Bàn cờ không gian vũ trụ" },
-        "board_bamboo": { "title": "Bàn Cờ Tre", "desc": "Bàn cờ tre xanh thanh lịch" },
-        "board_classic": { "title": "Bàn Cờ Cổ Điển", "desc": "Bàn cờ gỗ truyền thống" },
-        "board_marble": { "title": "Bàn Cờ Đá Cẩm Thạch", "desc": "Bàn cờ đá cẩm thạch cao cấp" },
-        "board_royal": { "title": "Bàn Cờ Hoàng Gia", "desc": "Bàn cờ dành cho hoàng tộc" },
-        "board_sakura": { "title": "Bàn Cờ Hoa Anh Đào", "desc": "Bàn cờ với họa tiết hoa anh đào" },
-        "board_space": { "title": "Bàn Cờ Vũ Trụ", "desc": "Bàn cờ với nền vũ trụ huyền bí" },
-        "frame_bronze": { "title": "Khung Đồng", "desc": "Khung avatar màu đồng" },
-        "frame_diamond": { "title": "Khung Kim Cương", "desc": "Khung avatar kim cương" },
-        "frame_gold": { "title": "Khung Vàng", "desc": "Khung avatar màu vàng" },
-        "frame_silver": { "title": "Khung Bạc", "desc": "Khung avatar màu bạc" },
-        "skin_bamboo_pieces": { "title": "Quân Cờ Tre Xanh", "desc": "Quân cờ tre thanh mát" },
-        "skin_classic_wood": { "title": "Quân Cờ Gỗ Cổ Điển", "desc": "Quân cờ gỗ truyền thống, miễn phí cho mọi người" },
-        "skin_crystal_pieces": { "title": "Quân Cờ Thủy Tinh", "desc": "Quân cờ thủy tinh trong suốt lung linh" },
-        "skin_fire_pieces": { "title": "Quân Cờ Hỏa Diễm", "desc": "Quân cờ cháy bùng ngọn lửa" },
-        "skin_gold_pieces": { "title": "Quân Cờ Hoàng Kim", "desc": "Quân cờ vàng óng ánh dành cho vua chúa" },
-        "skin_ice_pieces": { "title": "Quân Cờ Băng Tinh", "desc": "Quân cờ băng giá lạnh lẽo" },
-        "skin_jade_pieces": { "title": "Quân Cờ Ngọc Bích", "desc": "Quân cờ làm từ ngọc bích quý giá" },
-        "title_legend": { "title": "Danh Hiệu: Huyền Thoại", "desc": "Danh hiệu dành cho huyền thoại" },
-        "title_master": { "title": "Danh Hiệu: Kỳ Thánh", "desc": "Danh hiệu dành cho bậc thầy" },
-        "title_newbie": { "title": "Danh Hiệu: Tân Thủ", "desc": "Danh hiệu dành cho người chơi mới" }
+        "skin1": {
+          "title": "Quân Cờ Gỗ Cổ Điển",
+          "desc": "Gỗ cổ điển truyền thống"
+        },
+        "skin2": {
+          "title": "Quân Cờ Ngọc Bích",
+          "desc": "Quân cờ ngọc bích quý giá"
+        },
+        "skin3": {
+          "title": "Quân Cờ Hoàng Kim",
+          "desc": "Quân cờ vàng huyền thoại"
+        },
+        "board1": {
+          "title": "Bàn Cờ Cổ Điển",
+          "desc": "Bàn gỗ truyền thống"
+        },
+        "board2": {
+          "title": "Bàn Cờ Hoa Anh Đào",
+          "desc": "Bàn cờ hoa anh đào Nhật Bản"
+        },
+        "board3": {
+          "title": "Bàn Cờ Vũ Trụ",
+          "desc": "Bàn cờ không gian vũ trụ"
+        },
+        "board_bamboo": {
+          "title": "Bàn Cờ Tre",
+          "desc": "Bàn cờ tre xanh thanh lịch"
+        },
+        "board_classic": {
+          "title": "Bàn Cờ Cổ Điển",
+          "desc": "Bàn cờ gỗ truyền thống"
+        },
+        "board_marble": {
+          "title": "Bàn Cờ Đá Cẩm Thạch",
+          "desc": "Bàn cờ đá cẩm thạch cao cấp"
+        },
+        "board_royal": {
+          "title": "Bàn Cờ Hoàng Gia",
+          "desc": "Bàn cờ dành cho hoàng tộc"
+        },
+        "board_sakura": {
+          "title": "Bàn Cờ Hoa Anh Đào",
+          "desc": "Bàn cờ với họa tiết hoa anh đào"
+        },
+        "board_space": {
+          "title": "Bàn Cờ Vũ Trụ",
+          "desc": "Bàn cờ với nền vũ trụ huyền bí"
+        },
+        "frame_bronze": {
+          "title": "Khung Đồng",
+          "desc": "Khung avatar màu đồng"
+        },
+        "frame_diamond": {
+          "title": "Khung Kim Cương",
+          "desc": "Khung avatar kim cương"
+        },
+        "frame_gold": {
+          "title": "Khung Vàng",
+          "desc": "Khung avatar màu vàng"
+        },
+        "frame_silver": {
+          "title": "Khung Bạc",
+          "desc": "Khung avatar màu bạc"
+        },
+        "skin_bamboo_pieces": {
+          "title": "Quân Cờ Tre Xanh",
+          "desc": "Quân cờ tre thanh mát"
+        },
+        "skin_classic_wood": {
+          "title": "Quân Cờ Gỗ Cổ Điển",
+          "desc": "Quân cờ gỗ truyền thống, miễn phí cho mọi người"
+        },
+        "skin_crystal_pieces": {
+          "title": "Quân Cờ Thủy Tinh",
+          "desc": "Quân cờ thủy tinh trong suốt lung linh"
+        },
+        "skin_fire_pieces": {
+          "title": "Quân Cờ Hỏa Diễm",
+          "desc": "Quân cờ cháy bùng ngọn lửa"
+        },
+        "skin_gold_pieces": {
+          "title": "Quân Cờ Hoàng Kim",
+          "desc": "Quân cờ vàng óng ánh dành cho vua chúa"
+        },
+        "skin_ice_pieces": {
+          "title": "Quân Cờ Băng Tinh",
+          "desc": "Quân cờ băng giá lạnh lẽo"
+        },
+        "skin_jade_pieces": {
+          "title": "Quân Cờ Ngọc Bích",
+          "desc": "Quân cờ làm từ ngọc bích quý giá"
+        },
+        "title_legend": {
+          "title": "Danh Hiệu: Huyền Thoại",
+          "desc": "Danh hiệu dành cho huyền thoại"
+        },
+        "title_master": {
+          "title": "Danh Hiệu: Kỳ Thánh",
+          "desc": "Danh hiệu dành cho bậc thầy"
+        },
+        "title_newbie": {
+          "title": "Danh Hiệu: Tân Thủ",
+          "desc": "Danh hiệu dành cho người chơi mới"
+        }
       },
       "typeAll": "Tất Cả",
       "typePieceSkin": "Skin Quân Cờ",
@@ -133,12 +252,18 @@
         "skin_board": "Skin Bàn Cờ",
         "avatar_frame": "Khung Avatar",
         "music": "Âm Nhạc",
-        "titles": "Danh Hiệu"
+        "titles": "Danh Hiệu",
+        "title": "Danh Hiệu",
+        "emote": "Biểu Cảm",
+        "pass": "Pass",
+        "package": "Gói Ưu Đãi",
+        "gifts": "Tinh Thạch & Nguyên Thần"
       }
     },
     "inventory": {
       "title": "Bộ Sưu Tập",
       "subtitle": "Quản lý và sử dụng các vật phẩm đã sở hữu",
+      "filterTitle": "Bộ Lọc",
       "breadcrumb": "Bộ Sưu Tập",
       "empty": "Chưa có vật phẩm nào",
       "emptyDescription": "Hãy ghé thăm Cửa Hàng để mua vật phẩm đầu tiên!",
@@ -146,6 +271,8 @@
       "using": "Đang dùng",
       "equip": "Trang bị",
       "equipped": "Đã trang bị",
+      "preview": "Nghe thử",
+      "stopPreview": "Dừng",
       "quantity": "Số lượng",
       "itemsOwned": "vật phẩm",
       "totalValue": "Tổng giá trị",
@@ -167,19 +294,24 @@
     },
     "quests": {
       "title": "Nhiệm Vụ",
-      "subtitle": "Hoàn thành nhiệm vụ nhận thưởng",
+      "subtitle": "Hoàn thành nhiệm vụ nhận thưởng hấp dẫn",
       "breadcrumb": "Nhiệm Vụ",
       "daily": "Hằng Ngày",
       "weekly": "Hằng Tuần",
+      "achievement": "Thành Tựu",
       "achievements": "Thành Tựu",
       "progress": "Tiến độ",
       "reward": "Phần thưởng",
       "rewards": "Phần thưởng",
-      "claim": "Nhận thưởng",
+      "claim": "Nhận",
       "claimed": "Đã nhận",
       "completed": "Hoàn thành",
       "inProgress": "Đang thực hiện",
       "locked": "Khóa",
+      "go": "Đi",
+      "tasks": "nhiệm vụ",
+      "tip": "Mẹo",
+      "tipDesc": "Hoàn thành nhiệm vụ hằng ngày để nhận thưởng liên tục!",
       "exp": "Kinh nghiệm",
       "difficultyEasy": "Dễ",
       "difficultyMedium": "Trung bình",
@@ -189,6 +321,39 @@
       "silver": "Bạc",
       "gold": "Vàng",
       "platinum": "Bạch Kim",
+      "loginDay1": "Đăng nhập 1 ngày",
+      "loginDay1Desc": "Đăng nhập ngày đầu tiên trong tháng",
+      "loginDay2": "Đăng nhập 2 ngày",
+      "loginDay2Desc": "Đăng nhập liên tiếp 2 ngày",
+      "loginDay3": "Đăng nhập 3 ngày",
+      "loginDay3Desc": "Đăng nhập liên tiếp 3 ngày",
+      "loginDay5": "Đăng nhập 5 ngày",
+      "loginDay5Desc": "Đăng nhập liên tiếp 5 ngày",
+      "loginDay7": "Đăng nhập 7 ngày",
+      "loginDay7Desc": "Đăng nhập liên tiếp 7 ngày",
+      "playRanked": "Chơi 1 ván xếp hạng",
+      "playRankedDesc": "Tham gia 1 trận đấu xếp hạng",
+      "winMatch": "Thắng 1 ván đấu",
+      "winMatchDesc": "Giành chiến thắng trong 1 trận đấu",
+      "playMatches": "Chơi 3 ván đấu",
+      "playMatchesDesc": "Tham gia 3 trận đấu bất kỳ",
+      "winStreak": "Thắng liên tiếp 3 ván",
+      "winStreakDesc": "Giành chiến thắng 3 trận liên tiếp",
+      "play10Matches": "Chơi 10 ván đấu",
+      "play10MatchesDesc": "Hoàn thành 10 trận đấu trong tuần",
+      "win5Matches": "Thắng 5 ván đấu",
+      "win5MatchesDesc": "Giành chiến thắng 5 trận trong tuần",
+      "login7Days": "Đăng nhập 7 ngày",
+      "login7DaysDesc": "Đăng nhập đủ 7 ngày trong tuần",
+      "firstWin": "Chiến thắng đầu tiên",
+      "firstWinDesc": "Giành chiến thắng trận đấu đầu tiên",
+      "win10Total": "Thắng 10 trận",
+      "win10TotalDesc": "Tổng cộng thắng 10 trận đấu",
+      "win50Total": "Thắng 50 trận",
+      "win50TotalDesc": "Tổng cộng thắng 50 trận đấu",
+      "win100Total": "Thắng 100 trận",
+      "win100TotalDesc": "Tổng cộng thắng 100 trận đấu",
+      "noQuests": "Không có nhiệm vụ nào",
       "questPlay1Ranked": "Chơi 1 trận xếp hạng",
       "questPlay1RankedDesc": "Thử sức với MindPoint Arena",
       "questWin1Match": "Thắng 1 trận bất kỳ",
@@ -235,7 +400,42 @@
       "canUseFor": "Có thể dùng để",
       "buyInShop": "Mua vật phẩm trong Cửa Hàng",
       "upgradeProfile": "Nâng cấp hồ sơ",
-      "unlockFeatures": "Mở khóa tính năng đặc biệt"
+      "unlockFeatures": "Mở khóa tính năng đặc biệt",
+      "loginDecember": "Đăng Nhập Tháng 12",
+      "loginDay": "Đăng nhập {n} ngày",
+      "go": "Đi",
+      "claim": "Nhận",
+      "questRewards": "Phần Thưởng Nhiệm Vụ",
+      "playMatches": "Chơi {n} trận",
+      "exchangeShop": "Cửa Hàng Đổi Thưởng",
+      "exchangeItem": "Đổi vật phẩm",
+      "battlePass": "Battle Pass",
+      "bpLevel": "Đạt cấp {n}",
+      "seasonQuest": "Nhiệm Vụ Mùa",
+      "winMatches": "Thắng {n} trận",
+      "reachRank": "Đạt cảnh giới",
+      "leaderboard": "Bảng Xếp Hạng",
+      "comingSoon": "Sắp ra mắt",
+      "stayTuned": "Hãy đón chờ",
+      "rewards": "Phần thưởng",
+      "claimable": "có thể nhận",
+      "daysLeft": "ngày còn lại",
+      "hoursLeft": "giờ còn lại",
+      "ended": "Đã kết thúc",
+      "seasonal": "Mùa lễ",
+      "limited": "Giới hạn",
+      "special": "Đặc biệt",
+      "permanent": "Thường trực",
+      "noelEvent": "🎅 Giáng Sinh 2025",
+      "noelDesc": "Mừng lễ Giáng Sinh với phần thưởng đặc biệt!",
+      "newYearEvent": "🎆 Năm Mới 2026",
+      "newYearDesc": "Chào đón năm mới với quà tặng khủng!",
+      "doubleCoin": "💰 x2 Tinh Thạch",
+      "doubleCoinDesc": "Nhận gấp đôi Tinh Thạch trong mỗi trận!",
+      "weekendBlast": "🔥 Cuối Tuần Bùng Nổ",
+      "weekendBlastDesc": "Bonus đặc biệt cho chiến thắng cuối tuần!",
+      "newcomerBonus": "🌟 Tân Thủ Bonus",
+      "newcomerBonusDesc": "Phần thưởng chào mừng người chơi mới!"
     },
     "guide": {
       "title": "Hướng Dẫn",
@@ -308,10 +508,104 @@
       "hoc_ky": "Học Kỳ",
       "ky_lao": "Kỳ Lão",
       "cao_ky": "Cao Kỳ",
+      "tam_ky": "Tam Kỳ",
+      "de_nhi": "Đệ Nhị",
+      "vo_doi": "Vô Đối",
       "ky_thanh": "Kỳ Thánh",
-      "truyen_thuyet": "Truyền Thuyết"
-    }
-    ,
+      "truyen_thuyet": "Truyền Thuyết",
+      "rankUp": "Thăng Cấp!",
+      "rankDown": "Giáng Cấp",
+      "so_ky": "Sơ Kỳ",
+      "trung_ky": "Trung Kỳ",
+      "cao_ky_tier": "Cao Kỳ",
+      "vuot_cap": "Vượt Cấp",
+      "next": "Tiếp theo",
+      "points": "điểm",
+      "pointsToNext": "Còn",
+      "lowPhase": "Giai đoạn dưới - Tính điểm cơ bản",
+      "highPhase": "Giai đoạn cao - Tính điểm theo chênh lệch rank",
+      "pointsBreakdown": "Chi tiết điểm",
+      "movePoints": "Điểm lượt",
+      "timePoints": "Điểm thời gian",
+      "opponentRank": "Rank đối thủ",
+      "baseBonus": "Điểm cơ bản",
+      "result": "Kết quả",
+      "rankDiff": "Chênh lệch rank",
+      "higherRank": "Bạn rank cao hơn",
+      "lowerRank": "Bạn rank thấp hơn",
+      "totalPoints": "Tổng điểm",
+      "moves": "nước",
+      "seasonMatches": "Trận trong mùa",
+      "softDemoted": "Đang trong thời gian bảo vệ"
+    },
+    "series": {
+      "game": "Ván",
+      "of": "trong",
+      "score": "Tỷ số",
+      "you": "Bạn",
+      "yourTurn": "Lượt của bạn",
+      "opponentTurn": "Lượt đối thủ",
+      "gameNumber": "Ván {current} trong {total}",
+      "seriesScore": "Tỷ số series",
+      "bestOf3": "Best of 3",
+      "player1": "Người chơi 1",
+      "player2": "Người chơi 2",
+      "sideX": "Quân X",
+      "sideO": "Quân O",
+      "nextGame": "Ván tiếp theo",
+      "countdown": "Bắt đầu sau",
+      "seriesWin": "Thắng Series!",
+      "seriesLose": "Thua Series",
+      "gameWin": "Thắng ván!",
+      "gameLose": "Thua ván",
+      "rematch": "Đấu lại",
+      "waitingRematch": "Chờ đối thủ...",
+      "rematchAccepted": "Đối thủ đồng ý!",
+      "rematchDeclined": "Đối thủ từ chối",
+      "rematchTimeout": "Hết thời gian chờ",
+      "sideSwap": "Đổi bên X/O",
+      "opponentDisconnected": "Đối thủ mất kết nối",
+      "connectionLost": "Mất kết nối",
+      "waitingForReconnect": "Đang chờ kết nối lại...",
+      "tryingToReconnect": "Đang thử kết nối lại...",
+      "timeRemaining": "Thời gian còn lại",
+      "forfeitSoon": "Đối thủ sẽ bị xử thua nếu không kết nối lại!",
+      "willForfeit": "Bạn sẽ bị xử thua nếu không kết nối lại!",
+      "nextGameStarting": "Ván tiếp theo bắt đầu trong",
+      "sidesSwapped": "Bên đã được đổi",
+      "result": {
+        "title": "Kết quả Series",
+        "victory": "Chiến Thắng!",
+        "defeat": "Thất Bại",
+        "finalScore": "Tỷ số cuối",
+        "rewards": "Phần thưởng",
+        "mindpointChange": "Thay đổi MindPoint",
+        "mpGained": "+{amount} MP",
+        "mpLost": "-{amount} MP",
+        "coinsEarned": "Tinh Thạch nhận được",
+        "expEarned": "Kinh nghiệm nhận được",
+        "sweepBonus": "Bonus thắng 2-0",
+        "timeBonus": "Bonus thời gian",
+        "rankBonus": "Bonus hạng cao hơn",
+        "rankPenalty": "Phạt hạng thấp hơn",
+        "baseReward": "Thưởng cơ bản",
+        "totalMp": "Tổng MP",
+        "breakdown": "Chi tiết điểm"
+      },
+      "rankChange": {
+        "promoted": "Thăng Cấp!",
+        "demoted": "Giáng Cấp",
+        "newRank": "Cảnh giới mới",
+        "congratulations": "Chúc mừng! Bạn đã đạt cảnh giới {rank}!",
+        "keepFighting": "Hãy tiếp tục cố gắng để lấy lại cảnh giới!"
+      },
+      "forfeit": "Xử thua",
+      "abandon": "Bỏ cuộc",
+      "abandonPenalty": "Phạt bỏ cuộc",
+      "disconnectTimeout": "Hết thời gian kết nối",
+      "exit": "Thoát",
+      "backToHome": "Về trang chủ"
+    },
     "admin": {
       "title": "Trang Quản Trị",
       "subtitle": "Quản lý hệ thống MindPoint",
@@ -477,8 +771,7 @@
         "maintOff": "Tắt",
         "defaultLanguage": "Ngôn ngữ mặc định"
       }
-    }
-    ,
+    },
     "aiAnalysis": {
       "title": "AI Phân Tích Trận",
       "subtitle": "Chọn 1 trận để Cao Nhân chỉ điểm",
@@ -498,7 +791,857 @@
       "buttonLabel": "Cao Nhân chỉ điểm",
       "evaluationFlow": "Diễn biến đánh giá",
       "moveQuality": "Chất lượng nước đi",
-      "alternativePlans": "Phương án thay thế"
+      "alternativePlans": "Phương án thay thế",
+      "filterAiOnly": "Chỉ trận AI",
+      "noMatchesFound": "Không tìm thấy trận đấu",
+      "moveRating": {
+        "excellent": "Xuất sắc",
+        "good": "Tốt",
+        "average": "Trung bình",
+        "poor": "Yếu",
+        "blunder": "Sai lầm"
+      },
+      "moveComment": {
+        "excellent": "Nước đi xuất sắc!",
+        "excellentAlt": "Tuyệt vời!",
+        "good": "Nước đi tốt.",
+        "goodAlt": "Lựa chọn hợp lý.",
+        "average": "Nước đi chấp nhận được.",
+        "averageAlt": "Có thể chơi tốt hơn.",
+        "poor": "Nước đi yếu.",
+        "poorAlt": "Bỏ lỡ cơ hội tốt hơn.",
+        "blunder": "Sai lầm nghiêm trọng!",
+        "blunderAlt": "Lỗi lớn!"
+      },
+      "patternName": {
+        "FIVE": "Ngũ (5 quân)",
+        "OPEN_FOUR": "Tứ Mở",
+        "CLOSED_FOUR": "Tứ Kín",
+        "FOUR": "Tứ Kín",
+        "OPEN_THREE": "Tam Mở",
+        "THREE": "Tam Kín",
+        "CLOSED_THREE": "Tam Kín",
+        "FORK": "Fork (Đa đường)",
+        "BROKEN_FOUR": "Tứ Gãy",
+        "BROKEN_THREE": "Tam Gãy",
+        "JUMP_THREE": "Tam Nhảy"
+      },
+      "tactical": {
+        "forkCreated": "Tạo fork (đa đường) - đối thủ chỉ chặn được 1 đường!",
+        "threatBlocked": "Chặn đe dọa {threatType} của đối thủ.",
+        "counterAttack": "Vừa phòng thủ vừa tạo phản công!",
+        "trap": "Bẫy",
+        "setup": "Chuẩn bị",
+        "trading": "Đổi chác",
+        "tuHuong": "Tứ Hướng",
+        "songSong": "Song Song",
+        "chanMuon": "Chặn Muộn",
+        "boLoThang": "Bỏ Lỡ Thắng",
+        "doubleBlock": "Chặn Kép",
+        "sacrificeBlock": "Chặn Hi Sinh",
+        "preventiveBlock": "Chặn Phòng Ngừa"
+      },
+      "role": {
+        "attacker": "Tấn công",
+        "defender": "Phòng thủ",
+        "balanced": "Cân bằng"
+      },
+      "timeline": {
+        "significant": "Thời điểm quan trọng",
+        "critical": "Bước ngoặt quyết định",
+        "evalChange": "Thay đổi đánh giá",
+        "beforeMove": "Trước nước đi",
+        "afterMove": "Sau nước đi"
+      },
+      "alternative": {
+        "title": "Nước đi thay thế",
+        "best": "Tốt nhất",
+        "reason": "Lý do",
+        "similarOptions": "Nhiều lựa chọn tương đương"
+      },
+      "score": {
+        "label": "Điểm",
+        "outOf": "trên 10"
+      },
+      "error": {
+        "invalidBoard": "Trạng thái bàn cờ không hợp lệ",
+        "invalidNotation": "Ký hiệu không hợp lệ. Sử dụng định dạng A1-O15.",
+        "insufficientMoves": "Không đủ nước đi để phân tích (cần ít nhất 5 nước)",
+        "timeout": "Phân tích quá thời gian cho phép",
+        "network": "Lỗi kết nối đến server phân tích",
+        "rateLimit": "Bạn đã hết lượt phân tích hôm nay",
+        "auth": "Cần nâng cấp gói để sử dụng tính năng này",
+        "patternDetection": "Lỗi phát hiện pattern",
+        "retry": "Thử lại",
+        "upgrade": "Nâng cấp gói",
+        "errorCode": "Mã lỗi"
+      },
+      "progress": {
+        "loading": "Đang tải dữ liệu...",
+        "analyzing": "Đang phân tích pattern...",
+        "evaluating": "Đang đánh giá nước đi...",
+        "finishing": "Đang hoàn tất..."
+      },
+      "language": {
+        "title": "Ngôn ngữ bình luận",
+        "vi": "Tiếng Việt",
+        "en": "English",
+        "zh": "中文",
+        "ja": "日本語"
+      }
+    },
+    "replay": {
+      "aiMode": "Chế độ AI",
+      "whatIfMode": "🧪 Thử nghiệm",
+      "replayMode": "📺 Xem lại",
+      "enterWhatIf": "Thử đi nước khác",
+      "exitWhatIf": "Quay lại xem",
+      "loading": "Đang tải...",
+      "difficulty": "Độ khó AI",
+      "difficultyEasy": "😊 Dễ",
+      "difficultyMedium": "🤔 TB",
+      "difficultyHard": "😈 Khó",
+      "undo": "Hoàn tác",
+      "aiThinking": "AI đang suy nghĩ...",
+      "instructions": "Nhấn \"Thử đi nước khác\" để vào chế độ thử nghiệm. Bạn có thể đi nước khác và xem AI phản hồi.",
+      "comparison": "So sánh",
+      "original": "Gốc",
+      "current": "Hiện tại",
+      "divergenceAt": "Rẽ nhánh tại nước",
+      "analysis": "Phân tích",
+      "analyzing": "Đang phân tích...",
+      "analyzeDetail": "Phân tích chi tiết",
+      "originalBranch": "Nhánh gốc",
+      "alternativeBranch": "Nhánh thử",
+      "clickToPlay": "Click vào ô trống để đi nước"
+    },
+    "onlinePlayers": {
+      "title": "Đang online",
+      "searchPlaceholder": "Tìm người chơi...",
+      "allRanks": "Tất cả rank",
+      "friendsOnly": "Bạn bè",
+      "viewProfile": "Xem hồ sơ",
+      "challenge": "Thách đấu",
+      "message": "Nhắn tin",
+      "empty": "Chưa có ai online",
+      "noMatch": "Không tìm thấy người chơi phù hợp",
+      "error": "Lỗi kết nối"
+    },
+    "profile": {
+      "usernamePopupTitle": "Đặt tên In-Game",
+      "usernamePopupDesc": "Để bắt đầu hành trình, hãy chọn một username. Đây sẽ là danh tính của bạn trong game và để bạn bè tìm thấy bạn.",
+      "usernamePlaceholder": "Nhập danh xưng hành giả...",
+      "usernameRuleMin": "Ít nhất 3 ký tự",
+      "usernameRuleAllowed": "Ch? (c? d?u) v? s?; l?u handle kh?ng d?u 3-20 k? t? a-z, 0-9 ho?c _",
+      "usernameRuleUnique": "Duy nhất",
+      "usernameConfirm": "Xác nhận",
+      "usernameErrorEmpty": "Vui lòng nhập username",
+      "usernameErrorShort": "Username phải có ít nhất 3 ký tự",
+      "usernameErrorLong": "Username không được quá 20 ký tự",
+      "usernameErrorInvalid": "Handle kh?ng d?u ph?i 3-20 k? t? a-z, 0-9 ho?c _ (t?n hi?n th? c? th? c? d?u).",
+      "usernameErrorTaken": "Username đã được sử dụng",
+      "usernameErrorSave": "Không thể lưu username. Vui lòng thử lại.",
+      "usernameUpdateSuccess": "Đã cập nhật username thành công!",
+      "usernameProcessing": "Đang xử lý...",
+      "levelLabel": "Level",
+      "expText": "EXP",
+      "rankLabel": "Rank",
+      "titleLabel": "Danh hiệu",
+      "titleValue": "Vô Danh Thành Vũ",
+      "emailLabel": "Email",
+      "phoneLabel": "Số điện thoại",
+      "stats": {
+        "winRate": "Tỷ lệ thắng",
+        "total": "Tổng trận",
+        "streak": "Chuỗi thắng",
+        "elo": "Elo"
+      },
+      "avatarLabel": "Đổi avatar",
+      "avatarChoose": "Chọn ảnh",
+      "avatarUploading": "Đang tải...",
+      "avatarErrorType": "Vui lòng chọn file ảnh hợp lệ",
+      "avatarErrorSize": "Ảnh không được vượt quá 5MB",
+      "avatarSuccess": "Đã cập nhật avatar thành công!",
+      "avatarErrorGeneric": "Lỗi khi upload avatar",
+      "avatarErrorRead": "Lỗi khi đọc file ảnh",
+      "avatarErrorBucket": "Bucket lưu avatar chưa tồn tại. Vui lòng tạo bucket hoặc cấu hình VITE_SUPABASE_AVATAR_BUCKET.",
+      "emailChange": "Thay đổi email",
+      "emailPlaceholder": "Email mới",
+      "emailInfo": "Bạn sẽ nhận email xác nhận tại địa chỉ mới. Vui lòng xác nhận để hoàn tất thay đổi.",
+      "emailSending": "Đang gửi...",
+      "emailSend": "Gửi xác nhận",
+      "emailCancel": "Hủy",
+      "emailSuccess": "Đã gửi email xác nhận. Vui lòng kiểm tra hộp thư và xác nhận.",
+      "emailErrorInvalid": "Email không hợp lệ",
+      "emailErrorSame": "Email mới giống email hiện tại",
+      "phoneChange": "Cập nhật số điện thoại",
+      "phonePlaceholder": "Số điện thoại mới",
+      "phoneInfo": "Nếu Supabase yêu cầu, vui lòng xác minh mã gửi tới số mới để hoàn tất.",
+      "phoneUpdating": "Đang cập nhật...",
+      "phoneUpdate": "Cập nhật",
+      "phoneCancel": "Hủy",
+      "phoneSuccess": "Đã cập nhật số điện thoại. Vui lòng xác minh nếu được yêu cầu.",
+      "phoneErrorInvalid": "Số điện thoại không hợp lệ",
+      "phoneErrorMissing": "Vui lòng nhập số điện thoại",
+      "passwordChange": "Thay đổi mật khẩu",
+      "passwordCurrent": "Mật khẩu hiện tại",
+      "passwordNew": "Mật khẩu mới",
+      "passwordConfirm": "Xác nhận mật khẩu mới",
+      "passwordInfo": "• Ít nhất 8 ký tự\n• Chứa chữ hoa, chữ thường và số",
+      "passwordSave": "Lưu",
+      "passwordCancel": "Hủy",
+      "passwordErrorMissing": "Vui lòng nhập đầy đủ thông tin",
+      "passwordErrorShort": "Mật khẩu mới phải có ít nhất 8 ký tự",
+      "passwordErrorMismatch": "Mật khẩu xác nhận không khớp",
+      "passwordErrorStrength": "Mật khẩu phải chứa chữ hoa, chữ thường và số",
+      "passwordErrorCurrent": "Mật khẩu hiện tại không đúng",
+      "passwordSuccess": "Đã thay đổi mật khẩu thành công!",
+      "logoutConfirm": "Bạn có chắc muốn đăng xuất?",
+      "logoutError": "Lỗi khi đăng xuất",
+      "historyTitle": "Lịch sử đấu",
+      "historyLoading": "Đang tải lịch sử...",
+      "historyEmpty": "Chưa có trận đấu nào",
+      "historyVs": "vs",
+      "historyWin": "Thắng",
+      "historyLose": "Thua",
+      "historyTimeJustNow": "Vừa xong",
+      "historyTimeMinutes": "{minutes} phút trước",
+      "historyTimeHours": "{hours} giờ trước",
+      "historyTimeDays": "{days} ngày trước",
+      "noUsername": "Chưa đặt tên",
+      "noPhone": "Chưa cập nhật",
+      "changeFrame": "Đổi khung avatar",
+      "selectFrame": "Chọn khung avatar",
+      "noFrames": "Bạn chưa có khung avatar nào. Hãy mua trong Shop!",
+      "goToShop": "Đến Shop",
+      "noFrameOption": "Không dùng khung",
+      "overview": "Tổng quan",
+      "settings": "Cài đặt",
+      "history": "Lịch sử",
+      "settingsTitle": "Cài đặt",
+      "username": "Tên người dùng",
+      "account": "Tài khoản",
+      "ui": "Giao diện",
+      "sound": "Âm thanh",
+      "board": "Bàn cờ",
+      "notifications": "Thông báo",
+      "language": "Ngôn ngữ",
+      "other": "Khác",
+      "restoreDefaults": "Khôi phục mặc định",
+      "theme": "Chủ đề",
+      "themeDark": "Tối",
+      "themeLight": "Sáng",
+      "uiEffects": "Hiệu ứng giao diện",
+      "effectsQuality": "Chất lượng hiệu ứng",
+      "effectsLow": "Thấp",
+      "effectsMedium": "Trung bình",
+      "effectsHigh": "Cao",
+      "uiStyle": "Phong cách",
+      "fontSize": "Cỡ chữ",
+      "fontSmall": "Nhỏ",
+      "fontMedium": "Vừa",
+      "fontLarge": "Lớn",
+      "soundTitle": "Âm thanh",
+      "bgMusic": "Nhạc nền",
+      "backgroundMusic": "Chọn nhạc nền",
+      "defaultMusic": "Nhạc mặc định",
+      "noMusicOwned": "Bạn chưa có nhạc nào. Hãy mua trong Shop!",
+      "visitShop": "Đến Shop",
+      "sfxEffects": "Hiệu ứng âm",
+      "moveSound": "Âm đặt quân",
+      "boardTitle": "Bàn cờ & Nước đi",
+      "highlightLastMove": "Highlight nước vừa đánh",
+      "pieceDropEffect": "Hiệu ứng rơi quân",
+      "vibration": "Rung phản hồi",
+      "notifTitle": "Thông báo",
+      "notifBrowserTitle": "Quyền thông báo trình duyệt",
+      "notifGranted": "Đã cấp quyền. Bạn sẽ nhận thông báo từ game.",
+      "notifDenied": "Đã từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt.",
+      "notifDefault": "Cho phép thông báo để nhận lời mời đấu, tin nhắn và cập nhật game.",
+      "notifAllow": "Cho phép thông báo",
+      "notifTest": "Thử thông báo",
+      "notifTestSuccess": "Thành công!",
+      "notifTestSuccessMsg": "Bạn sẽ nhận được thông báo từ game",
+      "notifTestTitle": "Thử nghiệm",
+      "notifTestMsg": "Đây là thông báo thử nghiệm từ MindPoint Arena!",
+      "notifSystem": "Thông báo hệ thống",
+      "notifInvite": "Thông báo lời mời đấu",
+      "notifChat": "Tin nhắn trong game",
+      "notifTurn": "Âm báo khi vào lượt",
+      "otherTitle": "Khác",
+      "quickSettings": "Cài đặt nhanh",
+      "sfx": "Hiệu ứng âm thanh",
+      "vibrationEnabled": "Bật rung",
+      "allSettings": "Tất cả cài đặt",
+      "aboutGame": "Giới thiệu game",
+      "termsOfService": "Điều khoản sử dụng",
+      "privacyPolicy": "Chính sách bảo mật",
+      "version": "Phiên bản",
+      "linkAccounts": "Liên kết tài khoản",
+      "facebookLinked": "Facebook (Đã liên kết)",
+      "linkFacebook": "Liên kết Facebook",
+      "emailDefault": "Email (Mặc định)",
+      "logout": "Đăng xuất",
+      "opponent": "Đối thủ"
+    },
+    "report": {
+      "button": "Báo cáo",
+      "buttonTitle": "Báo cáo vi phạm",
+      "modalTitle": "Báo cáo vi phạm",
+      "modalSubtitle": "Giúp chúng tôi giữ game công bằng",
+      "typeLabel": "Loại vi phạm",
+      "typeCheat": "Gian lận trong trận",
+      "typeToxic": "Hành vi toxic",
+      "typeBug": "Lỗi/Bug",
+      "typeOther": "Khác",
+      "descriptionLabel": "Mô tả chi tiết",
+      "descriptionPlaceholder": "Mô tả thêm về vi phạm bạn gặp phải...",
+      "optional": "không bắt buộc",
+      "matchAttached": "Trận đấu sẽ được đính kèm tự động",
+      "submit": "Gửi báo cáo",
+      "submitting": "Đang gửi...",
+      "successMessage": "Đã gửi report, hệ thống sẽ kiểm tra",
+      "errorDescriptionTooLong": "Mô tả không được vượt quá 1000 ký tự",
+      "errorNotLoggedIn": "Bạn cần đăng nhập để gửi báo cáo",
+      "errorGeneric": "Có lỗi xảy ra khi gửi báo cáo"
+    },
+    "ban": {
+      "title": "Tài khoản bị khóa",
+      "typeTemporary": "Tạm khóa",
+      "typePermanent": "Khóa vĩnh viễn",
+      "typeWarning": "Cảnh cáo",
+      "reasonLabel": "Lý do",
+      "noReason": "Không có thông tin chi tiết",
+      "expiresLabel": "Hết hạn vào",
+      "permanentLabel": "Thời hạn",
+      "permanent": "Vĩnh viễn",
+      "appealInfo": "Nếu bạn cho rằng đây là sai sót, bạn có thể gửi khiếu nại để được xem xét lại.",
+      "appealButton": "Khiếu nại"
+    },
+    "appeal": {
+      "reasonLabel": "Lý do khiếu nại",
+      "reasonPlaceholder": "Giải thích tại sao bạn cho rằng quyết định này không chính xác...",
+      "submit": "Gửi khiếu nại",
+      "submitted": "Khiếu nại đã được gửi",
+      "submittedInfo": "Admin sẽ xem xét và phản hồi trong thời gian sớm nhất.",
+      "errorReasonRequired": "Vui lòng nhập lý do khiếu nại",
+      "errorNoReport": "Không tìm thấy báo cáo liên quan",
+      "errorNotLoggedIn": "Bạn cần đăng nhập để gửi khiếu nại",
+      "errorGeneric": "Có lỗi xảy ra khi gửi khiếu nại"
+    },
+    "onboarding": {
+      "general": {
+        "clickInstruction": "👆 Click vào phần được highlight để tiếp tục",
+        "back": "← Quay lại",
+        "next": "Tiếp theo",
+        "finish": "Hoàn thành",
+        "skip": "Bỏ qua hướng dẫn"
+      },
+      "welcome": {
+        "title": "Chào mừng đến MindPoint Arena!",
+        "description": "Nơi hội tụ những cao thủ cờ caro. Hãy để chúng tôi hướng dẫn bạn khám phá thế giới kỳ thủ này!",
+        "next": "Bắt đầu hành trình"
+      },
+      "profileIntro": {
+        "title": "Hồ sơ cá nhân",
+        "description": "Đây là avatar và tên của bạn. Nhấn để mở trang hồ sơ."
+      },
+      "profileOverview": {
+        "title": "Trang Profile",
+        "description": "Hãy xem qua trang hồ sơ của bạn! Bạn có thể xem thống kê, thành tích và tùy chỉnh thông tin cá nhân.",
+        "next": "Tiếp tục"
+      },
+      "profileChoice": {
+        "title": "Tùy chỉnh Profile",
+        "description": "Bạn muốn thiết lập chi tiết hồ sơ ngay bây giờ?",
+        "options": {
+          "detail": "Hướng dẫn chi tiết",
+          "skip": "Bỏ qua, tiếp tục"
+        }
+      },
+      "menuOverview": {
+        "title": "Menu chính",
+        "description": "Các mục quan trọng:\n• 🏯 Tiêu Bảo Các - Mua vật phẩm\n• 🎒 Bộ Sưu Tập - Xem & trang bị\n• ✨ Nhiệm Vụ - Hoàn thành quest\n• 🎉 Sự Kiện - Phần thưởng đặc biệt\n• ⚡ Khai Nhãn - Xem bảng xếp hạng\n• 📚 Bí Tịch - Hướng dẫn chơi\n• 🧙 Cao Nhân - Phân tích AI"
+      },
+      "currency": {
+        "title": "Tiền tệ trong game",
+        "description": "• 💎 Tinh Thạch (Coins) - Mua vật phẩm cơ bản\n• 🔮 Nguyên Thần (Gems) - Vật phẩm cao cấp\n\nHoàn thành nhiệm vụ để nhận thưởng!"
+      },
+      "reward": {
+        "title": "Quà chào mừng!",
+        "description": "Chúc mừng! Bạn nhận được 1000 Tinh Thạch để bắt đầu hành trình.",
+        "next": "Nhận thưởng"
+      },
+      "questsIntro": {
+        "title": "Nhiệm vụ đầu tiên",
+        "description": "Hãy vào mục Nhiệm vụ để hoàn thành quest đầu tiên: Mua bàn cờ và quân cờ!"
+      },
+      "questsOverview": {
+        "title": "Nhiệm vụ",
+        "description": "Đây là trang Nhiệm vụ. Bạn có thể xem các nhiệm vụ hàng ngày, sự kiện và nhận thưởng từ việc hoàn thành chúng.",
+        "next": "Tiếp tục",
+        "skip": "Bỏ qua"
+      },
+      "claimFirstQuest": {
+        "title": "Nhiệm vụ đầu tiên",
+        "description": "Đây là nhiệm vụ đầu tiên của bạn! Hoàn thành để nhận thưởng Tinh Thạch và Nguyên Thần."
+      },
+      "shopIntro": {
+        "title": "Tiêu Bảo Các",
+        "description": "Nhấn vào đây để vào cửa hàng và nhận vật phẩm miễn phí đầu tiên!"
+      },
+      "shopFreeChess": {
+        "title": "Nhận quân cờ miễn phí",
+        "description": "Đây là bộ \"Quân Cờ Gỗ Cổ Điển\" miễn phí! Nhấn \"Mua\" để nhận ngay."
+      },
+      "shopFreeBoard": {
+        "title": "Nhận bàn cờ miễn phí",
+        "description": "Bàn cờ cổ điển cũng miễn phí! Nhấn \"Mua\" để hoàn thành bộ sưu tập."
+      },
+      "shopConfirm": {
+        "title": "Xác nhận nhận vật phẩm",
+        "description": "Nhấn \"Xác nhận\" để hoàn tất việc nhận vật phẩm miễn phí!"
+      },
+      "shopSuccess": {
+        "title": "Nhận thành công!",
+        "description": "Tuyệt vời! Nhấn \"OK\" để tiếp tục."
+      },
+      "shopAndInventory": {
+        "title": "Mua vật phẩm tại Shop",
+        "description": "Bây giờ hãy đến Shop để mua bàn cờ và quân cờ. Bạn cũng có thể xem Inventory để quản lý vật phẩm của mình."
+      },
+      "finalChoice": {
+        "title": "Tiếp theo bạn muốn khám phá?",
+        "description": "Chọn hướng đi phù hợp với bạn:",
+        "options": {
+          "battle": "Đấu trận & Ghép cặp",
+          "ai": "AI & Tính năng Pro"
+        }
+      },
+      "goToSettings": {
+        "title": "Cài đặt Profile",
+        "description": "Click vào \"Cài đặt\" để tùy chỉnh hồ sơ của bạn."
+      },
+      "settingsOverview": {
+        "title": "Khu vực Cài đặt",
+        "description": "Hãy xem qua mục Tiện Phí/Cài đặt! Đây là nơi bạn thay đổi avatar và khám phá các tab tiện ích.",
+        "next": "Tiếp tục",
+        "skip": "Bỏ qua hướng dẫn"
+      },
+      "avatarUpload": {
+        "title": "Thêm ảnh đại diện",
+        "description": "Click \"Chọn ảnh\" để đổi avatar. Ảnh mới sẽ xuất hiện khắp MindPoint Arena.",
+        "next": "Đã hiểu"
+      },
+      "soundTab": {
+        "title": "Mở tab Âm thanh",
+        "description": "Chọn mục Âm thanh trong Tiện Phí để điều chỉnh âm thanh."
+      },
+      "soundSettings": {
+        "title": "Âm thanh",
+        "description": "Tùy chỉnh nhạc nền, hiệu ứng và âm thanh đặt quân theo ý thích."
+      },
+      "notificationsTab": {
+        "title": "Vào mục Thông báo",
+        "description": "Chọn tab Thông báo để quản lý lời mời đấu và tin nhắn."
+      },
+      "notificationSettings": {
+        "title": "Thông báo",
+        "description": "Bật/tắt lời mời đấu, thông báo chat và nhắc nhở lượt đi."
+      },
+      "uiTab": {
+        "title": "Mục Giao diện",
+        "description": "Click tab Giao diện để đổi theme, hiệu ứng và bố cục."
+      },
+      "uiSettings": {
+        "title": "Giao diện",
+        "description": "Giống như trang Profile, bạn có thể chọn theme, hiệu ứng và cỡ chữ tại đây."
+      },
+      "languageTab": {
+        "title": "Đến tab Ngôn ngữ",
+        "description": "Mở tab Ngôn ngữ để chọn Vietnamese hoặc English."
+      },
+      "languageSettings": {
+        "title": "Ngôn ngữ",
+        "description": "Chọn ngôn ngữ yêu thích, toàn bộ giao diện sẽ cập nhật ngay."
+      },
+      "matchHistoryTab": {
+        "title": "Tới Lịch sử đấu",
+        "description": "Click vào mục Lịch sử đấu để xem lại các trận đã chơi."
+      },
+      "matchHistory": {
+        "title": "Trang Lịch sử đấu",
+        "description": "Hãy xem lại kết quả thắng/thua, điểm ELO và mọi chi tiết trận đấu."
+      },
+      "quickMatch": {
+        "title": "Ghép trận nhanh",
+        "description": "Click \"Ghép trận\" để tìm đối thủ ngẫu nhiên và bắt đầu đấu xếp hạng!"
+      },
+      "gameModes": {
+        "title": "Các chế độ chơi",
+        "description": "• Xếp hạng (Rank) - Thi đấu leo rank Bo3\n• Dị Biến Kỳ - Biến thể luật chơi: custom, skill, map, hide\n• Thí Luyện - Đấu với AI qua 5 cấp độ\n• Giải Đấu - Tạo giải và thi đấu cùng cộng đồng"
+      },
+      "socialCard": {
+        "title": "Cao nhân & Cộng đồng",
+        "description": "Kết nối với cao thủ, xem bảng xếp hạng và học hỏi cộng đồng."
+      },
+      "aiAnalysis": {
+        "title": "Phân tích AI",
+        "description": "AI phân tích trận đấu, chỉ ra sai lầm và gợi ý nước đi tối ưu."
+      },
+      "trainingMode": {
+        "title": "Chế độ Thử luyện",
+        "description": "Luyện tập với AI ở nhiều cấp độ để nâng cao kỹ năng."
+      },
+      "askAboutAi": {
+        "title": "Tìm hiểu về AI?",
+        "description": "Bạn có muốn khám phá các tính năng AI phân tích và huấn luyện không?",
+        "options": {
+          "yes": "Có, tìm hiểu AI",
+          "no": "Không, hoàn thành"
+        }
+      },
+      "askAboutBattle": {
+        "title": "Tìm hiểu về Trận đấu?",
+        "description": "Bạn có muốn khám phá các chế độ đấu trận và xếp hạng không?",
+        "options": {
+          "yes": "Có, tìm hiểu",
+          "no": "Không, hoàn thành"
+        }
+      },
+      "complete": {
+        "title": "Hoàn thành!",
+        "description": "Bạn đã sẵn sàng chinh phục MindPoint Arena. Chúc bạn có những trận đấu tuyệt vời!",
+        "next": "Bắt đầu chơi"
+      }
+    },
+    "swap2": {
+      "placementPhase": "Đặt quân mở đầu",
+      "placementDesc": "Đặt 3 quân đầu tiên (2 đen + 1 trắng)",
+      "choicePhase": "Chọn màu",
+      "choiceDesc": "Chọn màu hoặc đặt thêm quân",
+      "extraPhase": "Đặt thêm quân",
+      "extraDesc": "Đặt thêm 2 quân (1 đen + 1 trắng)",
+      "finalChoicePhase": "Chọn màu cuối",
+      "finalChoiceDesc": "Chọn màu để bắt đầu",
+      "complete": "Hoàn tất",
+      "completeDesc": "Bắt đầu trận đấu",
+      "activePlayer": "Lượt của",
+      "yourTurn": "Lượt của bạn",
+      "stoneCount": "Số quân đã đặt",
+      "chooseBlack": "Chọn Đen",
+      "chooseBlackDesc": "Bạn sẽ đi tiếp với quân Đen",
+      "chooseWhite": "Chọn Trắng",
+      "chooseWhiteDesc": "Bạn sẽ đi tiếp với quân Trắng",
+      "placeMore": "Đặt thêm 2 quân",
+      "placeMoreDesc": "Đặt thêm 2 quân, đối thủ sẽ chọn màu",
+      "makeYourChoice": "Chọn lựa của bạn",
+      "finalChoice": "Lựa chọn cuối cùng",
+      "choiceInstructions": "Xem xét vị trí các quân và đưa ra quyết định",
+      "finalChoiceInstructions": "Chọn màu bạn muốn chơi",
+      "timeRemaining": "Thời gian còn",
+      "currentStones": "Quân đã đặt",
+      "confirmChoice": "Xác nhận lựa chọn",
+      "openingComplete": "Hoàn tất mở đầu",
+      "gameStartingSoon": "Trận đấu sắp bắt đầu",
+      "you": "Bạn",
+      "black": "Đen",
+      "white": "Trắng",
+      "movesFirst": "Đi trước",
+      "blackMovesFirst": "Quân Đen đi trước",
+      "startGame": "Bắt đầu trận đấu"
+    },
+    "variant": {
+      "setup": {
+        "title": "Cài đặt Dị Biến Kỳ",
+        "variantLabel": "Chế độ biến thể",
+        "boardSize": "Kích thước bàn: {{size}}x{{size}}",
+        "winLength": "Số quân thắng: {{count}}",
+        "opponentLabel": "Đối thủ",
+        "opponentLocal": "2 Người (Hotseat)",
+        "opponentOnline": "Online",
+        "opponentBot": "Máy (AI)",
+        "swap2Desc": "Luật mở đầu công bằng cho cả hai bên",
+        "onlineNotice": "Chế độ Online",
+        "onlineDesc": "Tạo phòng và chia sẻ mã cho bạn bè tham gia",
+        "timePerMove": "Thời gian mỗi nước",
+        "timeNone": "Không giới hạn",
+        "botDifficulty": "Độ khó AI",
+        "difficulty": {
+          "beginner": "Nhập Môn",
+          "talent": "Kỳ Tài",
+          "rebel": "Nghịch Thiên",
+          "celestial": "Thiên Tôn",
+          "void": "Hư Vô"
+        },
+        "back": "Quay lại",
+        "start": "Bắt đầu",
+        "opponentMatchmaking": "Ghép trận",
+        "matchmakingNotice": "Ghép trận Online",
+        "matchmakingDesc": "Tìm đối thủ ngẫu nhiên với cài đặt tiêu chuẩn (không chỉnh được)",
+        "standardBoard": "Bàn cờ",
+        "standardWin": "Thắng",
+        "standardTime": "Thời gian",
+        "swap2On": "BẬT",
+        "deckLabel": "Chọn Bộ Bài (Deck)",
+        "cards": "lá",
+        "selectDeck": "Chọn 15 lá",
+        "noDeckSelected": "Chưa chọn deck - sẽ random từ tất cả skill",
+        "selectDeckFor": "Chọn Deck cho",
+        "deckDesc": "Chọn 15 lá skill để tạo bộ bài. Mỗi lượt sẽ random 3 lá từ bộ bài này.",
+        "selectedCards": "Đã chọn",
+        "noCardsSelected": "Chưa chọn lá nào",
+        "randomDeck": "Random 15 lá",
+        "clearDeck": "Xóa hết",
+        "balancedDeck": "Deck cân bằng",
+        "confirmDeck": "Xác nhận",
+        "myDeck": "Deck của bạn"
+      },
+      "online": {
+        "needLogin": "Vui lòng đăng nhập để chơi online",
+        "waiting": "Đang chờ đối thủ...",
+        "shareCode": "Chia sẻ mã phòng cho bạn bè:",
+        "opponentDisconnected": "Đối thủ đã ngắt kết nối",
+        "connectionError": "Lỗi kết nối server"
+      },
+      "matchmaking": {
+        "searching": "Đang tìm trận...",
+        "findingOpponent": "Đang tìm đối thủ phù hợp cho bạn",
+        "queuePosition": "Vị trí hàng đợi: {{position}}"
+      },
+      "type": {
+        "custom": {
+          "name": "Tùy chỉnh",
+          "desc": "Tùy chỉnh kích thước bàn và số quân thắng"
+        },
+        "hidden": {
+          "name": "Caro Ẩn",
+          "desc": "Quân cờ sẽ ẩn đi sau vài nước"
+        },
+        "skill": {
+          "name": "Caro Skill",
+          "desc": "Sử dụng kỹ năng đặc biệt trong trận"
+        },
+        "terrain": {
+          "name": "Địa hình",
+          "desc": "Bàn cờ có các ô đặc biệt"
+        }
+      },
+      "game": {
+        "playerX": "Người chơi X",
+        "playerO": "Người chơi O",
+        "bot": "Bot",
+        "yourTurn": "Lượt của bạn",
+        "thinking": "Đang suy nghĩ...",
+        "skills": "Kỹ năng",
+        "cooldown": "Hồi chiêu",
+        "swapFirst": "Chọn quân đầu tiên để đổi",
+        "swapSecond": "Chọn quân thứ hai để đổi",
+        "blockCell": "Chọn ô để chặn",
+        "extraTurn": "Lượt thêm!",
+        "info": "Thông tin",
+        "board": "Bàn cờ",
+        "win": "Thắng",
+        "turn": "Lượt",
+        "mode": "Chế độ",
+        "settings": "Cài đặt",
+        "newGame": "Ván mới"
+      },
+      "skill": {
+        "swap": {
+          "name": "Đổi vị trí",
+          "desc": "Đổi vị trí 2 quân bất kỳ"
+        },
+        "block": {
+          "name": "Chặn ô",
+          "desc": "Chặn 1 ô trống"
+        },
+        "reveal": {
+          "name": "Hé lộ",
+          "desc": "Hiện tất cả quân ẩn trong 2 lượt"
+        },
+        "undo": {
+          "name": "Hoàn tác",
+          "desc": "Xóa nước đi cuối của đối thủ"
+        },
+        "double": {
+          "name": "Đi đôi",
+          "desc": "Được đi thêm 1 nước"
+        }
+      },
+      "terrain": {
+        "skill": "Nhận kỹ năng ngẫu nhiên",
+        "double": "Được đi thêm lượt",
+        "block": "Ô bị chặn",
+        "teleport": "Dịch chuyển quân đến ô ngẫu nhiên",
+        "freeze": "Đóng băng - đối thủ mất lượt",
+        "bomb": "Bom - xóa quân xung quanh",
+        "shield": "Khiên - bảo vệ quân cờ",
+        "mystery": "Hộp bí ẩn - hiệu ứng ngẫu nhiên",
+        "score": "Kim cương - +1 điểm bonus",
+        "hiddenHint": "Ô này có sự kiện ẩn!",
+        "revealed": "Đã kích hoạt!"
+      },
+      "terrainNotify": {
+        "bomb": "💣 BOM! Xóa quân xung quanh!",
+        "freeze": "❄️ Đóng băng! Đối thủ mất lượt!",
+        "teleport": "🌀 Dịch chuyển!",
+        "shield": "🛡️ Quân được bảo vệ!",
+        "skill": "❓ Nhận skill ngẫu nhiên!",
+        "double": "⭐ Được đi thêm 1 lượt!",
+        "frozen": "bị đóng băng!"
+      },
+      "end": {
+        "draw": "Hòa!",
+        "win": "Thắng!",
+        "drawDesc": "Bàn cờ đã đầy",
+        "movesCount": "Tổng số nước: {{count}}",
+        "changeSettings": "Đổi cài đặt",
+        "playAgain": "Chơi lại"
+      }
+    },
+    "room": {
+      "matchTitle": "Trận Đấu",
+      "back": "Quay lại",
+      "leaveMatch": "Rời trận",
+      "moveHistory": "Lịch sử nước đi",
+      "requestDraw": "Xin hòa",
+      "surrender": "Đầu hàng",
+      "confirmSurrender": "Bạn có chắc muốn đầu hàng?",
+      "confirmDraw": "Bạn có muốn xin hòa?",
+      "drawSent": "Đã gửi yêu cầu hòa",
+      "you": "Bạn",
+      "opponent": "Đối thủ",
+      "rankUnknown": "Vô Danh",
+      "youWin": "Bạn Thắng!",
+      "youLose": "Bạn Thua!",
+      "playerWonGame": "Người chơi {player} thắng ván này",
+      "currentScore": "Tỷ số hiện tại",
+      "matchWin": "Thắng Trận!",
+      "matchLose": "Thua Trận!",
+      "winner": "Người thắng",
+      "score": "Tỷ số",
+      "backHome": "Về Trang Chủ",
+      "playAgain": "Chơi Lại",
+      "analyzeGame": "Phân Tích Trận Đấu"
+    },
+    "homeChat": {
+      "title": "Truyền Âm & Cao nhân",
+      "subtitle": "Tin nhắn tạm thời",
+      "close": "Đóng",
+      "tabWorld": "Thế giới",
+      "tabFriend": "Bạn bè",
+      "tabAi": "Cao nhân AI",
+      "online": "Online",
+      "offline": "Offline",
+      "connecting": "Đang kết nối...",
+      "cooldown": "Cooldown 30s",
+      "cooldownRemaining": "Còn {seconds}s",
+      "loginToSend": "Đăng nhập để gửi tin thật.",
+      "chatOffline": "Chat offline, tin nhắn chỉ lưu tại chỗ.",
+      "connectingRealtime": "Đang kết nối realtime...",
+      "chatOfflineRetry": "Chat offline, thử refresh hoặc đăng nhập lại.",
+      "noMessages": "Chưa có tin nhắn. Hãy gửi lời chào đầu tiên.",
+      "you": "Bạn",
+      "anonymous": "Ẩn danh",
+      "local": "local",
+      "worldPlaceholder": "Chat Thế Giới - 30s/lần",
+      "worldPlaceholderLogin": "Đăng nhập để chat Thế Giới",
+      "refresh": "Làm mới",
+      "send": "Gửi",
+      "demoMode": "Chế độ demo: tin nhắn chỉ lưu tại chỗ. Đăng nhập và bật server chat để gửi thật.",
+      "searchFriend": "Tìm bạn để trò chuyện",
+      "noFriendsFound": "Không tìm thấy bạn bè phù hợp",
+      "noFriendMessages": "Chưa có tin nhắn. Chọn đạo hữu để bắt đầu.",
+      "friendPlaceholderLogin": "Đăng nhập để chat đạo hữu",
+      "friendPlaceholderSelect": "Chọn đạo hữu để bắt đầu",
+      "friendPlaceholder": "Nhắn riêng tới đạo hữu đã chọn",
+      "aiModelFree": "Free",
+      "aiModelTrial": "Trial",
+      "aiModelPro": "Pro",
+      "aiNeedTrial": "Cần gói Trial hoặc Pro để sử dụng",
+      "aiNeedPro": "Cần gói Pro để sử dụng",
+      "aiHelper": "Free: Tra cứu từ dataset. Trial/Pro: AI thông minh hơn.",
+      "aiPlanFree": "Gói hiện tại: Free. Nâng cấp để dùng Trial/Pro.",
+      "aiPlanTrial": "Gói hiện tại: Trial.",
+      "aiPlanPro": "Gói hiện tại: Pro.",
+      "aiLoadingDataset": "Đang tải dataset...",
+      "aiDatasetError": "Dataset lỗi, hãy dùng Trial/Pro.",
+      "aiLoadingHint": "Đang tải dữ liệu... Bạn có thể chuyển sang Trial/Pro để dùng ngay.",
+      "aiDatasetErrorHint": "Không tải được dataset. Hãy chọn Trial hoặc Pro.",
+      "aiNoMessages": "Bắt đầu hỏi Cao nhân về Caro.",
+      "aiPlaceholder": "Nhập câu hỏi Caro cho AI",
+      "aiAsking": "Đang trả lời...",
+      "aiAsk": "Hỏi"
+    },
+    "currencyShop": {
+      "title": "Cửa Hàng",
+      "subtitle": "Nạp tiền tệ hoặc đăng ký gói Pro để mở khóa tính năng AI nâng cao.",
+      "back": "Quay lại",
+      "tabCurrency": "Nạp Tiền Tệ",
+      "tabSubscription": "Gói Pro",
+      "needLogin": "Bạn cần đăng nhập trước khi nạp tiền.",
+      "loading": "Đang tải...",
+      "processing": "Đang xử lý...",
+      "paymentCreated": "Tạo liên kết thanh toán thành công, đang chuyển hướng...",
+      "paymentFailed": "Thanh toán thất bại",
+      "paymentError": "Lỗi khi tạo liên kết thanh toán",
+      "testFailed": "Test thất bại",
+      "testError": "Lỗi khi test mua",
+      "testSuccess": "Thành công! Đã nhận {amount} {currency}",
+      "subscriptionSuccess": "OK. Thanh toán {plan} thành công! Subscription đã được cập nhật.",
+      "subscriptionError": "Lỗi khi mô phỏng thanh toán",
+      "txnRef": "Mã giao dịch",
+      "linkOpened": "liên kết đã mở trong tab mới",
+      "hot": "HOT",
+      "bonus": "bonus",
+      "popular": "Phổ biến",
+      "upgradeTitle": "Nâng cấp để mở khóa",
+      "upgradeDesc": "Phân tích AI nâng cao, chat thông minh và nhiều tính năng Pro khác. Thanh toán qua VNPay.",
+      "plan": {
+        "trial": "Trial 7 ngày",
+        "trialDesc": "Kích hoạt thử 7 ngày",
+        "trialQuota": "4 phân tích + 10 chat/ngày",
+        "pro": "Pro 30 ngày",
+        "proDesc": "Đầy đủ tính năng",
+        "proQuota": "20 phân tích + 100 chat/ngày",
+        "proPlus": "Pro+ 90 ngày",
+        "proPlusDesc": "Quyền cao nhất",
+        "proPlusQuota": "100 phân tích + 500 chat/ngày"
+      }
+    },
+    "title": {
+      "pageTitle": "Danh Hiệu",
+      "yourProgress": "Tiến Độ Của Bạn",
+      "titlesUnlocked": "Danh hiệu đã mở",
+      "totalPoints": "Tổng điểm thành tích",
+      "byRarity": "Theo độ hiếm",
+      "currentTitle": "Danh hiệu đang dùng",
+      "filter": "Bộ lọc",
+      "category": "Danh mục",
+      "rarity": "Độ hiếm",
+      "points": "điểm",
+      "equipped": "Đang dùng",
+      "equip": "Trang bị",
+      "unequip": "Bỏ trang bị",
+      "locked": "Chưa mở khóa",
+      "unlockedAt": "Mở khóa ngày",
+      "noTitlesFound": "Không tìm thấy danh hiệu nào"
+    },
+    "ranked": {
+      "disconnect": {
+        "title": "Đối thủ đã thoát",
+        "waiting": "Bạn sẽ thắng nếu đối thủ không quay lại",
+        "autoWinIn": "Tự động thắng sau {{seconds}} giây",
+        "opponentReconnected": "Đối thủ đã quay lại. Trận đấu tiếp tục."
+      },
+      "autoWin": {
+        "title": "Chiến thắng!",
+        "opponentLeft": "Đối thủ đã thoát trận",
+        "forfeitReward": "Phần thưởng do đối thủ bỏ cuộc",
+        "finalScore": "Tỉ số",
+        "seriesWon": "Bạn đã thắng series!"
+      }
     }
   },
   "en": {
@@ -525,7 +1668,12 @@
       "preview": "Preview",
       "debug": "Debug",
       "clicked": "Clicked",
-      "ok": "OK"
+      "ok": "OK",
+      "clickToContinue": "Click to continue",
+      "seconds": "seconds",
+      "askCaoNhan": "Ask the Master about Caro...",
+      "reset": "Reset",
+      "apply": "Apply"
     },
     "breadcrumb": {
       "home": "Main Hall",
@@ -534,15 +1682,44 @@
       "quests": "Quests",
       "events": "Events",
       "guide": "Guide",
-      "leaderboard": "Leaderboard"
+      "leaderboard": "Leaderboard",
+      "profile": "Profile",
+      "titles": "Titles",
+      "room": "Room",
+      "createRoom": "Create Room",
+      "match": "Match",
+      "settings": "Settings",
+      "training": "AI Training",
+      "variant": "Variant Mode",
+      "admin": "Admin",
+      "notifications": "Notifications"
+    },
+    "nav": {
+      "sectionTreasure": "Treasure",
+      "sectionEvents": "Events & Quests",
+      "sectionTraining": "Training",
+      "sectionGameModes": "Game Modes",
+      "aiAnalysis": "AI Analysis",
+      "shop": "Shop",
+      "inventory": "Inventory",
+      "quests": "Quests",
+      "events": "Events",
+      "khaiNhan": "Leaderboard",
+      "guide": "Guide",
+      "aiTraining": "AI Training",
+      "variantMode": "Variant Mode",
+      "tournament": "Tournament",
+      "badgeHot": "HOT",
+      "badgeNew": "NEW",
+      "badgeRank": "RANK"
     },
     "shop": {
       "title": "Shop",
       "pageTitle": "Shop",
+      "filterTitle": "Filters",
       "categoryAll": "All",
       "categorySaleHot": "Sale & Hot",
       "categoryGiftsCurrency": "Coins & Gems",
-      "categoryPass": "Pass",
       "categoryPackage": "Package",
       "searchPlaceholder": "Search...",
       "filterType": "Type",
@@ -579,6 +1756,13 @@
       "usingSampleData": "Using sample data",
       "cannotLoadShopData": "Cannot load shop data from server",
       "detailsDev": "Details (dev):",
+      "noProducts": "No products",
+      "noProductsHint": "This category has no products yet. Try selecting another category.",
+      "skillPackages": "Skill Packages",
+      "skillPackagesDesc": "Open packs to get random skills for your deck",
+      "cards": "cards",
+      "openPack": "Open Pack",
+      "youReceived": "You received:",
       "debugClicked": "Clicked: {label}",
       "classicWoodPieces": "Classic Wood Pieces",
       "classicWoodPiecesDesc": "Traditional wooden pieces",
@@ -593,32 +1777,110 @@
       "spaceBoard": "Space Board",
       "spaceBoardDesc": "Outer space themed board",
       "item": {
-        "skin1": { "title": "Classic Wood Pieces", "desc": "Traditional wooden pieces" },
-        "skin2": { "title": "Jade Pieces", "desc": "Precious jade pieces" },
-        "skin3": { "title": "Gold Pieces", "desc": "Legendary gold pieces" },
-        "board1": { "title": "Classic Board", "desc": "Traditional wooden board" },
-        "board2": { "title": "Sakura Board", "desc": "Japanese cherry blossom board" },
-        "board3": { "title": "Space Board", "desc": "Outer space themed board" },
-        "board_bamboo": { "title": "Bamboo Board", "desc": "Elegant green bamboo board" },
-        "board_classic": { "title": "Classic Board", "desc": "Traditional wooden board" },
-        "board_marble": { "title": "Marble Board", "desc": "Premium marble board" },
-        "board_royal": { "title": "Royal Board", "desc": "Board fit for royalty" },
-        "board_sakura": { "title": "Sakura Board", "desc": "Board with cherry blossom motif" },
-        "board_space": { "title": "Space Board", "desc": "Mystic cosmos themed board" },
-        "frame_bronze": { "title": "Bronze Frame", "desc": "Bronze-colored avatar frame" },
-        "frame_diamond": { "title": "Diamond Frame", "desc": "Diamond avatar frame" },
-        "frame_gold": { "title": "Gold Frame", "desc": "Gold-colored avatar frame" },
-        "frame_silver": { "title": "Silver Frame", "desc": "Silver-colored avatar frame" },
-        "skin_bamboo_pieces": { "title": "Bamboo Pieces", "desc": "Refreshing bamboo pieces" },
-        "skin_classic_wood": { "title": "Classic Wood Pieces", "desc": "Traditional wooden pieces, free for everyone" },
-        "skin_crystal_pieces": { "title": "Crystal Pieces", "desc": "Shimmering transparent crystal pieces" },
-        "skin_fire_pieces": { "title": "Fire Pieces", "desc": "Pieces blazing with flames" },
-        "skin_gold_pieces": { "title": "Gold Pieces", "desc": "Golden pieces fit for kings" },
-        "skin_ice_pieces": { "title": "Ice Pieces", "desc": "Cold, chilling ice pieces" },
-        "skin_jade_pieces": { "title": "Jade Pieces", "desc": "Pieces made from precious jade" },
-        "title_legend": { "title": "Title: Legend", "desc": "Title reserved for legends" },
-        "title_master": { "title": "Title: Grandmaster", "desc": "Title for masters" },
-        "title_newbie": { "title": "Title: Newbie", "desc": "Title for new players" }
+        "skin1": {
+          "title": "Classic Wood Pieces",
+          "desc": "Traditional wooden pieces"
+        },
+        "skin2": {
+          "title": "Jade Pieces",
+          "desc": "Precious jade pieces"
+        },
+        "skin3": {
+          "title": "Gold Pieces",
+          "desc": "Legendary gold pieces"
+        },
+        "board1": {
+          "title": "Classic Board",
+          "desc": "Traditional wooden board"
+        },
+        "board2": {
+          "title": "Sakura Board",
+          "desc": "Japanese cherry blossom board"
+        },
+        "board3": {
+          "title": "Space Board",
+          "desc": "Outer space themed board"
+        },
+        "board_bamboo": {
+          "title": "Bamboo Board",
+          "desc": "Elegant green bamboo board"
+        },
+        "board_classic": {
+          "title": "Classic Board",
+          "desc": "Traditional wooden board"
+        },
+        "board_marble": {
+          "title": "Marble Board",
+          "desc": "Premium marble board"
+        },
+        "board_royal": {
+          "title": "Royal Board",
+          "desc": "Board fit for royalty"
+        },
+        "board_sakura": {
+          "title": "Sakura Board",
+          "desc": "Board with cherry blossom motif"
+        },
+        "board_space": {
+          "title": "Space Board",
+          "desc": "Mystic cosmos themed board"
+        },
+        "frame_bronze": {
+          "title": "Bronze Frame",
+          "desc": "Bronze-colored avatar frame"
+        },
+        "frame_diamond": {
+          "title": "Diamond Frame",
+          "desc": "Diamond avatar frame"
+        },
+        "frame_gold": {
+          "title": "Gold Frame",
+          "desc": "Gold-colored avatar frame"
+        },
+        "frame_silver": {
+          "title": "Silver Frame",
+          "desc": "Silver-colored avatar frame"
+        },
+        "skin_bamboo_pieces": {
+          "title": "Bamboo Pieces",
+          "desc": "Refreshing bamboo pieces"
+        },
+        "skin_classic_wood": {
+          "title": "Classic Wood Pieces",
+          "desc": "Traditional wooden pieces, free for everyone"
+        },
+        "skin_crystal_pieces": {
+          "title": "Crystal Pieces",
+          "desc": "Shimmering transparent crystal pieces"
+        },
+        "skin_fire_pieces": {
+          "title": "Fire Pieces",
+          "desc": "Pieces blazing with flames"
+        },
+        "skin_gold_pieces": {
+          "title": "Gold Pieces",
+          "desc": "Golden pieces fit for kings"
+        },
+        "skin_ice_pieces": {
+          "title": "Ice Pieces",
+          "desc": "Cold, chilling ice pieces"
+        },
+        "skin_jade_pieces": {
+          "title": "Jade Pieces",
+          "desc": "Pieces made from precious jade"
+        },
+        "title_legend": {
+          "title": "Title: Legend",
+          "desc": "Title reserved for legends"
+        },
+        "title_master": {
+          "title": "Title: Grandmaster",
+          "desc": "Title for masters"
+        },
+        "title_newbie": {
+          "title": "Title: Newbie",
+          "desc": "Title for new players"
+        }
       },
       "typeAll": "All",
       "typePieceSkin": "Piece Skins",
@@ -635,12 +1897,18 @@
         "skin_board": "Board Skins",
         "avatar_frame": "Avatar Frames",
         "music": "Music",
-        "titles": "Titles"
+        "titles": "Titles",
+        "title": "Titles",
+        "emote": "Emotes",
+        "pass": "Pass",
+        "package": "Packages",
+        "gifts": "Coins & Gems"
       }
     },
     "inventory": {
       "title": "Inventory",
       "subtitle": "Manage and use owned items",
+      "filterTitle": "Filters",
       "breadcrumb": "Inventory",
       "empty": "No items yet",
       "emptyDescription": "Visit the Shop to buy your first item!",
@@ -648,6 +1916,8 @@
       "using": "Using",
       "equip": "Equip",
       "equipped": "Equipped",
+      "preview": "Preview",
+      "stopPreview": "Stop",
       "quantity": "Quantity",
       "itemsOwned": "items",
       "totalValue": "Total Value",
@@ -737,7 +2007,42 @@
       "canUseFor": "Can use for",
       "buyInShop": "Buy items in Shop",
       "upgradeProfile": "Upgrade profile",
-      "unlockFeatures": "Unlock special features"
+      "unlockFeatures": "Unlock special features",
+      "loginDecember": "December Login",
+      "loginDay": "Login {n} days",
+      "go": "Go",
+      "claim": "Claim",
+      "questRewards": "Quest Rewards",
+      "playMatches": "Play {n} matches",
+      "exchangeShop": "Exchange Shop",
+      "exchangeItem": "Exchange item",
+      "battlePass": "Battle Pass",
+      "bpLevel": "Reach level {n}",
+      "seasonQuest": "Season Quest",
+      "winMatches": "Win {n} matches",
+      "reachRank": "Reach rank",
+      "leaderboard": "Leaderboard",
+      "comingSoon": "Coming Soon",
+      "stayTuned": "Stay tuned",
+      "rewards": "Rewards",
+      "claimable": "claimable",
+      "daysLeft": "days left",
+      "hoursLeft": "hours left",
+      "ended": "Ended",
+      "seasonal": "Seasonal",
+      "limited": "Limited",
+      "special": "Special",
+      "permanent": "Permanent",
+      "noelEvent": "🎅 Christmas 2025",
+      "noelDesc": "Celebrate Christmas with special rewards!",
+      "newYearEvent": "🎆 New Year 2026",
+      "newYearDesc": "Welcome the new year with amazing gifts!",
+      "doubleCoin": "💰 x2 Coins",
+      "doubleCoinDesc": "Earn double Coins in every match!",
+      "weekendBlast": "🔥 Weekend Blast",
+      "weekendBlastDesc": "Special bonus for weekend victories!",
+      "newcomerBonus": "🌟 Newcomer Bonus",
+      "newcomerBonusDesc": "Welcome rewards for new players!"
     },
     "guide": {
       "title": "Guide",
@@ -808,10 +2113,982 @@
       "vo_danh": "Unranked",
       "tan_ky": "Novice",
       "hoc_ky": "Apprentice",
-      "ky_lao": "Veteran",
+      "ky_lao": "Expert",
       "cao_ky": "Master",
+      "tam_ky": "Grandmaster",
+      "de_nhi": "Champion",
+      "vo_doi": "Legend",
       "ky_thanh": "Grandmaster",
-      "truyen_thuyet": "Legend"
+      "truyen_thuyet": "Legend",
+      "rankUp": "Rank Up!",
+      "rankDown": "Rank Down",
+      "so_ky": "Early",
+      "trung_ky": "Mid",
+      "cao_ky_tier": "Late",
+      "vuot_cap": "Transcend",
+      "next": "Next",
+      "points": "points",
+      "pointsToNext": "Need",
+      "lowPhase": "Lower phase - Basic scoring",
+      "highPhase": "Higher phase - Rank difference scoring",
+      "pointsBreakdown": "Points Breakdown",
+      "movePoints": "Move Points",
+      "timePoints": "Time Points",
+      "opponentRank": "Opponent Rank",
+      "baseBonus": "Base Bonus",
+      "result": "Result",
+      "rankDiff": "Rank Difference",
+      "higherRank": "You outrank opponent",
+      "lowerRank": "Opponent outranks you",
+      "totalPoints": "Total Points",
+      "moves": "moves",
+      "seasonMatches": "Season Matches",
+      "softDemoted": "In protection period"
+    },
+    "series": {
+      "game": "Game",
+      "of": "of",
+      "score": "Score",
+      "you": "You",
+      "yourTurn": "Your turn",
+      "opponentTurn": "Opponent's turn",
+      "gameNumber": "Game {current} of {total}",
+      "seriesScore": "Series Score",
+      "bestOf3": "Best of 3",
+      "player1": "Player 1",
+      "player2": "Player 2",
+      "sideX": "Side X",
+      "sideO": "Side O",
+      "nextGame": "Next Game",
+      "countdown": "Starting in",
+      "seriesWin": "Series Win!",
+      "seriesLose": "Series Lost",
+      "gameWin": "Game Won!",
+      "gameLose": "Game Lost",
+      "rematch": "Rematch",
+      "waitingRematch": "Waiting for opponent...",
+      "rematchAccepted": "Opponent accepted!",
+      "rematchDeclined": "Opponent declined",
+      "rematchTimeout": "Rematch timeout",
+      "sideSwap": "Swapping sides X/O",
+      "opponentDisconnected": "Opponent disconnected",
+      "connectionLost": "Connection lost",
+      "waitingForReconnect": "Waiting for reconnection...",
+      "tryingToReconnect": "Trying to reconnect...",
+      "timeRemaining": "Time remaining",
+      "forfeitSoon": "Opponent will forfeit if they don't reconnect!",
+      "willForfeit": "You will forfeit if you don't reconnect!",
+      "nextGameStarting": "Next game starting in",
+      "sidesSwapped": "Sides have been swapped",
+      "result": {
+        "title": "Series Result",
+        "victory": "Victory!",
+        "defeat": "Defeat",
+        "finalScore": "Final Score",
+        "rewards": "Rewards",
+        "mindpointChange": "MindPoint Change",
+        "mpGained": "+{amount} MP",
+        "mpLost": "-{amount} MP",
+        "coinsEarned": "Coins Earned",
+        "expEarned": "EXP Earned",
+        "sweepBonus": "Sweep Bonus (2-0)",
+        "timeBonus": "Time Bonus",
+        "rankBonus": "Higher Rank Bonus",
+        "rankPenalty": "Lower Rank Penalty",
+        "baseReward": "Base Reward",
+        "totalMp": "Total MP",
+        "breakdown": "Point Breakdown"
+      },
+      "rankChange": {
+        "promoted": "Rank Up!",
+        "demoted": "Rank Down",
+        "newRank": "New Rank",
+        "congratulations": "Congratulations! You've reached {rank}!",
+        "keepFighting": "Keep fighting to regain your rank!"
+      },
+      "forfeit": "Forfeit",
+      "abandon": "Abandon",
+      "abandonPenalty": "Abandon Penalty",
+      "disconnectTimeout": "Disconnect Timeout",
+      "exit": "Exit",
+      "backToHome": "Back to Home"
+    },
+    "profile": {
+      "usernamePopupTitle": "Set In-Game Name",
+      "usernamePopupDesc": "Pick a username to begin your journey. This is how players find and see you in game.",
+      "usernamePlaceholder": "Enter your username...",
+      "usernameRuleMin": "At least 3 characters",
+      "usernameRuleAllowed": "Letters (accents allowed) and numbers; handle saves as 3-20 chars a-z, 0-9, _",
+      "usernameRuleUnique": "Unique",
+      "usernameConfirm": "Confirm",
+      "usernameErrorEmpty": "Please enter a username",
+      "usernameErrorShort": "Username must be at least 3 characters",
+      "usernameErrorLong": "Username cannot exceed 20 characters",
+      "usernameErrorInvalid": "Handle (without accents) must be 3-20 characters of a-z, 0-9, or _.",
+      "usernameErrorTaken": "Username is already taken",
+      "usernameErrorSave": "Cannot save username. Please try again.",
+      "usernameUpdateSuccess": "Username updated successfully!",
+      "usernameProcessing": "Processing...",
+      "levelLabel": "Level",
+      "expText": "EXP",
+      "rankLabel": "Rank",
+      "titleLabel": "Title",
+      "titleValue": "Hall of Mind",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone",
+      "stats": {
+        "winRate": "Win rate",
+        "total": "Total matches",
+        "streak": "Win streak",
+        "elo": "Elo"
+      },
+      "avatarLabel": "Change avatar",
+      "avatarChoose": "Choose image",
+      "avatarUploading": "Uploading...",
+      "avatarErrorType": "Please choose a valid image file",
+      "avatarErrorSize": "Image must be under 5MB",
+      "avatarSuccess": "Avatar updated successfully!",
+      "avatarErrorGeneric": "Error while uploading avatar",
+      "avatarErrorRead": "Error reading image file",
+      "avatarErrorBucket": "Avatar bucket is missing. Please create it or set VITE_SUPABASE_AVATAR_BUCKET.",
+      "emailChange": "Change email",
+      "emailPlaceholder": "New email",
+      "emailInfo": "A confirmation email will be sent to the new address. Please verify to finish.",
+      "emailSending": "Sending...",
+      "emailSend": "Send confirmation",
+      "emailCancel": "Cancel",
+      "emailSuccess": "Confirmation email sent. Please check inbox and verify.",
+      "emailErrorInvalid": "Invalid email",
+      "emailErrorSame": "New email matches current email",
+      "phoneChange": "Update phone number",
+      "phonePlaceholder": "New phone number",
+      "phoneInfo": "If required, verify the code sent to the new number to finish.",
+      "phoneUpdating": "Updating...",
+      "phoneUpdate": "Update",
+      "phoneCancel": "Cancel",
+      "phoneSuccess": "Phone number updated. Please verify if prompted.",
+      "phoneErrorInvalid": "Invalid phone number",
+      "phoneErrorMissing": "Please enter a phone number",
+      "passwordChange": "Change password",
+      "passwordCurrent": "Current password",
+      "passwordNew": "New password",
+      "passwordConfirm": "Confirm new password",
+      "passwordInfo": "• At least 8 characters\n• Contains uppercase, lowercase, and number",
+      "passwordSave": "Save",
+      "passwordCancel": "Cancel",
+      "passwordErrorMissing": "Please fill all password fields",
+      "passwordErrorShort": "New password must be at least 8 characters",
+      "passwordErrorMismatch": "Confirmation does not match",
+      "passwordErrorStrength": "Password must include uppercase, lowercase, and number",
+      "passwordErrorCurrent": "Current password is incorrect",
+      "passwordSuccess": "Password changed successfully!",
+      "logoutConfirm": "Are you sure you want to sign out?",
+      "logoutError": "Error signing out",
+      "historyTitle": "Match History",
+      "historyLoading": "Loading history...",
+      "historyEmpty": "No matches yet",
+      "historyVs": "vs",
+      "historyWin": "Win",
+      "historyLose": "Lose",
+      "historyTimeJustNow": "Just now",
+      "historyTimeMinutes": "{minutes} minutes ago",
+      "historyTimeHours": "{hours} hours ago",
+      "historyTimeDays": "{days} days ago",
+      "noUsername": "Unnamed",
+      "noPhone": "Not set",
+      "changeFrame": "Change avatar frame",
+      "selectFrame": "Select avatar frame",
+      "noFrames": "You don't have any avatar frames. Get some from the Shop!",
+      "goToShop": "Go to Shop",
+      "noFrameOption": "No frame",
+      "overview": "Overview",
+      "settings": "Settings",
+      "history": "History",
+      "settingsTitle": "Settings",
+      "username": "Username",
+      "account": "Account",
+      "ui": "Interface",
+      "sound": "Sound",
+      "board": "Board",
+      "notifications": "Notifications",
+      "language": "Language",
+      "other": "Other",
+      "restoreDefaults": "Restore defaults",
+      "theme": "Theme",
+      "themeDark": "Dark",
+      "themeLight": "Light",
+      "uiEffects": "UI Effects",
+      "effectsQuality": "Effects quality",
+      "effectsLow": "Low",
+      "effectsMedium": "Medium",
+      "effectsHigh": "High",
+      "uiStyle": "UI Style",
+      "fontSize": "Font size",
+      "fontSmall": "Small",
+      "fontMedium": "Medium",
+      "fontLarge": "Large",
+      "soundTitle": "Sound",
+      "bgMusic": "Background music",
+      "backgroundMusic": "Select background music",
+      "defaultMusic": "Default music",
+      "noMusicOwned": "You don't own any music. Visit the Shop!",
+      "visitShop": "Go to Shop",
+      "sfxEffects": "Sound effects",
+      "moveSound": "Move sound",
+      "boardTitle": "Board & Moves",
+      "highlightLastMove": "Highlight last move",
+      "pieceDropEffect": "Piece drop effect",
+      "vibration": "Vibration feedback",
+      "notifTitle": "Notifications",
+      "notifBrowserTitle": "Browser notification permission",
+      "notifGranted": "Permission granted. You will receive game notifications.",
+      "notifDenied": "Permission denied. Please enable in browser settings.",
+      "notifDefault": "Allow notifications to receive match invites, messages, and game updates.",
+      "notifAllow": "Allow notifications",
+      "notifTest": "Test notification",
+      "notifTestSuccess": "Success!",
+      "notifTestSuccessMsg": "You will receive notifications from the game",
+      "notifTestTitle": "Test",
+      "notifTestMsg": "This is a test notification from MindPoint Arena!",
+      "notifSystem": "System notifications",
+      "notifInvite": "Match invite notifications",
+      "notifChat": "In-game messages",
+      "notifTurn": "Turn sound alert",
+      "otherTitle": "Other",
+      "quickSettings": "Quick Settings",
+      "sfx": "Sound Effects",
+      "vibrationEnabled": "Enable vibration",
+      "allSettings": "All Settings",
+      "aboutGame": "About the game",
+      "termsOfService": "Terms of Service",
+      "privacyPolicy": "Privacy Policy",
+      "version": "Version",
+      "linkAccounts": "Link accounts",
+      "facebookLinked": "Facebook (Linked)",
+      "linkFacebook": "Link Facebook",
+      "emailDefault": "Email (Default)",
+      "logout": "Sign out",
+      "opponent": "Opponent"
+    },
+    "report": {
+      "button": "Report",
+      "buttonTitle": "Report violation",
+      "modalTitle": "Report Violation",
+      "modalSubtitle": "Help us keep the game fair",
+      "typeLabel": "Violation type",
+      "typeCheat": "Cheating in match",
+      "typeToxic": "Toxic behavior",
+      "typeBug": "Bug/Error",
+      "typeOther": "Other",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe the violation you encountered...",
+      "optional": "optional",
+      "matchAttached": "Match will be automatically attached",
+      "submit": "Submit report",
+      "submitting": "Submitting...",
+      "successMessage": "Report submitted, system will review",
+      "errorDescriptionTooLong": "Description cannot exceed 1000 characters",
+      "errorNotLoggedIn": "You need to login to submit a report",
+      "errorGeneric": "An error occurred while submitting the report"
+    },
+    "ban": {
+      "title": "Account Banned",
+      "typeTemporary": "Temporary ban",
+      "typePermanent": "Permanent ban",
+      "typeWarning": "Warning",
+      "reasonLabel": "Reason",
+      "noReason": "No detailed information available",
+      "expiresLabel": "Expires on",
+      "permanentLabel": "Duration",
+      "permanent": "Permanent",
+      "appealInfo": "If you believe this is a mistake, you can submit an appeal for review.",
+      "appealButton": "Appeal"
+    },
+    "appeal": {
+      "reasonLabel": "Appeal reason",
+      "reasonPlaceholder": "Explain why you believe this decision is incorrect...",
+      "submit": "Submit appeal",
+      "submitted": "Appeal submitted",
+      "submittedInfo": "Admin will review and respond as soon as possible.",
+      "errorReasonRequired": "Please enter appeal reason",
+      "errorNoReport": "Related report not found",
+      "errorNotLoggedIn": "You need to login to submit an appeal",
+      "errorGeneric": "An error occurred while submitting the appeal"
+    },
+    "aiAnalysis": {
+      "title": "AI Match Analysis",
+      "subtitle": "Select a match for Grandmaster review",
+      "selectMatch": "Select match",
+      "searchPlaceholder": "Enter match ID...",
+      "analyzeButton": "Analyze",
+      "loading": "Analyzing...",
+      "board": "Board",
+      "moves": "Moves",
+      "analysisSummary": "Summary",
+      "mistakes": "Detected mistakes",
+      "suggestions": "Grandmaster suggestions",
+      "bestMove": "Best next move",
+      "noSelection": "No match selected for analysis",
+      "demoNotice": "Demo simulation for screenshots, no real AI yet",
+      "patterns": "Key patterns",
+      "buttonLabel": "Grandmaster Review",
+      "evaluationFlow": "Evaluation flow",
+      "moveQuality": "Move quality",
+      "alternativePlans": "Alternative plans",
+      "filterAiOnly": "AI matches only",
+      "noMatchesFound": "No matches found",
+      "moveRating": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "average": "Average",
+        "poor": "Poor",
+        "blunder": "Blunder"
+      },
+      "moveComment": {
+        "excellent": "Excellent move!",
+        "excellentAlt": "Brilliant!",
+        "good": "Good move.",
+        "goodAlt": "Solid choice.",
+        "average": "Acceptable move.",
+        "averageAlt": "Could be better.",
+        "poor": "Weak move.",
+        "poorAlt": "Missed a better opportunity.",
+        "blunder": "Serious mistake!",
+        "blunderAlt": "Major error!"
+      },
+      "patternName": {
+        "FIVE": "Five in a row",
+        "OPEN_FOUR": "Open Four",
+        "CLOSED_FOUR": "Closed Four",
+        "FOUR": "Closed Four",
+        "OPEN_THREE": "Open Three",
+        "THREE": "Closed Three",
+        "CLOSED_THREE": "Closed Three",
+        "FORK": "Fork",
+        "BROKEN_FOUR": "Broken Four",
+        "BROKEN_THREE": "Broken Three",
+        "JUMP_THREE": "Jump Three"
+      },
+      "tactical": {
+        "forkCreated": "Created a fork - opponent can only block one threat!",
+        "threatBlocked": "Blocked opponent's {threatType}.",
+        "counterAttack": "Defensive move with counter-attack!",
+        "trap": "Trap",
+        "setup": "Setup",
+        "trading": "Trading",
+        "tuHuong": "Four Directions",
+        "songSong": "Parallel",
+        "chanMuon": "Late Block",
+        "boLoThang": "Missed Win",
+        "doubleBlock": "Double Block",
+        "sacrificeBlock": "Sacrifice Block",
+        "preventiveBlock": "Preventive Block"
+      },
+      "role": {
+        "attacker": "Attacker",
+        "defender": "Defender",
+        "balanced": "Balanced"
+      },
+      "timeline": {
+        "significant": "Significant moment",
+        "critical": "Critical turning point",
+        "evalChange": "Evaluation change",
+        "beforeMove": "Before move",
+        "afterMove": "After move"
+      },
+      "alternative": {
+        "title": "Alternative moves",
+        "best": "Best",
+        "reason": "Reason",
+        "similarOptions": "Multiple good options"
+      },
+      "score": {
+        "label": "Score",
+        "outOf": "out of 10"
+      },
+      "error": {
+        "invalidBoard": "Invalid board state",
+        "invalidNotation": "Invalid notation. Use format A1-O15.",
+        "insufficientMoves": "Insufficient moves for analysis (need at least 5 moves)",
+        "timeout": "Analysis timed out",
+        "network": "Connection error to analysis server",
+        "rateLimit": "You have used all analysis quota for today",
+        "auth": "Upgrade required to use this feature",
+        "patternDetection": "Pattern detection error",
+        "retry": "Retry",
+        "upgrade": "Upgrade plan",
+        "errorCode": "Error code"
+      },
+      "progress": {
+        "loading": "Loading data...",
+        "analyzing": "Analyzing patterns...",
+        "evaluating": "Evaluating moves...",
+        "finishing": "Finishing up..."
+      },
+      "language": {
+        "title": "Comment language",
+        "vi": "Vietnamese",
+        "en": "English",
+        "zh": "Chinese",
+        "ja": "Japanese"
+      }
+    },
+    "onlinePlayers": {
+      "title": "Online",
+      "searchPlaceholder": "Search players...",
+      "allRanks": "All ranks",
+      "friendsOnly": "Friends",
+      "viewProfile": "View profile",
+      "challenge": "Challenge",
+      "message": "Message",
+      "empty": "No one online",
+      "noMatch": "No matching players found",
+      "error": "Connection error"
+    },
+    "onboarding": {
+      "general": {
+        "clickInstruction": "👆 Click the highlighted area to continue",
+        "back": "← Back",
+        "next": "Next",
+        "finish": "Finish",
+        "skip": "Skip tour"
+      },
+      "welcome": {
+        "title": "Welcome to MindPoint Arena!",
+        "description": "The home of the greatest caro masters. Let us guide you through this world!",
+        "next": "Start the journey"
+      },
+      "profileIntro": {
+        "title": "Player profile",
+        "description": "This is your avatar and display name. Tap to open your profile page."
+      },
+      "profileOverview": {
+        "title": "Profile page",
+        "description": "Get a quick look at your stats, achievements, and personal information.",
+        "next": "Continue"
+      },
+      "profileChoice": {
+        "title": "Profile customization",
+        "description": "Do you want to configure your profile right now?",
+        "options": {
+          "detail": "Show detailed guide",
+          "skip": "Skip, keep going"
+        }
+      },
+      "menuOverview": {
+        "title": "Main menu",
+        "description": "Key sections:\n• 🏯 Shop - Buy items\n• 🎒 Inventory - View & equip\n• ✨ Quests - Complete tasks\n• 🎉 Events - Limited-time prizes\n• ⚡ Leaderboard - View rankings\n• 📚 Guide - Learn the game\n• 🧙 Mentor - AI analysis"
+      },
+      "currency": {
+        "title": "Game currencies",
+        "description": "• 💎 Starstones (Coins) - Core purchases\n• 🔮 Aether Gems - Premium items\n\nComplete quests to earn more rewards!"
+      },
+      "reward": {
+        "title": "Welcome gift!",
+        "description": "You've earned 1000 Starstones to kick-start your journey.",
+        "next": "Claim reward"
+      },
+      "questsIntro": {
+        "title": "First quest",
+        "description": "Head to the Quests tab to finish the intro task: buy a board and a set of pieces!"
+      },
+      "questsOverview": {
+        "title": "Quests",
+        "description": "This is the Quests page. You can view daily quests, events, and claim rewards for completing them.",
+        "next": "Continue",
+        "skip": "Skip"
+      },
+      "claimFirstQuest": {
+        "title": "First Quest",
+        "description": "This is your first quest! Complete it to earn Starstones and Aether Gems."
+      },
+      "shopFreeChess": {
+        "title": "Get free chess pieces",
+        "description": "This is the free \"Classic Wood Pieces\"! Click \"Buy\" to claim it now."
+      },
+      "shopIntro": {
+        "title": "Shop",
+        "description": "Click here to enter the shop and get your first free items!"
+      },
+      "shopFreeBoard": {
+        "title": "Get free board",
+        "description": "The classic board is also free! Click \"Buy\" to complete your collection."
+      },
+      "shopConfirm": {
+        "title": "Confirm item",
+        "description": "Click \"Confirm\" to complete claiming your free item!"
+      },
+      "shopSuccess": {
+        "title": "Success!",
+        "description": "Awesome! Click \"OK\" to continue."
+      },
+      "shopAndInventory": {
+        "title": "Buy items at Shop",
+        "description": "Now head to the Shop to buy a board and pieces. You can also check your Inventory to manage your items."
+      },
+      "finalChoice": {
+        "title": "What do you want to explore next?",
+        "description": "Choose the path that suits you:",
+        "options": {
+          "battle": "Matchmaking & Ranked",
+          "ai": "AI & Pro tools"
+        }
+      },
+      "goToSettings": {
+        "title": "Profile settings",
+        "description": "Open the \"Settings\" tab to adjust your profile."
+      },
+      "settingsOverview": {
+        "title": "Settings hub",
+        "description": "Browse every Settings tab—this is where you change avatars and tweak utilities.",
+        "next": "Continue",
+        "skip": "Skip guide"
+      },
+      "avatarUpload": {
+        "title": "Change avatar",
+        "description": "Click \"Choose image\" to upload a new avatar across MindPoint Arena.",
+        "next": "Got it"
+      },
+      "soundTab": {
+        "title": "Open Sound tab",
+        "description": "Select the Sound tab inside Settings to adjust audio."
+      },
+      "soundSettings": {
+        "title": "Sound",
+        "description": "Tune music, effects, and stone placement volume here."
+      },
+      "notificationsTab": {
+        "title": "Open Notifications tab",
+        "description": "Manage duel invites and chat alerts from this tab."
+      },
+      "notificationSettings": {
+        "title": "Notifications",
+        "description": "Enable or disable invites, chat messages, and turn reminders."
+      },
+      "uiTab": {
+        "title": "UI tab",
+        "description": "Switch themes, effects, and layouts from the UI tab."
+      },
+      "uiSettings": {
+        "title": "Interface",
+        "description": "Just like on the Profile page, customize themes, effects, and font sizes."
+      },
+      "languageTab": {
+        "title": "Language tab",
+        "description": "Pick Vietnamese or English for the entire interface."
+      },
+      "languageSettings": {
+        "title": "Language",
+        "description": "Choose your preferred language and the UI updates instantly."
+      },
+      "matchHistoryTab": {
+        "title": "Open Match History",
+        "description": "Jump to Match History to review previous games."
+      },
+      "matchHistory": {
+        "title": "Match History",
+        "description": "Revisit wins/losses, Elo changes, and every move detail."
+      },
+      "quickMatch": {
+        "title": "Quick match",
+        "description": "Press \"Match\" to find a random opponent and start a ranked duel."
+      },
+      "gameModes": {
+        "title": "Game modes",
+        "description": "• Ranked - Competitive Bo3 matches\n• Variant Mode - Custom rules: skill, map, hide\n• Training - Battle AI through 5 difficulty levels\n• Tournament - Create and compete in tournaments"
+      },
+      "socialCard": {
+        "title": "Masters & Community",
+        "description": "Connect with top players, check leaderboards, and learn from the community."
+      },
+      "aiAnalysis": {
+        "title": "AI analysis",
+        "description": "AI reviews your games, highlights mistakes, and suggests optimal moves."
+      },
+      "trainingMode": {
+        "title": "Training mode",
+        "description": "Practice against AI at various levels to sharpen your skills."
+      },
+      "askAboutAi": {
+        "title": "Learn about AI?",
+        "description": "Would you like to explore AI analysis and training features?",
+        "options": {
+          "yes": "Yes, explore AI",
+          "no": "No, finish"
+        }
+      },
+      "askAboutBattle": {
+        "title": "Learn about Battles?",
+        "description": "Would you like to explore battle modes and rankings?",
+        "options": {
+          "yes": "Yes, explore",
+          "no": "No, finish"
+        }
+      },
+      "complete": {
+        "title": "All set!",
+        "description": "You are ready to conquer MindPoint Arena. Enjoy every battle!",
+        "next": "Start playing"
+      }
+    },
+    "swap2": {
+      "placementPhase": "Opening Placement",
+      "placementDesc": "Place 3 opening stones (2 black + 1 white)",
+      "choicePhase": "Choose Color",
+      "choiceDesc": "Choose color or place more stones",
+      "extraPhase": "Place Extra Stones",
+      "extraDesc": "Place 2 more stones (1 black + 1 white)",
+      "finalChoicePhase": "Final Color Choice",
+      "finalChoiceDesc": "Choose your color to start",
+      "complete": "Complete",
+      "completeDesc": "Start the game",
+      "activePlayer": "Turn",
+      "yourTurn": "Your turn",
+      "stoneCount": "Stones placed",
+      "chooseBlack": "Choose Black",
+      "chooseBlackDesc": "You will continue with Black stones",
+      "chooseWhite": "Choose White",
+      "chooseWhiteDesc": "You will continue with White stones",
+      "placeMore": "Place 2 more stones",
+      "placeMoreDesc": "Place 2 more stones, opponent will choose color",
+      "makeYourChoice": "Make your choice",
+      "finalChoice": "Final choice",
+      "choiceInstructions": "Review stone positions and make your decision",
+      "finalChoiceInstructions": "Choose the color you want to play",
+      "timeRemaining": "Time remaining",
+      "currentStones": "Current stones",
+      "confirmChoice": "Confirm choice",
+      "openingComplete": "Opening Complete",
+      "gameStartingSoon": "Game starting soon",
+      "you": "You",
+      "black": "Black",
+      "white": "White",
+      "movesFirst": "Moves first",
+      "blackMovesFirst": "Black moves first",
+      "startGame": "Start Game"
+    },
+    "variant": {
+      "setup": {
+        "title": "Variant Mode Settings",
+        "variantLabel": "Variant Type",
+        "boardSize": "Board Size: {{size}}x{{size}}",
+        "winLength": "Win Length: {{count}}",
+        "opponentLabel": "Opponent",
+        "opponentLocal": "2 Players (Hotseat)",
+        "opponentOnline": "Online",
+        "opponentBot": "Bot (AI)",
+        "swap2Desc": "Fair opening rule for both players",
+        "onlineNotice": "Online Mode",
+        "onlineDesc": "Create a room and share the code with friends",
+        "timePerMove": "Time per move",
+        "timeNone": "No limit",
+        "botDifficulty": "AI Difficulty",
+        "difficulty": {
+          "beginner": "Beginner",
+          "talent": "Talented",
+          "rebel": "Rebel",
+          "celestial": "Celestial",
+          "void": "Void"
+        },
+        "back": "Back",
+        "start": "Start",
+        "deckLabel": "Select Deck",
+        "cards": "cards",
+        "selectDeck": "Select 15 cards",
+        "noDeckSelected": "No deck selected - will random from all skills",
+        "selectDeckFor": "Select Deck for",
+        "deckDesc": "Select 15 skill cards to build your deck. Each turn will random 3 cards from this deck.",
+        "selectedCards": "Selected",
+        "noCardsSelected": "No cards selected",
+        "randomDeck": "Random 15 cards",
+        "clearDeck": "Clear all",
+        "balancedDeck": "Balanced deck",
+        "confirmDeck": "Confirm",
+        "myDeck": "Your Deck"
+      },
+      "online": {
+        "needLogin": "Please login to play online",
+        "waiting": "Waiting for opponent...",
+        "shareCode": "Share room code with friends:",
+        "opponentDisconnected": "Opponent disconnected",
+        "connectionError": "Server connection error"
+      },
+      "type": {
+        "custom": {
+          "name": "Custom",
+          "desc": "Customize board size and win length"
+        },
+        "hidden": {
+          "name": "Hidden Caro",
+          "desc": "Pieces become hidden after a few moves"
+        },
+        "skill": {
+          "name": "Skill Caro",
+          "desc": "Use special skills during the game"
+        },
+        "terrain": {
+          "name": "Terrain",
+          "desc": "Board has special cells"
+        }
+      },
+      "game": {
+        "playerX": "Player X",
+        "playerO": "Player O",
+        "bot": "Bot",
+        "yourTurn": "Your turn",
+        "thinking": "Thinking...",
+        "skills": "Skills",
+        "cooldown": "Cooldown",
+        "swapFirst": "Select first piece to swap",
+        "swapSecond": "Select second piece to swap",
+        "blockCell": "Select cell to block",
+        "extraTurn": "Extra turn!",
+        "info": "Info",
+        "board": "Board",
+        "win": "Win",
+        "turn": "Turn",
+        "mode": "Mode",
+        "settings": "Settings",
+        "newGame": "New Game"
+      },
+      "skill": {
+        "swap": {
+          "name": "Swap",
+          "desc": "Swap positions of 2 pieces"
+        },
+        "block": {
+          "name": "Block",
+          "desc": "Block an empty cell"
+        },
+        "reveal": {
+          "name": "Reveal",
+          "desc": "Reveal all hidden pieces for 2 turns"
+        },
+        "undo": {
+          "name": "Undo",
+          "desc": "Remove opponent's last move"
+        },
+        "double": {
+          "name": "Double",
+          "desc": "Get an extra move"
+        },
+        "freeze": {
+          "name": "Freeze",
+          "desc": "Opponent skips next turn"
+        },
+        "teleport": {
+          "name": "Teleport",
+          "desc": "Move your piece to random empty cell"
+        },
+        "shield": {
+          "name": "Shield",
+          "desc": "Protect a piece from bomb/swap"
+        },
+        "bomb": {
+          "name": "Bomb",
+          "desc": "Remove all pieces in 3x3 area"
+        },
+        "clone": {
+          "name": "Clone",
+          "desc": "Copy your piece to adjacent cell"
+        },
+        "steal": {
+          "name": "Steal",
+          "desc": "Steal a random skill from opponent"
+        },
+        "mirror": {
+          "name": "Mirror",
+          "desc": "Mirror opponent's last move"
+        },
+        "poison": {
+          "name": "Poison",
+          "desc": "Mark cell - piece placed here dies after 2 turns"
+        },
+        "heal": {
+          "name": "Heal",
+          "desc": "Remove poison from a cell"
+        },
+        "lightning": {
+          "name": "Lightning",
+          "desc": "Remove a random opponent piece"
+        },
+        "wall": {
+          "name": "Wall",
+          "desc": "Block 3 cells in a row"
+        },
+        "scout": {
+          "name": "Scout",
+          "desc": "Reveal opponent's next 2 possible moves"
+        },
+        "shuffle": {
+          "name": "Shuffle",
+          "desc": "Randomly shuffle all pieces on board"
+        },
+        "timewarp": {
+          "name": "Time Warp",
+          "desc": "Undo last 3 moves"
+        },
+        "gravity": {
+          "name": "Gravity",
+          "desc": "All pieces fall to bottom of board"
+        }
+      },
+      "terrain": {
+        "skill": "Get random skill",
+        "double": "Get extra turn",
+        "block": "Blocked cell"
+      },
+      "end": {
+        "draw": "Draw!",
+        "win": "Wins!",
+        "drawDesc": "Board is full",
+        "movesCount": "Total moves: {{count}}",
+        "changeSettings": "Change Settings",
+        "playAgain": "Play Again"
+      }
+    },
+    "room": {
+      "matchTitle": "Match",
+      "back": "Back",
+      "leaveMatch": "Leave Match",
+      "moveHistory": "Move History",
+      "requestDraw": "Request Draw",
+      "surrender": "Surrender",
+      "confirmSurrender": "Are you sure you want to surrender?",
+      "confirmDraw": "Do you want to request a draw?",
+      "drawSent": "Draw request sent",
+      "you": "You",
+      "opponent": "Opponent",
+      "rankUnknown": "Unranked",
+      "youWin": "You Win!",
+      "youLose": "You Lose!",
+      "playerWonGame": "Player {player} won this game",
+      "currentScore": "Current Score",
+      "matchWin": "Match Won!",
+      "matchLose": "Match Lost!",
+      "winner": "Winner",
+      "score": "Score",
+      "backHome": "Back to Home",
+      "playAgain": "Play Again",
+      "analyzeGame": "Analyze This Game"
+    },
+    "homeChat": {
+      "title": "Chat & AI Master",
+      "subtitle": "Temporary messages",
+      "close": "Close",
+      "tabWorld": "World",
+      "tabFriend": "Friends",
+      "tabAi": "AI Master",
+      "online": "Online",
+      "offline": "Offline",
+      "connecting": "Connecting...",
+      "cooldown": "Cooldown 30s",
+      "cooldownRemaining": "{seconds}s left",
+      "loginToSend": "Login to send real messages.",
+      "chatOffline": "Chat offline, messages saved locally only.",
+      "connectingRealtime": "Connecting to realtime...",
+      "chatOfflineRetry": "Chat offline, try refresh or login again.",
+      "noMessages": "No messages yet. Send the first greeting.",
+      "you": "You",
+      "anonymous": "Anonymous",
+      "local": "local",
+      "worldPlaceholder": "World Chat - 30s cooldown",
+      "worldPlaceholderLogin": "Login to chat in World",
+      "refresh": "Refresh",
+      "send": "Send",
+      "demoMode": "Demo mode: messages saved locally only. Login and start chat server to send real messages.",
+      "searchFriend": "Search friend to chat",
+      "noFriendsFound": "No matching friends found",
+      "noFriendMessages": "No messages yet. Select a friend to start.",
+      "friendPlaceholderLogin": "Login to chat with friends",
+      "friendPlaceholderSelect": "Select a friend to start",
+      "friendPlaceholder": "Private message to selected friend",
+      "aiModelFree": "Free",
+      "aiModelTrial": "Trial",
+      "aiModelPro": "Pro",
+      "aiNeedTrial": "Requires Trial or Pro plan",
+      "aiNeedPro": "Requires Pro plan",
+      "aiHelper": "Free: Search from dataset. Trial/Pro: Smarter AI.",
+      "aiPlanFree": "Current plan: Free. Upgrade to use Trial/Pro.",
+      "aiPlanTrial": "Current plan: Trial.",
+      "aiPlanPro": "Current plan: Pro.",
+      "aiLoadingDataset": "Loading dataset...",
+      "aiDatasetError": "Dataset error, please use Trial/Pro.",
+      "aiLoadingHint": "Loading data... You can switch to Trial/Pro to use immediately.",
+      "aiDatasetErrorHint": "Cannot load dataset. Please choose Trial or Pro.",
+      "aiNoMessages": "Start asking the AI Master about Caro.",
+      "aiPlaceholder": "Enter your Caro question for AI",
+      "aiAsking": "Answering...",
+      "aiAsk": "Ask"
+    },
+    "currencyShop": {
+      "title": "Shop",
+      "subtitle": "Top up currency or subscribe to Pro to unlock advanced AI features.",
+      "back": "Back",
+      "tabCurrency": "Top Up Currency",
+      "tabSubscription": "Pro Plans",
+      "needLogin": "Please login before topping up.",
+      "loading": "Loading...",
+      "processing": "Processing...",
+      "paymentCreated": "Payment link created, redirecting...",
+      "paymentFailed": "Payment failed",
+      "paymentError": "Error creating payment link",
+      "testFailed": "Test failed",
+      "testError": "Error during test purchase",
+      "testSuccess": "Success! Received {amount} {currency}",
+      "subscriptionSuccess": "OK. Payment for {plan} successful! Subscription updated.",
+      "subscriptionError": "Error simulating payment",
+      "txnRef": "Transaction ID",
+      "linkOpened": "link opened in new tab",
+      "hot": "HOT",
+      "bonus": "bonus",
+      "popular": "Popular",
+      "upgradeTitle": "Upgrade to unlock",
+      "upgradeDesc": "Advanced AI analysis, smart chat and more Pro features. Pay via VNPay.",
+      "plan": {
+        "trial": "Trial 7 days",
+        "trialDesc": "Try for 7 days",
+        "trialQuota": "4 analyses + 10 chats/day",
+        "pro": "Pro 30 days",
+        "proDesc": "Full AI analysis access",
+        "proQuota": "40 analyses + 120 chats/day",
+        "proPlus": "Pro+ 90 days",
+        "proPlusDesc": "Highest tier",
+        "proPlusQuota": "100 analyses + 500 chats/day"
+      }
+    },
+    "title": {
+      "pageTitle": "Titles",
+      "yourProgress": "Your Progress",
+      "titlesUnlocked": "Titles unlocked",
+      "totalPoints": "Total achievement points",
+      "byRarity": "By rarity",
+      "currentTitle": "Current title",
+      "filter": "Filter",
+      "category": "Category",
+      "rarity": "Rarity",
+      "points": "pts",
+      "equipped": "Equipped",
+      "equip": "Equip",
+      "unequip": "Unequip",
+      "locked": "Locked",
+      "unlockedAt": "Unlocked on",
+      "noTitlesFound": "No titles found"
+    },
+    "ranked": {
+      "disconnect": {
+        "title": "Opponent Left",
+        "waiting": "You will win if opponent doesn't return",
+        "autoWinIn": "Auto-win in {{seconds}} seconds",
+        "opponentReconnected": "Opponent reconnected. Game continues."
+      },
+      "autoWin": {
+        "title": "Victory!",
+        "opponentLeft": "Opponent left the match",
+        "forfeitReward": "Reward for opponent forfeit",
+        "finalScore": "Score",
+        "seriesWon": "You won the series!"
+      }
     }
   },
   "zh": {
@@ -838,7 +3115,10 @@
       "preview": "预览",
       "debug": "调试",
       "clicked": "已点击",
-      "ok": "确定"
+      "ok": "确定",
+      "askCaoNhan": "向高人请教五子棋...",
+      "reset": "重置",
+      "apply": "应用"
     },
     "breadcrumb": {
       "home": "主大厅",
@@ -847,15 +3127,40 @@
       "quests": "任务",
       "events": "活动",
       "guide": "指南",
-      "leaderboard": "排行榜"
+      "leaderboard": "排行榜",
+      "profile": "个人中心",
+      "titles": "称号",
+      "room": "房间",
+      "createRoom": "创建房间",
+      "match": "对局",
+      "settings": "设置",
+      "training": "AI训练",
+      "variant": "变体模式",
+      "admin": "管理",
+      "notifications": "通知"
+    },
+    "nav": {
+      "sectionTreasure": "宝库",
+      "sectionEvents": "活动与任务",
+      "sectionTraining": "修炼",
+      "aiAnalysis": "AI对局分析",
+      "shop": "商店",
+      "inventory": "背包",
+      "quests": "任务",
+      "events": "活动",
+      "khaiNhan": "排行榜",
+      "guide": "指南",
+      "badgeHot": "热门",
+      "badgeNew": "新",
+      "badgeRank": "排名"
     },
     "shop": {
       "title": "商店",
       "pageTitle": "商店",
+      "filterTitle": "筛选",
       "categoryAll": "全部",
       "categorySaleHot": "促销&热门",
       "categoryGiftsCurrency": "金币&宝石",
-      "categoryPass": "通行证",
       "categoryPackage": "礼包",
       "searchPlaceholder": "搜索...",
       "filterType": "类型",
@@ -892,6 +3197,8 @@
       "usingSampleData": "使用示例数据",
       "cannotLoadShopData": "无法从服务器加载商店数据",
       "detailsDev": "详情（开发）：",
+      "noProducts": "暂无商品",
+      "noProductsHint": "该分类暂无商品，请尝试选择其他分类。",
       "debugClicked": "已点击：{label}",
       "classicWoodPieces": "经典木制棋子",
       "classicWoodPiecesDesc": "传统木质棋子",
@@ -906,32 +3213,110 @@
       "spaceBoard": "太空棋盘",
       "spaceBoardDesc": "外太空主题棋盘",
       "item": {
-        "skin1": { "title": "经典木制棋子", "desc": "传统木质棋子" },
-        "skin2": { "title": "翡翠棋子", "desc": "珍贵翡翠棋子" },
-        "skin3": { "title": "黄金棋子", "desc": "传说黄金棋子" },
-        "board1": { "title": "经典棋盘", "desc": "传统木质棋盘" },
-        "board2": { "title": "樱花棋盘", "desc": "日本樱花主题棋盘" },
-        "board3": { "title": "太空棋盘", "desc": "外太空主题棋盘" },
-        "board_bamboo": { "title": "竹制棋盘", "desc": "优雅的绿色竹制棋盘" },
-        "board_classic": { "title": "经典棋盘", "desc": "传统木质棋盘" },
-        "board_marble": { "title": "大理石棋盘", "desc": "高端大理石棋盘" },
-        "board_royal": { "title": "皇家棋盘", "desc": "适合皇室的棋盘" },
-        "board_sakura": { "title": "樱花棋盘", "desc": "樱花纹样棋盘" },
-        "board_space": { "title": "太空棋盘", "desc": "神秘宇宙主题棋盘" },
-        "frame_bronze": { "title": "青铜头像框", "desc": "青铜色头像框" },
-        "frame_diamond": { "title": "钻石头像框", "desc": "钻石头像框" },
-        "frame_gold": { "title": "黄金头像框", "desc": "金色头像框" },
-        "frame_silver": { "title": "白银头像框", "desc": "银色头像框" },
-        "skin_bamboo_pieces": { "title": "竹制棋子", "desc": "清新竹制棋子" },
-        "skin_classic_wood": { "title": "经典木制棋子", "desc": "传统木质棋子，人人免费" },
-        "skin_crystal_pieces": { "title": "水晶棋子", "desc": "闪耀透明水晶棋子" },
-        "skin_fire_pieces": { "title": "火焰棋子", "desc": "燃烧火焰的棋子" },
-        "skin_gold_pieces": { "title": "黄金棋子", "desc": "为王者打造的金色棋子" },
-        "skin_ice_pieces": { "title": "冰晶棋子", "desc": "寒冷冰冷的棋子" },
-        "skin_jade_pieces": { "title": "翡翠棋子", "desc": "由珍贵翡翠制成的棋子" },
-        "title_legend": { "title": "称号：传说", "desc": "属于传说的称号" },
-        "title_master": { "title": "称号：宗师", "desc": "大师级称号" },
-        "title_newbie": { "title": "称号：新手", "desc": "新玩家称号" }
+        "skin1": {
+          "title": "经典木制棋子",
+          "desc": "传统木质棋子"
+        },
+        "skin2": {
+          "title": "翡翠棋子",
+          "desc": "珍贵翡翠棋子"
+        },
+        "skin3": {
+          "title": "黄金棋子",
+          "desc": "传说黄金棋子"
+        },
+        "board1": {
+          "title": "经典棋盘",
+          "desc": "传统木质棋盘"
+        },
+        "board2": {
+          "title": "樱花棋盘",
+          "desc": "日本樱花主题棋盘"
+        },
+        "board3": {
+          "title": "太空棋盘",
+          "desc": "外太空主题棋盘"
+        },
+        "board_bamboo": {
+          "title": "竹制棋盘",
+          "desc": "优雅的绿色竹制棋盘"
+        },
+        "board_classic": {
+          "title": "经典棋盘",
+          "desc": "传统木质棋盘"
+        },
+        "board_marble": {
+          "title": "大理石棋盘",
+          "desc": "高端大理石棋盘"
+        },
+        "board_royal": {
+          "title": "皇家棋盘",
+          "desc": "适合皇室的棋盘"
+        },
+        "board_sakura": {
+          "title": "樱花棋盘",
+          "desc": "樱花纹样棋盘"
+        },
+        "board_space": {
+          "title": "太空棋盘",
+          "desc": "神秘宇宙主题棋盘"
+        },
+        "frame_bronze": {
+          "title": "青铜头像框",
+          "desc": "青铜色头像框"
+        },
+        "frame_diamond": {
+          "title": "钻石头像框",
+          "desc": "钻石头像框"
+        },
+        "frame_gold": {
+          "title": "黄金头像框",
+          "desc": "金色头像框"
+        },
+        "frame_silver": {
+          "title": "白银头像框",
+          "desc": "银色头像框"
+        },
+        "skin_bamboo_pieces": {
+          "title": "竹制棋子",
+          "desc": "清新竹制棋子"
+        },
+        "skin_classic_wood": {
+          "title": "经典木制棋子",
+          "desc": "传统木质棋子，人人免费"
+        },
+        "skin_crystal_pieces": {
+          "title": "水晶棋子",
+          "desc": "闪耀透明水晶棋子"
+        },
+        "skin_fire_pieces": {
+          "title": "火焰棋子",
+          "desc": "燃烧火焰的棋子"
+        },
+        "skin_gold_pieces": {
+          "title": "黄金棋子",
+          "desc": "为王者打造的金色棋子"
+        },
+        "skin_ice_pieces": {
+          "title": "冰晶棋子",
+          "desc": "寒冷冰冷的棋子"
+        },
+        "skin_jade_pieces": {
+          "title": "翡翠棋子",
+          "desc": "由珍贵翡翠制成的棋子"
+        },
+        "title_legend": {
+          "title": "称号：传说",
+          "desc": "属于传说的称号"
+        },
+        "title_master": {
+          "title": "称号：宗师",
+          "desc": "大师级称号"
+        },
+        "title_newbie": {
+          "title": "称号：新手",
+          "desc": "新玩家称号"
+        }
       },
       "typeAll": "全部",
       "typePieceSkin": "棋子皮肤",
@@ -948,12 +3333,18 @@
         "skin_board": "棋盘皮肤",
         "avatar_frame": "头像框",
         "music": "音乐",
-        "titles": "称号"
+        "titles": "称号",
+        "title": "称号",
+        "emote": "表情",
+        "pass": "通行证",
+        "package": "礼包",
+        "gifts": "金币&宝石"
       }
     },
     "inventory": {
       "title": "背包",
       "subtitle": "管理和使用已拥有的物品",
+      "filterTitle": "筛选",
       "breadcrumb": "背包",
       "empty": "暂无物品",
       "emptyDescription": "访问商店购买您的第一件物品！",
@@ -961,6 +3352,8 @@
       "using": "使用中",
       "equip": "装备",
       "equipped": "已装备",
+      "preview": "试听",
+      "stopPreview": "停止",
       "quantity": "数量",
       "itemsOwned": "件物品",
       "totalValue": "总价值",
@@ -1050,7 +3443,23 @@
       "canUseFor": "可用于",
       "buyInShop": "在商店购买物品",
       "upgradeProfile": "升级个人资料",
-      "unlockFeatures": "解锁特殊功能"
+      "unlockFeatures": "解锁特殊功能",
+      "loginDecember": "十二月登录",
+      "loginDay": "登录 {n} 天",
+      "go": "去",
+      "claim": "领取",
+      "questRewards": "任务奖励",
+      "playMatches": "进行 {n} 场比赛",
+      "exchangeShop": "兑换商店",
+      "exchangeItem": "兑换物品",
+      "battlePass": "战斗通行证",
+      "bpLevel": "达到 {n} 级",
+      "seasonQuest": "赛季任务",
+      "winMatches": "赢得 {n} 场比赛",
+      "reachRank": "达到等级",
+      "leaderboard": "排行榜",
+      "comingSoon": "即将推出",
+      "stayTuned": "敬请期待"
     },
     "guide": {
       "title": "指南",
@@ -1125,6 +3534,568 @@
       "cao_ky": "高手",
       "ky_thanh": "宗师",
       "truyen_thuyet": "传说"
+    },
+    "profile": {
+      "usernamePopupTitle": "设置用户名",
+      "usernamePopupDesc": "选择一个用户名开始您的旅程。这是其他玩家找到您的方式。",
+      "usernamePlaceholder": "输入您的用户名...",
+      "usernameRuleMin": "至少 3 个字符",
+      "usernameRuleAllowed": "?????????????????? 3-20 ???/??/??????? handle",
+      "usernameRuleUnique": "唯一",
+      "usernameConfirm": "确认",
+      "usernameErrorEmpty": "请输入用户名",
+      "usernameErrorShort": "用户名至少 3 个字符",
+      "usernameErrorLong": "用户名不能超过 20 个字符",
+      "usernameErrorInvalid": "????????????? 3-20 ???????????",
+      "usernameErrorTaken": "用户名已被使用",
+      "usernameErrorSave": "无法保存用户名。请重试。",
+      "usernameUpdateSuccess": "用户名更新成功！",
+      "usernameProcessing": "处理中...",
+      "levelLabel": "Level",
+      "expText": "EXP",
+      "rankLabel": "Rank",
+      "titleLabel": "称号",
+      "titleValue": "无名之辈",
+      "emailLabel": "Email",
+      "phoneLabel": "电话",
+      "stats": {
+        "winRate": "胜率",
+        "total": "总场次",
+        "streak": "连胜",
+        "elo": "Elo"
+      },
+      "avatarLabel": "更换头像",
+      "avatarChoose": "选择图片",
+      "avatarUploading": "上传中...",
+      "avatarErrorType": "请选择有效的图片文件",
+      "avatarErrorSize": "图片不能超过 5MB",
+      "avatarSuccess": "头像更新成功！",
+      "avatarErrorGeneric": "上传头像时出错",
+      "avatarErrorRead": "读取图片文件时出错",
+      "avatarErrorBucket": "头像 bucket 不存在。请创建或设置 VITE_SUPABASE_AVATAR_BUCKET。",
+      "emailChange": "更改邮箱",
+      "emailPlaceholder": "新邮箱",
+      "emailInfo": "确认邮件将发送到新地址。请验证以完成更改。",
+      "emailSending": "发送中...",
+      "emailSend": "发送确认",
+      "emailCancel": "取消",
+      "emailSuccess": "确认邮件已发送。请检查收件箱并验证。",
+      "emailErrorInvalid": "邮箱无效",
+      "emailErrorSame": "新邮箱与当前邮箱相同",
+      "phoneChange": "更新电话号码",
+      "phonePlaceholder": "新电话号码",
+      "phoneInfo": "如有需要，请验证发送到新号码的验证码以完成更改。",
+      "phoneUpdating": "更新中...",
+      "phoneUpdate": "更新",
+      "phoneCancel": "取消",
+      "phoneSuccess": "电话号码已更新。如有提示请进行验证。",
+      "phoneErrorInvalid": "电话号码无效",
+      "phoneErrorMissing": "请输入电话号码",
+      "passwordChange": "更改密码",
+      "passwordCurrent": "当前密码",
+      "passwordNew": "新密码",
+      "passwordConfirm": "确认新密码",
+      "passwordInfo": "• 至少 8 个字符\n• 包含大写、小写字母和数字",
+      "passwordSave": "保存",
+      "passwordCancel": "取消",
+      "passwordErrorMissing": "请填写所有密码字段",
+      "passwordErrorShort": "新密码至少 8 个字符",
+      "passwordErrorMismatch": "确认密码不匹配",
+      "passwordErrorStrength": "密码必须包含大写、小写字母和数字",
+      "passwordErrorCurrent": "当前密码不正确",
+      "passwordSuccess": "密码更改成功！",
+      "logoutConfirm": "确定要退出登录吗？",
+      "logoutError": "退出登录时出错",
+      "historyTitle": "对战历史",
+      "historyLoading": "加载历史中...",
+      "historyEmpty": "暂无对战记录",
+      "historyVs": "vs",
+      "historyWin": "胜",
+      "historyLose": "负",
+      "historyTimeJustNow": "刚刚",
+      "historyTimeMinutes": "{minutes} 分钟前",
+      "historyTimeHours": "{hours} 小时前",
+      "historyTimeDays": "{days} 天前",
+      "noUsername": "未设置",
+      "noPhone": "未设置",
+      "overview": "概览",
+      "settings": "设置",
+      "history": "历史",
+      "settingsTitle": "设置",
+      "username": "用户名",
+      "account": "账户",
+      "ui": "界面",
+      "sound": "声音",
+      "board": "棋盘",
+      "notifications": "通知",
+      "language": "语言",
+      "other": "其他",
+      "restoreDefaults": "恢复默认",
+      "theme": "主题",
+      "themeDark": "深色",
+      "themeLight": "浅色",
+      "uiEffects": "界面特效",
+      "effectsQuality": "特效质量",
+      "effectsLow": "低",
+      "effectsMedium": "中",
+      "effectsHigh": "高",
+      "uiStyle": "界面风格",
+      "fontSize": "字体大小",
+      "fontSmall": "小",
+      "fontMedium": "中",
+      "fontLarge": "大",
+      "soundTitle": "声音",
+      "bgMusic": "背景音乐",
+      "backgroundMusic": "选择背景音乐",
+      "defaultMusic": "默认音乐",
+      "noMusicOwned": "您还没有音乐。去商店购买吧！",
+      "visitShop": "去商店",
+      "sfxEffects": "音效",
+      "moveSound": "落子音",
+      "boardTitle": "棋盘和落子",
+      "highlightLastMove": "高亮显示最近一步",
+      "pieceDropEffect": "落子特效",
+      "vibration": "震动反馈",
+      "notifTitle": "通知",
+      "notifBrowserTitle": "浏览器通知权限",
+      "notifGranted": "已授权。您将收到游戏通知。",
+      "notifDenied": "已拒绝。请在浏览器设置中启用。",
+      "notifDefault": "允许通知以接收对战邀请、消息和游戏更新。",
+      "notifAllow": "允许通知",
+      "notifTest": "测试通知",
+      "notifTestSuccess": "成功！",
+      "notifTestSuccessMsg": "您将收到游戏通知",
+      "notifTestTitle": "测试",
+      "notifTestMsg": "这是来自MindPoint Arena的测试通知！",
+      "notifSystem": "系统通知",
+      "notifInvite": "对战邀请通知",
+      "notifChat": "游戏内消息",
+      "notifTurn": "轮到您时提示音",
+      "otherTitle": "其他",
+      "aboutGame": "关于游戏",
+      "termsOfService": "服务条款",
+      "privacyPolicy": "隐私政策",
+      "version": "版本",
+      "linkAccounts": "绑定账户",
+      "facebookLinked": "Facebook (已绑定)",
+      "linkFacebook": "绑定Facebook",
+      "emailDefault": "Email (默认)",
+      "logout": "退出登录",
+      "opponent": "对手"
+    },
+    "aiAnalysis": {
+      "title": "AI对局分析",
+      "subtitle": "选择一场对局让大师点评",
+      "selectMatch": "选择对局",
+      "searchPlaceholder": "输入对局ID...",
+      "analyzeButton": "分析",
+      "loading": "分析中...",
+      "board": "棋盘",
+      "moves": "着法",
+      "analysisSummary": "总结",
+      "mistakes": "发现的失误",
+      "suggestions": "大师建议",
+      "bestMove": "最佳下一步",
+      "noSelection": "未选择要分析的对局",
+      "demoNotice": "演示模拟用于截图，尚无真实AI",
+      "patterns": "关键棋型",
+      "buttonLabel": "大师点评",
+      "evaluationFlow": "评估流程",
+      "moveQuality": "着法质量",
+      "alternativePlans": "替代方案",
+      "filterAiOnly": "仅AI对局",
+      "noMatchesFound": "未找到对局",
+      "moveRating": {
+        "excellent": "精彩",
+        "good": "好棋",
+        "average": "一般",
+        "poor": "弱棋",
+        "blunder": "失误"
+      },
+      "moveComment": {
+        "excellent": "精彩的一步！",
+        "excellentAlt": "太棒了！",
+        "good": "好棋。",
+        "goodAlt": "合理的选择。",
+        "average": "可以接受的一步。",
+        "averageAlt": "可以下得更好。",
+        "poor": "弱棋。",
+        "poorAlt": "错过了更好的机会。",
+        "blunder": "严重失误！",
+        "blunderAlt": "大错！"
+      },
+      "patternName": {
+        "FIVE": "五连",
+        "OPEN_FOUR": "活四",
+        "CLOSED_FOUR": "冲四",
+        "FOUR": "冲四",
+        "OPEN_THREE": "活三",
+        "THREE": "眠三",
+        "CLOSED_THREE": "眠三",
+        "FORK": "双杀",
+        "BROKEN_FOUR": "跳四",
+        "BROKEN_THREE": "跳三",
+        "JUMP_THREE": "跳活三"
+      },
+      "tactical": {
+        "forkCreated": "形成双杀 - 对手只能挡住一边！",
+        "threatBlocked": "挡住了对手的{threatType}。",
+        "counterAttack": "防守的同时发起反击！",
+        "trap": "陷阱",
+        "setup": "布局",
+        "trading": "交换",
+        "tuHuong": "四向",
+        "songSong": "平行",
+        "chanMuon": "迟挡",
+        "boLoThang": "错失胜机",
+        "doubleBlock": "双挡",
+        "sacrificeBlock": "弃挡",
+        "preventiveBlock": "预防挡"
+      },
+      "role": {
+        "attacker": "进攻方",
+        "defender": "防守方",
+        "balanced": "均势"
+      },
+      "timeline": {
+        "significant": "重要时刻",
+        "critical": "关键转折点",
+        "evalChange": "评估变化",
+        "beforeMove": "落子前",
+        "afterMove": "落子后"
+      },
+      "alternative": {
+        "title": "替代着法",
+        "best": "最佳",
+        "reason": "原因",
+        "similarOptions": "多个好选择"
+      },
+      "score": {
+        "label": "评分",
+        "outOf": "满分10"
+      },
+      "error": {
+        "invalidBoard": "无效的棋盘状态",
+        "invalidNotation": "无效的符号。使用格式 A1-O15。",
+        "insufficientMoves": "棋步不足，无法分析（至少需要5步）",
+        "timeout": "分析超时",
+        "network": "连接分析服务器失败",
+        "rateLimit": "今日分析次数已用完",
+        "auth": "需要升级套餐才能使用此功能",
+        "patternDetection": "棋型检测错误",
+        "retry": "重试",
+        "upgrade": "升级套餐",
+        "errorCode": "错误代码"
+      },
+      "progress": {
+        "loading": "正在加载数据...",
+        "analyzing": "正在分析棋型...",
+        "evaluating": "正在评估着法...",
+        "finishing": "即将完成..."
+      },
+      "language": {
+        "title": "评论语言",
+        "vi": "越南语",
+        "en": "英语",
+        "zh": "中文",
+        "ja": "日语"
+      }
+    },
+    "onboarding": {
+      "general": {
+        "clickInstruction": "👆 点击高亮区域继续",
+        "back": "← 返回",
+        "next": "下一步",
+        "finish": "完成",
+        "skip": "跳过引导"
+      },
+      "welcome": {
+        "title": "欢迎来到 MindPoint Arena！",
+        "description": "这里汇聚了最优秀的五子棋高手。让我们带您探索这个世界！",
+        "next": "开始旅程"
+      },
+      "profileIntro": {
+        "title": "玩家资料",
+        "description": "这是您的头像和显示名称。点击打开个人资料页面。"
+      },
+      "profileOverview": {
+        "title": "个人资料页面",
+        "description": "快速查看您的统计数据、成就和个人信息。",
+        "next": "继续"
+      },
+      "profileChoice": {
+        "title": "自定义资料",
+        "description": "您想现在配置您的个人资料吗？",
+        "options": {
+          "detail": "显示详细指南",
+          "skip": "跳过，继续"
+        }
+      },
+      "menuOverview": {
+        "title": "主菜单",
+        "description": "主要功能：\n• 🏯 商店 - 购买物品\n• 🎒 背包 - 查看和装备\n• ✨ 任务 - 完成任务\n• 🎉 活动 - 限时奖励\n• ⚡ 排行榜 - 查看排名\n• 📚 指南 - 学习游戏\n• 🧙 导师 - AI分析"
+      },
+      "currency": {
+        "title": "游戏货币",
+        "description": "• 💎 金币 (Coins) - 基础购买\n• 🔮 宝石 (Gems) - 高级物品\n\n完成任务获取更多奖励！"
+      },
+      "reward": {
+        "title": "欢迎礼物！",
+        "description": "恭喜！您获得了 1000 金币开始您的旅程。",
+        "next": "领取奖励"
+      },
+      "questsIntro": {
+        "title": "第一个任务",
+        "description": "前往任务标签完成入门任务：购买棋盘和棋子！"
+      },
+      "questsOverview": {
+        "title": "任务",
+        "description": "这是任务页面。您可以查看每日任务、活动，并领取完成任务的奖励。",
+        "next": "继续",
+        "skip": "跳过"
+      },
+      "claimFirstQuest": {
+        "title": "第一个任务",
+        "description": "这是您的第一个任务！完成后可获得金币和宝石奖励。"
+      },
+      "shopIntro": {
+        "title": "商店",
+        "description": "点击这里进入商店，领取您的第一个免费物品！"
+      },
+      "shopFreeChess": {
+        "title": "领取免费棋子",
+        "description": "这是免费的\"经典木质棋子\"！点击\"购买\"立即领取。"
+      },
+      "shopFreeBoard": {
+        "title": "领取免费棋盘",
+        "description": "经典棋盘也是免费的！点击\"购买\"完成您的收藏。"
+      },
+      "shopConfirm": {
+        "title": "确认领取物品",
+        "description": "点击\"确认\"完成领取您的免费物品！"
+      },
+      "shopSuccess": {
+        "title": "领取成功！",
+        "description": "太棒了！点击\"确定\"继续。"
+      },
+      "shopAndInventory": {
+        "title": "在商店购买物品",
+        "description": "现在前往商店购买棋盘和棋子。您也可以查看背包来管理您的物品。"
+      },
+      "finalChoice": {
+        "title": "接下来您想探索什么？",
+        "description": "选择适合您的路径：",
+        "options": {
+          "battle": "匹配和排位",
+          "ai": "AI 和专业工具"
+        }
+      },
+      "goToSettings": {
+        "title": "个人资料设置",
+        "description": "打开\"设置\"标签调整您的个人资料。"
+      },
+      "settingsOverview": {
+        "title": "设置中心",
+        "description": "浏览每个设置标签——这里可以更换头像和调整各种功能。",
+        "next": "继续",
+        "skip": "跳过指南"
+      },
+      "avatarUpload": {
+        "title": "更换头像",
+        "description": "点击\"选择图片\"上传新头像，将在整个 MindPoint Arena 显示。",
+        "next": "明白了"
+      },
+      "soundTab": {
+        "title": "打开声音标签",
+        "description": "在设置中选择声音标签调整音频。"
+      },
+      "soundSettings": {
+        "title": "声音",
+        "description": "在这里调整音乐、音效和落子音量。"
+      },
+      "notificationsTab": {
+        "title": "打开通知标签",
+        "description": "从此标签管理对战邀请和聊天提醒。"
+      },
+      "notificationSettings": {
+        "title": "通知",
+        "description": "启用或禁用邀请、聊天消息和回合提醒。"
+      },
+      "uiTab": {
+        "title": "界面标签",
+        "description": "从界面标签切换主题、特效和布局。"
+      },
+      "uiSettings": {
+        "title": "界面",
+        "description": "与个人资料页面一样，自定义主题、特效和字体大小。"
+      },
+      "languageTab": {
+        "title": "语言标签",
+        "description": "选择中文或英文作为整个界面语言。"
+      },
+      "languageSettings": {
+        "title": "语言",
+        "description": "选择您喜欢的语言，界面将立即更新。"
+      },
+      "matchHistoryTab": {
+        "title": "打开对战历史",
+        "description": "跳转到对战历史查看以前的对局。"
+      },
+      "matchHistory": {
+        "title": "对战历史",
+        "description": "回顾胜负、Elo 变化和每一步的细节。"
+      },
+      "quickMatch": {
+        "title": "快速匹配",
+        "description": "点击\"匹配\"寻找随机对手开始排位对战！"
+      },
+      "gameModes": {
+        "title": "游戏模式",
+        "description": "• 排位 - Bo3竞技对战\n• 异变棋 - 自定义规则：技能、地图、隐藏\n• 试炼 - 与AI对战5个难度等级\n• 锦标赛 - 创建和参加比赛"
+      },
+      "socialCard": {
+        "title": "高手与社区",
+        "description": "与顶尖玩家交流，查看排行榜，向社区学习。"
+      },
+      "aiAnalysis": {
+        "title": "AI 分析",
+        "description": "AI 分析您的对局，指出失误并建议最佳走法。"
+      },
+      "trainingMode": {
+        "title": "训练模式",
+        "description": "与不同级别的 AI 对战提升技能。"
+      },
+      "askAboutAi": {
+        "title": "了解AI功能？",
+        "description": "您想探索AI分析和训练功能吗？",
+        "options": {
+          "yes": "是的，探索AI",
+          "no": "不，完成"
+        }
+      },
+      "askAboutBattle": {
+        "title": "了解对战？",
+        "description": "您想探索对战模式和排名吗？",
+        "options": {
+          "yes": "是的，探索",
+          "no": "不，完成"
+        }
+      },
+      "complete": {
+        "title": "准备就绪！",
+        "description": "您已准备好征服 MindPoint Arena。祝您对战愉快！",
+        "next": "开始游戏"
+      }
+    },
+    "room": {
+      "matchTitle": "对战",
+      "back": "返回",
+      "leaveMatch": "离开对战",
+      "moveHistory": "走棋历史",
+      "requestDraw": "请求和棋",
+      "surrender": "投降",
+      "confirmSurrender": "确定要投降吗？",
+      "confirmDraw": "要请求和棋吗？",
+      "drawSent": "和棋请求已发送",
+      "you": "你",
+      "opponent": "对手",
+      "rankUnknown": "未定级",
+      "youWin": "你赢了！",
+      "youLose": "你输了！",
+      "playerWonGame": "玩家 {player} 赢得本局",
+      "currentScore": "当前比分",
+      "matchWin": "比赛胜利！",
+      "matchLose": "比赛失败！",
+      "winner": "获胜者",
+      "score": "比分",
+      "backHome": "返回主页",
+      "playAgain": "再来一局",
+      "analyzeGame": "分析对局"
+    },
+    "homeChat": {
+      "title": "聊天 & AI大师",
+      "subtitle": "临时消息",
+      "close": "关闭",
+      "tabWorld": "世界",
+      "tabFriend": "好友",
+      "tabAi": "AI大师",
+      "online": "在线",
+      "offline": "离线",
+      "connecting": "连接中...",
+      "cooldown": "冷却30秒",
+      "cooldownRemaining": "还剩{seconds}秒",
+      "loginToSend": "登录后发送真实消息。",
+      "chatOffline": "聊天离线，消息仅本地保存。",
+      "connectingRealtime": "正在连接实时服务...",
+      "chatOfflineRetry": "聊天离线，请刷新或重新登录。",
+      "noMessages": "暂无消息。发送第一条问候吧。",
+      "you": "你",
+      "anonymous": "匿名",
+      "local": "本地",
+      "worldPlaceholder": "世界聊天 - 30秒冷却",
+      "worldPlaceholderLogin": "登录后参与世界聊天",
+      "refresh": "刷新",
+      "send": "发送",
+      "demoMode": "演示模式：消息仅本地保存。登录并启动聊天服务器发送真实消息。",
+      "searchFriend": "搜索好友聊天",
+      "noFriendsFound": "未找到匹配的好友",
+      "noFriendMessages": "暂无消息。选择好友开始聊天。",
+      "friendPlaceholderLogin": "登录后与好友聊天",
+      "friendPlaceholderSelect": "选择好友开始聊天",
+      "friendPlaceholder": "私信给选中的好友",
+      "aiModelFree": "免费",
+      "aiModelTrial": "试用",
+      "aiModelPro": "专业",
+      "aiNeedTrial": "需要试用或专业套餐",
+      "aiNeedPro": "需要专业套餐",
+      "aiHelper": "免费：从数据集搜索。试用/专业：更智能的AI。",
+      "aiPlanFree": "当前套餐：免费。升级使用试用/专业。",
+      "aiPlanTrial": "当前套餐：试用。",
+      "aiPlanPro": "当前套餐：专业。",
+      "aiLoadingDataset": "正在加载数据集...",
+      "aiDatasetError": "数据集错误，请使用试用/专业。",
+      "aiLoadingHint": "正在加载数据...您可以切换到试用/专业立即使用。",
+      "aiDatasetErrorHint": "无法加载数据集。请选择试用或专业。",
+      "aiNoMessages": "开始向AI大师询问五子棋问题。",
+      "aiPlaceholder": "输入您的五子棋问题",
+      "aiAsking": "回答中...",
+      "aiAsk": "提问"
+    },
+    "currencyShop": {
+      "title": "商店",
+      "subtitle": "充值货币或订阅Pro解锁高级AI功能。",
+      "back": "返回",
+      "tabCurrency": "充值货币",
+      "tabSubscription": "Pro套餐",
+      "needLogin": "请先登录再充值。",
+      "loading": "加载中...",
+      "processing": "处理中...",
+      "paymentCreated": "支付链接已创建，正在跳转...",
+      "paymentFailed": "支付失败",
+      "paymentError": "创建支付链接时出错",
+      "testFailed": "测试失败",
+      "testError": "测试购买时出错",
+      "testSuccess": "成功！已获得 {amount} {currency}",
+      "subscriptionSuccess": "OK。{plan} 支付成功！订阅已更新。",
+      "subscriptionError": "模拟支付时出错",
+      "txnRef": "交易号",
+      "linkOpened": "链接已在新标签页打开",
+      "hot": "热门",
+      "bonus": "奖励",
+      "popular": "热门",
+      "upgradeTitle": "升级解锁",
+      "upgradeDesc": "高级AI分析、智能聊天等更多Pro功能。通过VNPay支付。",
+      "plan": {
+        "trial": "试用7天",
+        "trialDesc": "试用7天",
+        "trialQuota": "4次分析 + 10次聊天/天",
+        "pro": "Pro 30天",
+        "proDesc": "完整AI分析权限",
+        "proQuota": "40次分析 + 120次聊天/天",
+        "proPlus": "Pro+ 90天",
+        "proPlusDesc": "最高等级",
+        "proPlusQuota": "100次分析 + 500次聊天/天"
+      }
     }
   },
   "ja": {
@@ -1151,7 +4122,10 @@
       "preview": "プレビュー",
       "debug": "デバッグ",
       "clicked": "クリック済み",
-      "ok": "OK"
+      "ok": "OK",
+      "askCaoNhan": "高人にカロについて質問...",
+      "reset": "リセット",
+      "apply": "適用"
     },
     "breadcrumb": {
       "home": "メインホール",
@@ -1160,43 +4134,146 @@
       "quests": "クエスト",
       "events": "イベント",
       "guide": "ガイド",
-      "leaderboard": "ランキング"
+      "leaderboard": "ランキング",
+      "profile": "プロフィール",
+      "titles": "称号",
+      "room": "ルーム",
+      "createRoom": "ルーム作成",
+      "match": "対局",
+      "settings": "設定",
+      "training": "AIトレーニング",
+      "variant": "バリアントモード",
+      "admin": "管理",
+      "notifications": "通知"
+    },
+    "nav": {
+      "sectionTreasure": "宝物庫",
+      "sectionEvents": "イベント＆クエスト",
+      "sectionTraining": "修練",
+      "aiAnalysis": "AI対局分析",
+      "shop": "ショップ",
+      "inventory": "インベントリ",
+      "quests": "クエスト",
+      "events": "イベント",
+      "khaiNhan": "ランキング",
+      "guide": "ガイド",
+      "badgeHot": "HOT",
+      "badgeNew": "NEW",
+      "badgeRank": "RANK"
     },
     "shop": {
       "title": "ショップ",
       "pageTitle": "ショップ",
+      "filterTitle": "フィルター",
       "categoryAll": "全て",
-            "item": {
-              "skin1": { "title": "クラシック木製ピース", "desc": "伝統的な木製ピース" },
-              "skin2": { "title": "翡翠ピース", "desc": "貴重な翡翠ピース" },
-              "skin3": { "title": "ゴールドピース", "desc": "伝説のゴールドピース" },
-              "board1": { "title": "クラシックボード", "desc": "伝統的な木製ボード" },
-              "board2": { "title": "桜ボード", "desc": "日本の桜テーマボード" },
-              "board3": { "title": "スペースボード", "desc": "宇宙テーマボード" },
-              "board_bamboo": { "title": "竹製ボード", "desc": "上品な緑の竹製ボード" },
-              "board_classic": { "title": "クラシックボード", "desc": "伝統的な木製ボード" },
-              "board_marble": { "title": "大理石ボード", "desc": "高級大理石ボード" },
-              "board_royal": { "title": "ロイヤルボード", "desc": "王族にふさわしいボード" },
-              "board_sakura": { "title": "桜ボード", "desc": "桜模様のボード" },
-              "board_space": { "title": "スペースボード", "desc": "神秘的な宇宙テーマのボード" },
-              "frame_bronze": { "title": "ブロンズフレーム", "desc": "ブロンズ色のアバターフレーム" },
-              "frame_diamond": { "title": "ダイヤモンドフレーム", "desc": "ダイヤモンドのアバターフレーム" },
-              "frame_gold": { "title": "ゴールドフレーム", "desc": "金色のアバターフレーム" },
-              "frame_silver": { "title": "シルバーフレーム", "desc": "銀色のアバターフレーム" },
-              "skin_bamboo_pieces": { "title": "竹製ピース", "desc": "爽やかな竹のピース" },
-              "skin_classic_wood": { "title": "クラシック木製ピース", "desc": "伝統的な木製ピース、全員無料" },
-              "skin_crystal_pieces": { "title": "クリスタルピース", "desc": "きらめく透明なクリスタルピース" },
-              "skin_fire_pieces": { "title": "炎ピース", "desc": "炎が燃え上がるピース" },
-              "skin_gold_pieces": { "title": "ゴールドピース", "desc": "王にふさわしい黄金のピース" },
-              "skin_ice_pieces": { "title": "氷晶ピース", "desc": "冷たく凍えるピース" },
-              "skin_jade_pieces": { "title": "翡翠ピース", "desc": "貴重な翡翠で作られたピース" },
-              "title_legend": { "title": "称号：レジェンド", "desc": "伝説に与えられる称号" },
-              "title_master": { "title": "称号：グランドマスター", "desc": "達人の称号" },
-              "title_newbie": { "title": "称号：初心者", "desc": "新規プレイヤーの称号" }
-            },
+      "item": {
+        "skin1": {
+          "title": "クラシック木製ピース",
+          "desc": "伝統的な木製ピース"
+        },
+        "skin2": {
+          "title": "翡翠ピース",
+          "desc": "貴重な翡翠ピース"
+        },
+        "skin3": {
+          "title": "ゴールドピース",
+          "desc": "伝説のゴールドピース"
+        },
+        "board1": {
+          "title": "クラシックボード",
+          "desc": "伝統的な木製ボード"
+        },
+        "board2": {
+          "title": "桜ボード",
+          "desc": "日本の桜テーマボード"
+        },
+        "board3": {
+          "title": "スペースボード",
+          "desc": "宇宙テーマボード"
+        },
+        "board_bamboo": {
+          "title": "竹製ボード",
+          "desc": "上品な緑の竹製ボード"
+        },
+        "board_classic": {
+          "title": "クラシックボード",
+          "desc": "伝統的な木製ボード"
+        },
+        "board_marble": {
+          "title": "大理石ボード",
+          "desc": "高級大理石ボード"
+        },
+        "board_royal": {
+          "title": "ロイヤルボード",
+          "desc": "王族にふさわしいボード"
+        },
+        "board_sakura": {
+          "title": "桜ボード",
+          "desc": "桜模様のボード"
+        },
+        "board_space": {
+          "title": "スペースボード",
+          "desc": "神秘的な宇宙テーマのボード"
+        },
+        "frame_bronze": {
+          "title": "ブロンズフレーム",
+          "desc": "ブロンズ色のアバターフレーム"
+        },
+        "frame_diamond": {
+          "title": "ダイヤモンドフレーム",
+          "desc": "ダイヤモンドのアバターフレーム"
+        },
+        "frame_gold": {
+          "title": "ゴールドフレーム",
+          "desc": "金色のアバターフレーム"
+        },
+        "frame_silver": {
+          "title": "シルバーフレーム",
+          "desc": "銀色のアバターフレーム"
+        },
+        "skin_bamboo_pieces": {
+          "title": "竹製ピース",
+          "desc": "爽やかな竹のピース"
+        },
+        "skin_classic_wood": {
+          "title": "クラシック木製ピース",
+          "desc": "伝統的な木製ピース、全員無料"
+        },
+        "skin_crystal_pieces": {
+          "title": "クリスタルピース",
+          "desc": "きらめく透明なクリスタルピース"
+        },
+        "skin_fire_pieces": {
+          "title": "炎ピース",
+          "desc": "炎が燃え上がるピース"
+        },
+        "skin_gold_pieces": {
+          "title": "ゴールドピース",
+          "desc": "王にふさわしい黄金のピース"
+        },
+        "skin_ice_pieces": {
+          "title": "氷晶ピース",
+          "desc": "冷たく凍えるピース"
+        },
+        "skin_jade_pieces": {
+          "title": "翡翠ピース",
+          "desc": "貴重な翡翠で作られたピース"
+        },
+        "title_legend": {
+          "title": "称号：レジェンド",
+          "desc": "伝説に与えられる称号"
+        },
+        "title_master": {
+          "title": "称号：グランドマスター",
+          "desc": "達人の称号"
+        },
+        "title_newbie": {
+          "title": "称号：初心者",
+          "desc": "新規プレイヤーの称号"
+        }
+      },
       "categorySaleHot": "セール&人気",
       "categoryGiftsCurrency": "コイン&ジェム",
-      "categoryPass": "パス",
       "categoryPackage": "パッケージ",
       "searchPlaceholder": "検索...",
       "filterType": "タイプ",
@@ -1233,6 +4310,8 @@
       "usingSampleData": "サンプルデータを使用中",
       "cannotLoadShopData": "サーバーからショップデータを読み込めません",
       "detailsDev": "詳細（開発）：",
+      "noProducts": "商品がありません",
+      "noProductsHint": "このカテゴリには商品がありません。他のカテゴリをお試しください。",
       "debugClicked": "クリック：{label}",
       "classicWoodPieces": "クラシック木製ピース",
       "classicWoodPiecesDesc": "伝統的な木製ピース",
@@ -1261,12 +4340,18 @@
         "skin_board": "盤スキン",
         "avatar_frame": "アバターフレーム",
         "music": "音楽",
-        "titles": "称号"
+        "titles": "称号",
+        "title": "称号",
+        "emote": "エモート",
+        "pass": "パス",
+        "package": "パッケージ",
+        "gifts": "コイン&ジェム"
       }
     },
     "inventory": {
       "title": "インベントリ",
       "subtitle": "所有アイテムの管理と使用",
+      "filterTitle": "フィルター",
       "breadcrumb": "インベントリ",
       "empty": "アイテムがありません",
       "emptyDescription": "ショップで最初のアイテムを購入しましょう！",
@@ -1274,6 +4359,8 @@
       "using": "使用中",
       "equip": "装備",
       "equipped": "装備中",
+      "preview": "試聴",
+      "stopPreview": "停止",
       "quantity": "数量",
       "itemsOwned": "個のアイテム",
       "totalValue": "総価値",
@@ -1363,7 +4450,23 @@
       "canUseFor": "用途",
       "buyInShop": "ショップでアイテム購入",
       "upgradeProfile": "プロフィールアップグレード",
-      "unlockFeatures": "特別機能の解除"
+      "unlockFeatures": "特別機能の解除",
+      "loginDecember": "12月ログイン",
+      "loginDay": "{n}日間ログイン",
+      "go": "行く",
+      "claim": "受け取る",
+      "questRewards": "クエスト報酬",
+      "playMatches": "{n}試合プレイ",
+      "exchangeShop": "交換ショップ",
+      "exchangeItem": "アイテム交換",
+      "battlePass": "バトルパス",
+      "bpLevel": "レベル{n}到達",
+      "seasonQuest": "シーズンクエスト",
+      "winMatches": "{n}試合勝利",
+      "reachRank": "ランク到達",
+      "leaderboard": "リーダーボード",
+      "comingSoon": "近日公開",
+      "stayTuned": "お楽しみに"
     },
     "guide": {
       "title": "ガイド",
@@ -1438,8 +4541,75 @@
       "cao_ky": "マスター",
       "ky_thanh": "グランドマスター",
       "truyen_thuyet": "レジェンド"
-    }
-    ,
+    },
+    "series": {
+      "game": "ゲーム",
+      "of": "の",
+      "score": "スコア",
+      "you": "あなた",
+      "yourTurn": "あなたのターン",
+      "opponentTurn": "相手のターン",
+      "gameNumber": "ゲーム {current} / {total}",
+      "seriesScore": "シリーズスコア",
+      "bestOf3": "ベストオブ3",
+      "player1": "プレイヤー1",
+      "player2": "プレイヤー2",
+      "sideX": "サイドX",
+      "sideO": "サイドO",
+      "nextGame": "次のゲーム",
+      "countdown": "開始まで",
+      "seriesWin": "シリーズ勝利！",
+      "seriesLose": "シリーズ敗北",
+      "gameWin": "ゲーム勝利！",
+      "gameLose": "ゲーム敗北",
+      "rematch": "リマッチ",
+      "waitingRematch": "相手を待機中...",
+      "rematchAccepted": "相手が承認しました！",
+      "rematchDeclined": "相手が拒否しました",
+      "rematchTimeout": "リマッチタイムアウト",
+      "sideSwap": "サイドをスワップ X/O",
+      "opponentDisconnected": "相手が切断しました",
+      "connectionLost": "接続が失われました",
+      "waitingForReconnect": "再接続を待機中...",
+      "tryingToReconnect": "再接続を試みています...",
+      "timeRemaining": "残り時間",
+      "forfeitSoon": "相手が再接続しないと没収されます！",
+      "willForfeit": "再接続しないと没収されます！",
+      "nextGameStarting": "次のゲームが開始されます",
+      "sidesSwapped": "サイドがスワップされました",
+      "result": {
+        "title": "シリーズ結果",
+        "victory": "勝利！",
+        "defeat": "敗北",
+        "finalScore": "最終スコア",
+        "rewards": "報酬",
+        "mindpointChange": "MindPoint変化",
+        "mpGained": "+{amount} MP",
+        "mpLost": "-{amount} MP",
+        "coinsEarned": "獲得コイン",
+        "expEarned": "獲得EXP",
+        "sweepBonus": "スウィープボーナス (2-0)",
+        "timeBonus": "タイムボーナス",
+        "rankBonus": "高ランクボーナス",
+        "rankPenalty": "低ランクペナルティ",
+        "baseReward": "基本報酬",
+        "totalMp": "合計MP",
+        "breakdown": "ポイント内訳"
+      },
+      "rankChange": {
+        "promoted": "ランクアップ！",
+        "demoted": "ランクダウン",
+        "newRank": "新しいランク",
+        "congratulations": "おめでとうございます！{rank}に到達しました！",
+        "keepFighting": "ランクを取り戻すために戦い続けてください！"
+      },
+      "forfeit": "没収",
+      "abandon": "放棄",
+      "abandonPenalty": "放棄ペナルティ",
+      "disconnectTimeout": "切断タイムアウト",
+      "exit": "終了",
+      "backToHome": "ホームに戻る"
+    },
     "admin": {
       "title": "Admin Panel",
       "subtitle": "Manage the MindPoint system",
@@ -1605,28 +4775,568 @@
         "maintOff": "Off",
         "defaultLanguage": "Default language"
       }
-    }
-    ,
+    },
     "aiAnalysis": {
-      "title": "AI Match Analysis",
-      "subtitle": "Pick a match for Grandmaster review",
-      "selectMatch": "Select match",
-      "searchPlaceholder": "Enter match ID...",
-      "analyzeButton": "Analyze",
-      "loading": "Simulating...",
-      "board": "Board",
-      "moves": "Moves",
-      "analysisSummary": "Summary",
-      "mistakes": "Detected mistakes",
-      "suggestions": "Grandmaster suggestions",
-      "bestMove": "Best next move",
-      "noSelection": "No match selected",
-      "demoNotice": "Mock demo for screenshots, no real AI yet",
-      "patterns": "Key patterns",
-      "buttonLabel": "Grandmaster Review",
-      "evaluationFlow": "Evaluation flow",
-      "moveQuality": "Move quality",
-      "alternativePlans": "Alternative plans"
+      "title": "AI対局分析",
+      "subtitle": "対局を選んでグランドマスターにレビューしてもらう",
+      "selectMatch": "対局を選択",
+      "searchPlaceholder": "対局IDを入力...",
+      "analyzeButton": "分析",
+      "loading": "分析中...",
+      "board": "盤面",
+      "moves": "着手",
+      "analysisSummary": "サマリー",
+      "mistakes": "検出されたミス",
+      "suggestions": "グランドマスターの提案",
+      "bestMove": "最善の次の手",
+      "noSelection": "分析する対局が選択されていません",
+      "demoNotice": "スクリーンショット用のデモ、実際のAIはまだありません",
+      "patterns": "主要パターン",
+      "buttonLabel": "グランドマスターレビュー",
+      "evaluationFlow": "評価フロー",
+      "moveQuality": "着手の質",
+      "alternativePlans": "代替プラン",
+      "filterAiOnly": "AI対局のみ",
+      "noMatchesFound": "対局が見つかりません",
+      "moveRating": {
+        "excellent": "素晴らしい",
+        "good": "良い",
+        "average": "普通",
+        "poor": "弱い",
+        "blunder": "ミス"
+      },
+      "moveComment": {
+        "excellent": "素晴らしい一手！",
+        "excellentAlt": "見事！",
+        "good": "良い手です。",
+        "goodAlt": "堅実な選択。",
+        "average": "まずまずの手。",
+        "averageAlt": "もっと良い手があります。",
+        "poor": "弱い手。",
+        "poorAlt": "より良い機会を逃しました。",
+        "blunder": "重大なミス！",
+        "blunderAlt": "大きな間違い！"
+      },
+      "patternName": {
+        "FIVE": "五連",
+        "OPEN_FOUR": "四々",
+        "CLOSED_FOUR": "四",
+        "FOUR": "四",
+        "OPEN_THREE": "三々",
+        "THREE": "三",
+        "CLOSED_THREE": "三",
+        "FORK": "フォーク",
+        "BROKEN_FOUR": "飛び四",
+        "BROKEN_THREE": "飛び三",
+        "JUMP_THREE": "跳び三"
+      },
+      "tactical": {
+        "forkCreated": "フォーク（二重脅威）を作成 - 相手は一方しか防げません！",
+        "threatBlocked": "相手の{threatType}をブロック。",
+        "counterAttack": "防御しながら反撃！",
+        "trap": "罠",
+        "setup": "準備",
+        "trading": "交換",
+        "tuHuong": "四方向",
+        "songSong": "並行",
+        "chanMuon": "遅いブロック",
+        "boLoThang": "勝ち逃し",
+        "doubleBlock": "ダブルブロック",
+        "sacrificeBlock": "犠牲ブロック",
+        "preventiveBlock": "予防ブロック"
+      },
+      "role": {
+        "attacker": "攻撃側",
+        "defender": "防御側",
+        "balanced": "均衡"
+      },
+      "timeline": {
+        "significant": "重要な瞬間",
+        "critical": "決定的な転換点",
+        "evalChange": "評価の変化",
+        "beforeMove": "着手前",
+        "afterMove": "着手後"
+      },
+      "alternative": {
+        "title": "代替手",
+        "best": "最善",
+        "reason": "理由",
+        "similarOptions": "複数の良い選択肢"
+      },
+      "score": {
+        "label": "スコア",
+        "outOf": "10点満点"
+      },
+      "error": {
+        "invalidBoard": "無効な盤面状態",
+        "invalidNotation": "無効な表記。A1-O15の形式を使用してください。",
+        "insufficientMoves": "分析に必要な手数が不足しています（最低5手必要）",
+        "timeout": "分析がタイムアウトしました",
+        "network": "分析サーバーへの接続エラー",
+        "rateLimit": "本日の分析回数を使い切りました",
+        "auth": "この機能を使用するにはアップグレードが必要です",
+        "patternDetection": "パターン検出エラー",
+        "retry": "再試行",
+        "upgrade": "プランをアップグレード",
+        "errorCode": "エラーコード"
+      },
+      "progress": {
+        "loading": "データを読み込み中...",
+        "analyzing": "パターンを分析中...",
+        "evaluating": "着手を評価中...",
+        "finishing": "完了処理中..."
+      },
+      "language": {
+        "title": "コメント言語",
+        "vi": "ベトナム語",
+        "en": "英語",
+        "zh": "中国語",
+        "ja": "日本語"
+      }
+    },
+    "profile": {
+      "usernamePopupTitle": "ゲーム内名前を設定",
+      "usernamePopupDesc": "旅を始めるためにユーザー名を選んでください。これがゲーム内であなたを見つける方法です。",
+      "usernamePlaceholder": "ユーザー名を入力...",
+      "usernameRuleMin": "3文字以上",
+      "usernameRuleAllowed": "?????????????????????????????????3?20??(a-z,0-9,_)???????",
+      "usernameRuleUnique": "ユニーク",
+      "usernameConfirm": "確認",
+      "usernameErrorEmpty": "ユーザー名を入力してください",
+      "usernameErrorShort": "ユーザー名は3文字以上必要です",
+      "usernameErrorLong": "ユーザー名は20文字以下にしてください",
+      "usernameErrorInvalid": "????????????????????_?3?20??????????",
+      "usernameErrorTaken": "このユーザー名は既に使用されています",
+      "usernameErrorSave": "ユーザー名を保存できません。もう一度お試しください。",
+      "usernameUpdateSuccess": "ユーザー名を更新しました！",
+      "usernameProcessing": "処理中...",
+      "levelLabel": "Level",
+      "expText": "EXP",
+      "rankLabel": "Rank",
+      "titleLabel": "称号",
+      "titleValue": "無名の者",
+      "emailLabel": "Email",
+      "phoneLabel": "電話番号",
+      "stats": {
+        "winRate": "勝率",
+        "total": "総対局数",
+        "streak": "連勝",
+        "elo": "Elo"
+      },
+      "avatarLabel": "アバター変更",
+      "avatarChoose": "画像を選択",
+      "avatarUploading": "アップロード中...",
+      "avatarErrorType": "有効な画像ファイルを選択してください",
+      "avatarErrorSize": "画像は5MB以下にしてください",
+      "avatarSuccess": "アバターを更新しました！",
+      "avatarErrorGeneric": "アバターのアップロード中にエラーが発生しました",
+      "avatarErrorRead": "画像ファイルの読み込み中にエラーが発生しました",
+      "avatarErrorBucket": "アバターバケットが存在しません。作成するか VITE_SUPABASE_AVATAR_BUCKET を設定してください。",
+      "emailChange": "メール変更",
+      "emailPlaceholder": "新しいメール",
+      "emailInfo": "確認メールが新しいアドレスに送信されます。変更を完了するには確認してください。",
+      "emailSending": "送信中...",
+      "emailSend": "確認を送信",
+      "emailCancel": "キャンセル",
+      "emailSuccess": "確認メールを送信しました。受信箱を確認して認証してください。",
+      "emailErrorInvalid": "無効なメールアドレス",
+      "emailErrorSame": "新しいメールは現在のメールと同じです",
+      "phoneChange": "電話番号を更新",
+      "phonePlaceholder": "新しい電話番号",
+      "phoneInfo": "必要に応じて、新しい番号に送信されたコードを確認して完了してください。",
+      "phoneUpdating": "更新中...",
+      "phoneUpdate": "更新",
+      "phoneCancel": "キャンセル",
+      "phoneSuccess": "電話番号を更新しました。プロンプトが表示されたら確認してください。",
+      "phoneErrorInvalid": "無効な電話番号",
+      "phoneErrorMissing": "電話番号を入力してください",
+      "passwordChange": "パスワード変更",
+      "passwordCurrent": "現在のパスワード",
+      "passwordNew": "新しいパスワード",
+      "passwordConfirm": "新しいパスワードを確認",
+      "passwordInfo": "• 8文字以上\n• 大文字、小文字、数字を含む",
+      "passwordSave": "保存",
+      "passwordCancel": "キャンセル",
+      "passwordErrorMissing": "すべてのパスワードフィールドを入力してください",
+      "passwordErrorShort": "新しいパスワードは8文字以上必要です",
+      "passwordErrorMismatch": "確認パスワードが一致しません",
+      "passwordErrorStrength": "パスワードには大文字、小文字、数字が必要です",
+      "passwordErrorCurrent": "現在のパスワードが正しくありません",
+      "passwordSuccess": "パスワードを変更しました！",
+      "logoutConfirm": "ログアウトしますか？",
+      "logoutError": "ログアウト中にエラーが発生しました",
+      "historyTitle": "対戦履歴",
+      "historyLoading": "履歴を読み込み中...",
+      "historyEmpty": "対戦履歴がありません",
+      "historyVs": "vs",
+      "historyWin": "勝利",
+      "historyLose": "敗北",
+      "historyTimeJustNow": "たった今",
+      "historyTimeMinutes": "{minutes} 分前",
+      "historyTimeHours": "{hours} 時間前",
+      "historyTimeDays": "{days} 日前",
+      "noUsername": "未設定",
+      "noPhone": "未設定",
+      "overview": "概要",
+      "settings": "設定",
+      "history": "履歴",
+      "settingsTitle": "設定",
+      "username": "ユーザー名",
+      "account": "アカウント",
+      "ui": "インターフェース",
+      "sound": "サウンド",
+      "board": "ボード",
+      "notifications": "通知",
+      "language": "言語",
+      "other": "その他",
+      "restoreDefaults": "デフォルトに戻す",
+      "theme": "テーマ",
+      "themeDark": "ダーク",
+      "themeLight": "ライト",
+      "uiEffects": "UIエフェクト",
+      "effectsQuality": "エフェクト品質",
+      "effectsLow": "低",
+      "effectsMedium": "中",
+      "effectsHigh": "高",
+      "uiStyle": "UIスタイル",
+      "fontSize": "フォントサイズ",
+      "fontSmall": "小",
+      "fontMedium": "中",
+      "fontLarge": "大",
+      "soundTitle": "サウンド",
+      "bgMusic": "BGM",
+      "backgroundMusic": "BGMを選択",
+      "defaultMusic": "デフォルト音楽",
+      "noMusicOwned": "音楽がありません。ショップで購入してください！",
+      "visitShop": "ショップへ",
+      "sfxEffects": "効果音",
+      "moveSound": "着手音",
+      "boardTitle": "ボードと着手",
+      "highlightLastMove": "最新の手をハイライト",
+      "pieceDropEffect": "着手エフェクト",
+      "vibration": "振動フィードバック",
+      "notifTitle": "通知",
+      "notifBrowserTitle": "ブラウザ通知権限",
+      "notifGranted": "権限が付与されました。ゲーム通知を受け取ります。",
+      "notifDenied": "権限が拒否されました。ブラウザ設定で有効にしてください。",
+      "notifDefault": "対戦招待、メッセージ、ゲーム更新を受け取るには通知を許可してください。",
+      "notifAllow": "通知を許可",
+      "notifTest": "通知テスト",
+      "notifTestSuccess": "成功！",
+      "notifTestSuccessMsg": "ゲームからの通知を受け取ります",
+      "notifTestTitle": "テスト",
+      "notifTestMsg": "MindPoint Arenaからのテスト通知です！",
+      "notifSystem": "システム通知",
+      "notifInvite": "対戦招待通知",
+      "notifChat": "ゲーム内メッセージ",
+      "notifTurn": "ターンサウンドアラート",
+      "otherTitle": "その他",
+      "aboutGame": "ゲームについて",
+      "termsOfService": "利用規約",
+      "privacyPolicy": "プライバシーポリシー",
+      "version": "バージョン",
+      "linkAccounts": "アカウント連携",
+      "facebookLinked": "Facebook (連携済み)",
+      "linkFacebook": "Facebookを連携",
+      "emailDefault": "Email (デフォルト)",
+      "logout": "ログアウト",
+      "opponent": "対戦相手"
+    },
+    "onboarding": {
+      "general": {
+        "clickInstruction": "👆 ハイライトされた部分をクリックして続行",
+        "back": "← 戻る",
+        "next": "次へ",
+        "finish": "完了",
+        "skip": "ツアーをスキップ"
+      },
+      "welcome": {
+        "title": "MindPoint Arena へようこそ！",
+        "description": "最高の五目並べマスターが集う場所。この世界をご案内します！",
+        "next": "旅を始める"
+      },
+      "profileIntro": {
+        "title": "プレイヤープロフィール",
+        "description": "これはあなたのアバターと表示名です。タップしてプロフィールページを開きます。"
+      },
+      "profileOverview": {
+        "title": "プロフィールページ",
+        "description": "統計、実績、個人情報を確認できます。",
+        "next": "続ける"
+      },
+      "profileChoice": {
+        "title": "プロフィールのカスタマイズ",
+        "description": "今すぐプロフィールを設定しますか？",
+        "options": {
+          "detail": "詳細ガイドを表示",
+          "skip": "スキップして続ける"
+        }
+      },
+      "menuOverview": {
+        "title": "メインメニュー",
+        "description": "主要セクション：\n• 🏯 ショップ - アイテム購入\n• 🎒 インベントリ - 表示と装備\n• ✨ クエスト - タスク完了\n• 🎉 イベント - 期間限定報酬\n• ⚡ ランキング - ランクを表示\n• 📚 ガイド - ゲーム学習\n• 🧙 メンター - AI分析"
+      },
+      "currency": {
+        "title": "ゲーム通貨",
+        "description": "• 💎 コイン (Coins) - 基本購入\n• 🔮 ジェム (Gems) - プレミアムアイテム\n\nクエストを完了してより多くの報酬を獲得！"
+      },
+      "reward": {
+        "title": "ウェルカムギフト！",
+        "description": "おめでとうございます！旅を始めるための1000コインを獲得しました。",
+        "next": "報酬を受け取る"
+      },
+      "questsIntro": {
+        "title": "最初のクエスト",
+        "description": "クエストタブに移動して入門タスクを完了：ボードと駒を購入！"
+      },
+      "questsOverview": {
+        "title": "クエスト",
+        "description": "これはクエストページです。毎日のクエスト、イベント、完了報酬を確認できます。",
+        "next": "続ける",
+        "skip": "スキップ"
+      },
+      "claimFirstQuest": {
+        "title": "最初のクエスト",
+        "description": "これがあなたの最初のクエストです！完了するとコインとジェムの報酬が得られます。"
+      },
+      "shopIntro": {
+        "title": "ショップ",
+        "description": "ここをクリックしてショップに入り、最初の無料アイテムを入手しましょう！"
+      },
+      "shopFreeChess": {
+        "title": "無料の駒を入手",
+        "description": "これは無料の「クラシック木製駒」です！「購入」をクリックして今すぐ入手。"
+      },
+      "shopFreeBoard": {
+        "title": "無料のボードを入手",
+        "description": "クラシックボードも無料です！「購入」をクリックしてコレクションを完成させましょう。"
+      },
+      "shopConfirm": {
+        "title": "アイテムを確認",
+        "description": "「確認」をクリックして無料アイテムの受け取りを完了しましょう！"
+      },
+      "shopSuccess": {
+        "title": "受け取り成功！",
+        "description": "素晴らしい！「OK」をクリックして続けましょう。"
+      },
+      "shopAndInventory": {
+        "title": "ショップでアイテムを購入",
+        "description": "ショップに行ってボードと駒を購入します。インベントリでアイテムを管理することもできます。"
+      },
+      "finalChoice": {
+        "title": "次に何を探索しますか？",
+        "description": "あなたに合った道を選んでください：",
+        "options": {
+          "battle": "マッチメイキングとランク戦",
+          "ai": "AIとプロツール"
+        }
+      },
+      "goToSettings": {
+        "title": "プロフィール設定",
+        "description": "「設定」タブを開いてプロフィールを調整します。"
+      },
+      "settingsOverview": {
+        "title": "設定ハブ",
+        "description": "すべての設定タブを閲覧—ここでアバターを変更し、各種機能を調整できます。",
+        "next": "続ける",
+        "skip": "ガイドをスキップ"
+      },
+      "avatarUpload": {
+        "title": "アバター変更",
+        "description": "「画像を選択」をクリックして新しいアバターをアップロード。MindPoint Arena全体に表示されます。",
+        "next": "了解"
+      },
+      "soundTab": {
+        "title": "サウンドタブを開く",
+        "description": "設定内のサウンドタブを選択してオーディオを調整します。"
+      },
+      "soundSettings": {
+        "title": "サウンド",
+        "description": "ここで音楽、効果音、着手音の音量を調整します。"
+      },
+      "notificationsTab": {
+        "title": "通知タブを開く",
+        "description": "このタブから対戦招待とチャットアラートを管理します。"
+      },
+      "notificationSettings": {
+        "title": "通知",
+        "description": "招待、チャットメッセージ、ターンリマインダーを有効/無効にします。"
+      },
+      "uiTab": {
+        "title": "UIタブ",
+        "description": "UIタブからテーマ、エフェクト、レイアウトを切り替えます。"
+      },
+      "uiSettings": {
+        "title": "インターフェース",
+        "description": "プロフィールページと同様に、テーマ、エフェクト、フォントサイズをカスタマイズします。"
+      },
+      "languageTab": {
+        "title": "言語タブ",
+        "description": "インターフェース全体の言語を選択します。"
+      },
+      "languageSettings": {
+        "title": "言語",
+        "description": "お好みの言語を選択すると、UIが即座に更新されます。"
+      },
+      "matchHistoryTab": {
+        "title": "対戦履歴を開く",
+        "description": "対戦履歴に移動して過去の対局を確認します。"
+      },
+      "matchHistory": {
+        "title": "対戦履歴",
+        "description": "勝敗、Eloの変化、すべての手の詳細を振り返ります。"
+      },
+      "quickMatch": {
+        "title": "クイックマッチ",
+        "description": "「マッチ」を押してランダムな対戦相手を見つけ、ランク戦を開始！"
+      },
+      "gameModes": {
+        "title": "ゲームモード",
+        "description": "• ランク戦 - Bo3競技マッチ\n• 変則モード - カスタムルール：スキル、マップ、隠し\n• 試練 - 5段階のAIと対戦\n• トーナメント - 大会を作成・参加"
+      },
+      "socialCard": {
+        "title": "マスターとコミュニティ",
+        "description": "トッププレイヤーと交流し、ランキングを確認し、コミュニティから学びます。"
+      },
+      "aiAnalysis": {
+        "title": "AI分析",
+        "description": "AIがあなたの対局をレビューし、ミスを指摘し、最適な手を提案します。"
+      },
+      "trainingMode": {
+        "title": "トレーニングモード",
+        "description": "様々なレベルのAIと対戦してスキルを磨きます。"
+      },
+      "askAboutAi": {
+        "title": "AIについて学ぶ？",
+        "description": "AI分析とトレーニング機能を探索しますか？",
+        "options": {
+          "yes": "はい、AIを探索",
+          "no": "いいえ、完了"
+        }
+      },
+      "askAboutBattle": {
+        "title": "対戦について学ぶ？",
+        "description": "対戦モードとランキングを探索しますか？",
+        "options": {
+          "yes": "はい、探索する",
+          "no": "いいえ、完了"
+        }
+      },
+      "complete": {
+        "title": "準備完了！",
+        "description": "MindPoint Arenaを征服する準備ができました。すべての対戦を楽しんでください！",
+        "next": "プレイ開始"
+      }
+    },
+    "room": {
+      "matchTitle": "対戦",
+      "back": "戻る",
+      "leaveMatch": "対戦を離れる",
+      "moveHistory": "手順履歴",
+      "requestDraw": "引き分けを申請",
+      "surrender": "投了",
+      "confirmSurrender": "投了しますか？",
+      "confirmDraw": "引き分けを申請しますか？",
+      "drawSent": "引き分け申請を送信しました",
+      "you": "あなた",
+      "opponent": "対戦相手",
+      "rankUnknown": "未ランク",
+      "youWin": "勝利！",
+      "youLose": "敗北！",
+      "playerWonGame": "プレイヤー {player} がこのゲームに勝利",
+      "currentScore": "現在のスコア",
+      "matchWin": "マッチ勝利！",
+      "matchLose": "マッチ敗北！",
+      "winner": "勝者",
+      "score": "スコア",
+      "backHome": "ホームに戻る",
+      "playAgain": "もう一度プレイ",
+      "analyzeGame": "対局を分析"
+    },
+    "homeChat": {
+      "title": "チャット & AI師匠",
+      "subtitle": "一時メッセージ",
+      "close": "閉じる",
+      "tabWorld": "ワールド",
+      "tabFriend": "フレンド",
+      "tabAi": "AI師匠",
+      "online": "オンライン",
+      "offline": "オフライン",
+      "connecting": "接続中...",
+      "cooldown": "クールダウン30秒",
+      "cooldownRemaining": "残り{seconds}秒",
+      "loginToSend": "ログインして実際のメッセージを送信。",
+      "chatOffline": "チャットオフライン、メッセージはローカルのみ保存。",
+      "connectingRealtime": "リアルタイムに接続中...",
+      "chatOfflineRetry": "チャットオフライン、更新または再ログインしてください。",
+      "noMessages": "メッセージがありません。最初の挨拶を送りましょう。",
+      "you": "あなた",
+      "anonymous": "匿名",
+      "local": "ローカル",
+      "worldPlaceholder": "ワールドチャット - 30秒クールダウン",
+      "worldPlaceholderLogin": "ログインしてワールドチャットに参加",
+      "refresh": "更新",
+      "send": "送信",
+      "demoMode": "デモモード：メッセージはローカルのみ保存。ログインしてチャットサーバーを起動して実際のメッセージを送信。",
+      "searchFriend": "チャットするフレンドを検索",
+      "noFriendsFound": "該当するフレンドが見つかりません",
+      "noFriendMessages": "メッセージがありません。フレンドを選択して開始。",
+      "friendPlaceholderLogin": "ログインしてフレンドとチャット",
+      "friendPlaceholderSelect": "フレンドを選択して開始",
+      "friendPlaceholder": "選択したフレンドへのプライベートメッセージ",
+      "aiModelFree": "無料",
+      "aiModelTrial": "トライアル",
+      "aiModelPro": "プロ",
+      "aiNeedTrial": "トライアルまたはプロプランが必要",
+      "aiNeedPro": "プロプランが必要",
+      "aiHelper": "無料：データセットから検索。トライアル/プロ：よりスマートなAI。",
+      "aiPlanFree": "現在のプラン：無料。アップグレードしてトライアル/プロを使用。",
+      "aiPlanTrial": "現在のプラン：トライアル。",
+      "aiPlanPro": "現在のプラン：プロ。",
+      "aiLoadingDataset": "データセット読み込み中...",
+      "aiDatasetError": "データセットエラー、トライアル/プロをご利用ください。",
+      "aiLoadingHint": "データ読み込み中...トライアル/プロに切り替えてすぐに使用できます。",
+      "aiDatasetErrorHint": "データセットを読み込めません。トライアルまたはプロを選択してください。",
+      "aiNoMessages": "AI師匠に五目並べについて質問を始めましょう。",
+      "aiPlaceholder": "五目並べの質問を入力",
+      "aiAsking": "回答中...",
+      "aiAsk": "質問"
+    },
+    "currencyShop": {
+      "title": "ショップ",
+      "subtitle": "通貨をチャージするか、Proに登録して高度なAI機能をアンロック。",
+      "back": "戻る",
+      "tabCurrency": "通貨チャージ",
+      "tabSubscription": "Proプラン",
+      "needLogin": "チャージする前にログインしてください。",
+      "loading": "読み込み中...",
+      "processing": "処理中...",
+      "paymentCreated": "支払いリンクを作成しました、リダイレクト中...",
+      "paymentFailed": "支払い失敗",
+      "paymentError": "支払いリンクの作成中にエラー",
+      "testFailed": "テスト失敗",
+      "testError": "テスト購入中にエラー",
+      "testSuccess": "成功！{amount} {currency} を獲得しました",
+      "subscriptionSuccess": "OK。{plan} の支払いが成功しました！サブスクリプションが更新されました。",
+      "subscriptionError": "支払いシミュレーション中にエラー",
+      "txnRef": "取引ID",
+      "linkOpened": "リンクが新しいタブで開きました",
+      "hot": "人気",
+      "bonus": "ボーナス",
+      "popular": "人気",
+      "upgradeTitle": "アップグレードしてアンロック",
+      "upgradeDesc": "高度なAI分析、スマートチャットなどのPro機能。VNPayで支払い。",
+      "plan": {
+        "trial": "トライアル7日間",
+        "trialDesc": "7日間お試し",
+        "trialQuota": "4回分析 + 10回チャット/日",
+        "pro": "Pro 30日間",
+        "proDesc": "フルAI分析アクセス",
+        "proQuota": "40回分析 + 120回チャット/日",
+        "proPlus": "Pro+ 90日間",
+        "proPlusDesc": "最高ティア",
+        "proPlusQuota": "100回分析 + 500回チャット/日"
+      }
     }
   }
 }

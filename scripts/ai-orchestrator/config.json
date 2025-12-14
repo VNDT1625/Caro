@@ -1,0 +1,43 @@
+{
+  "project_root": "C:/PJ/caro",
+  "agents": {
+    "gpt": {
+      "name": "GPT CLI (Codex Max)",
+      "tasks": ["payment-system", "ai-training-upgrade"],
+      "status_file": "gpt_status.json"
+    },
+    "kiro": {
+      "name": "Kiro",
+      "tasks": ["ranked-bo3-system", "fix-ai-chat-dataset-loading"],
+      "status_file": "kiro_status.json"
+    }
+  },
+  "specs": {
+    "ranked-bo3-system": {
+      "path": ".kiro/specs/ranked-bo3-system",
+      "priority": 1,
+      "assigned_to": "kiro"
+    },
+    "payment-system": {
+      "path": ".kiro/specs/payment-system",
+      "priority": 1,
+      "assigned_to": "gpt",
+      "needs_creation": true
+    },
+    "fix-ai-chat-dataset-loading": {
+      "path": ".kiro/specs/fix-ai-chat-dataset-loading",
+      "priority": 2,
+      "assigned_to": "kiro"
+    },
+    "ai-training-upgrade": {
+      "path": ".kiro/specs/ai-training-upgrade-plan",
+      "priority": 2,
+      "assigned_to": "gpt"
+    }
+  },
+  "coordination": {
+    "check_interval_seconds": 30,
+    "max_retries": 3,
+    "timeout_minutes": 60
+  }
+}

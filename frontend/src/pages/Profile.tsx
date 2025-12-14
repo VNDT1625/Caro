@@ -1,19 +1,42 @@
 import React from 'react'
 import { supabase } from '../lib/supabase'
 import { useLanguage } from '../contexts/LanguageContext'
+import { ReportModal } from '../components/report'
+import { RankBadgeV2, RankProgressV2 } from '../components/rank'
+import type { MainRank, RankTier, RankLevel } from '../types/rankV2'
 import { AudioManager } from '../lib/AudioManager'
 import { NotificationManager } from '../lib/NotificationManager'
+import { validateUsernameInput } from '../lib/username'
+import MusicSelector from '../components/settings/MusicSelector'
+import { getEquippedTitle } from '../lib/titleApi'
+import { EquippedTitleBadge } from '../components/title/TitleCard'
+import { AvatarWithFrame, type AvatarFrameData } from '../components/avatar'
+import { useEquippedFrame, getOwnedFrames } from '../hooks/useEquippedFrame'
+import { MobileBreadcrumb } from '../components/layout'
+
+const AVATAR_BUCKET = (import.meta.env.VITE_SUPABASE_AVATAR_BUCKET || 'avatars').trim()
+const USERNAME_ERROR_KEY_MAP = {
+  empty: 'usernameErrorEmpty',
+  short: 'usernameErrorShort',
+  long: 'usernameErrorLong',
+  invalid: 'usernameErrorInvalid'
+} as const
 
 export default function Profile() {
   const { language, setLanguage, t } = useLanguage()
   const [user, setUser] = React.useState<any>(null)
+  const [analyzedMatches, setAnalyzedMatches] = React.useState<Set<string>>(new Set())
   const [profile, setProfile] = React.useState<any>(null)
+  const [linkedProviders, setLinkedProviders] = React.useState<string[]>([])
+  const [loadingProfile, setLoadingProfile] = React.useState(true)
   const [showUsernamePopup, setShowUsernamePopup] = React.useState(false)
   const [newUsername, setNewUsername] = React.useState('')
   const [usernameError, setUsernameError] = React.useState('')
   const [activeSection, setActiveSection] = React.useState<'overview' | 'settings' | 'history'>('overview')
   const [activeSettingsTab, setActiveSettingsTab] = React.useState<'account' | 'ui' | 'sound' | 'board' | 'notifications' | 'language' | 'other'>('account')
   const [matchHistory, setMatchHistory] = React.useState<any[]>([])
+  const [showReportModal, setShowReportModal] = React.useState(false)
+  const [reportTarget, setReportTarget] = React.useState<{ userId: string; matchId: string } | null>(null)
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [uploadingAvatar, setUploadingAvatar] = React.useState(false)
   
@@ -33,8 +56,23 @@ export default function Profile() {
   const [emailSuccess, setEmailSuccess] = React.useState('')
   const [changingEmail, setChangingEmail] = React.useState(false)
   
+  // Phone change states
+  const [showPhoneChange, setShowPhoneChange] = React.useState(false)
+  const [newPhone, setNewPhone] = React.useState('')
+  const [phoneError, setPhoneError] = React.useState('')
+  const [phoneSuccess, setPhoneSuccess] = React.useState('')
+  const [changingPhone, setChangingPhone] = React.useState(false)
+  
   // Notification permission state
   const [notificationPermission, setNotificationPermission] = React.useState<NotificationPermission>('default')
+  
+  // Equipped title state
+  const [equippedTitle, setEquippedTitle] = React.useState<any>(null)
+  
+  // Avatar frame states
+  const { frame: equippedFrame, equipFrame } = useEquippedFrame(user?.id)
+  const [ownedFrames, setOwnedFrames] = React.useState<AvatarFrameData[]>([])
+  const [showFrameSelector, setShowFrameSelector] = React.useState(false)
 
   // Load user data from Supabase
   React.useEffect(() => {
@@ -45,6 +83,20 @@ export default function Profile() {
       setNotificationPermission(Notification.permission)
     }
   }, [])
+  
+  // Load equipped title when user is available
+  React.useEffect(() => {
+    if (user?.id) {
+      getEquippedTitle(user.id).then(setEquippedTitle)
+    }
+  }, [user?.id])
+  
+  // Load owned frames when user is available
+  React.useEffect(() => {
+    if (user?.id) {
+      getOwnedFrames(user.id).then(setOwnedFrames)
+    }
+  }, [user?.id])
 
   // Load match history when history section is active
   React.useEffect(() => {
@@ -54,10 +106,23 @@ export default function Profile() {
   }, [activeSection, user])
 
   async function loadUserData() {
+    setLoadingProfile(true)
     try {
       const { data } = await supabase.auth.getUser()
       const u = data?.user ?? null
       setUser(u)
+      
+      if (u) {
+        const providers = new Set<string>()
+        if (u.identities) {
+          u.identities.forEach((i: any) => providers.add(i.provider))
+        }
+        if (u.app_metadata?.provider) providers.add(u.app_metadata.provider as string)
+        if (u.email) providers.add('email')
+        setLinkedProviders(Array.from(providers))
+      } else {
+        setLinkedProviders([])
+      }
       
       if (u) {
         const { data: prof } = await supabase
@@ -67,8 +132,75 @@ export default function Profile() {
           .maybeSingle()
         
         if (prof) {
+          // Kiểm tra xem có vừa liên kết Facebook không và cần khôi phục profile
+          // Hỗ trợ cả query string và hash routing
+          const urlParams = new URLSearchParams(window.location.search)
+          let justLinked = urlParams.get('linked')
+          
+          // Nếu không tìm thấy trong search, kiểm tra trong hash (cho hash routing)
+          if (!justLinked && window.location.hash.includes('?')) {
+            const hashParams = new URLSearchParams(window.location.hash.split('?')[1])
+            justLinked = hashParams.get('linked')
+          }
+          
+          if (justLinked === 'facebook') {
+            // Xóa param khỏi URL (hỗ trợ cả query string và hash routing)
+            const cleanHash = window.location.hash.split('?')[0] || '#profile'
+            window.history.replaceState({}, '', window.location.pathname + cleanHash)
+            
+            // Kiểm tra backup và khôi phục nếu profile bị ghi đè
+            const backupStr = localStorage.getItem('profile_backup_before_link')
+            if (backupStr) {
+              try {
+                const backup = JSON.parse(backupStr)
+                // Chỉ khôi phục nếu backup là của user này và trong vòng 5 phút
+                if (backup.user_id === u.id && Date.now() - backup.timestamp < 5 * 60 * 1000) {
+                  // Kiểm tra xem profile có bị ghi đè không
+                  const wasOverwritten = (
+                    (backup.username && prof.username !== backup.username) ||
+                    (backup.display_name && prof.display_name !== backup.display_name) ||
+                    (backup.avatar_url && prof.avatar_url !== backup.avatar_url)
+                  )
+                  
+                  if (wasOverwritten) {
+                    console.log('[Profile] Restoring profile data after Facebook link')
+                    // Khôi phục dữ liệu profile
+                    const { error: restoreError } = await supabase
+                      .from('profiles')
+                      .update({
+                        username: backup.username || prof.username,
+                        display_name: backup.display_name || prof.display_name,
+                        avatar_url: backup.avatar_url || prof.avatar_url
+                      })
+                      .eq('user_id', u.id)
+                    
+                    if (!restoreError) {
+                      // Reload profile sau khi khôi phục
+                      const { data: restoredProf } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('user_id', u.id)
+                        .maybeSingle()
+                      
+                      if (restoredProf) {
+                        setProfile(restoredProf)
+                        localStorage.removeItem('profile_backup_before_link')
+                        setLoadingProfile(false)
+                        return
+                      }
+                    }
+                  }
+                }
+                localStorage.removeItem('profile_backup_before_link')
+              } catch (e) {
+                console.error('Failed to restore profile backup:', e)
+                localStorage.removeItem('profile_backup_before_link')
+              }
+            }
+          }
+          
           setProfile(prof)
-          // Check if username is missing
+          // Show popup if username is empty - user MUST set username
           if (!prof.username || prof.username.trim() === '') {
             setShowUsernamePopup(true)
           }
@@ -76,45 +208,53 @@ export default function Profile() {
       }
     } catch (e) {
       console.error('Load user failed:', e)
+    } finally {
+      setLoadingProfile(false)
     }
   }
 
   async function handleSaveUsername() {
-    if (!newUsername.trim()) {
-      setUsernameError('Vui lòng nhập username')
-      return
-    }
+    const { displayName, slug, error } = validateUsernameInput(newUsername)
 
-    if (newUsername.length < 3) {
-      setUsernameError('Username phải có ít nhất 3 ký tự')
-      return
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
-      setUsernameError('Username chỉ được chứa chữ, số và dấu gạch dưới')
+    if (error) {
+      setUsernameError(t(`profile.${USERNAME_ERROR_KEY_MAP[error]}`))
       return
     }
 
     try {
-      // Check if username exists
+      // Check if username exists (case-insensitive)
       const { data: existing } = await supabase
         .from('profiles')
         .select('user_id')
-        .eq('username', newUsername.trim())
+        .ilike('username', slug)
         .maybeSingle()
 
-      if (existing) {
-        setUsernameError('Username đã được sử dụng')
+      if (existing && existing.user_id !== user.id) {
+        setUsernameError(t('profile.usernameErrorTaken'))
         return
       }
 
-      // Update username
+      // Update both username and display_name
+      // username: lowercase, unique identifier for search/mention
+      // display_name: same as username initially, user can change later in settings
       const { error } = await supabase
         .from('profiles')
-        .update({ username: newUsername.trim() })
+        .update({ 
+          username: slug,
+          display_name: displayName // Keep original casing for display
+        })
         .eq('user_id', user.id)
 
       if (error) throw error
+
+      // Notify other components
+      window.dispatchEvent(new CustomEvent('profileUpdated', { 
+        detail: { 
+          username: slug,
+          display_name: displayName,
+          field: 'username'
+        } 
+      }))
 
       // Reload user data
       await loadUserData()
@@ -122,23 +262,16 @@ export default function Profile() {
       setNewUsername('')
       setUsernameError('')
     } catch (e: any) {
-      setUsernameError(e.message || 'Lỗi khi lưu username')
+      console.error('Save username error:', e)
+      setUsernameError(e.message || t('common.error'))
     }
   }
 
   async function handleUpdateUsername() {
-    if (!newUsername.trim()) {
-      alert('Vui lòng nhập username mới')
-      return
-    }
+    const { displayName, slug, error } = validateUsernameInput(newUsername)
 
-    if (newUsername.length < 3) {
-      alert('Username phải có ít nhất 3 ký tự')
-      return
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
-      alert('Username chỉ được chứa chữ, số và dấu gạch dưới')
+    if (error) {
+      alert(t(`profile.${USERNAME_ERROR_KEY_MAP[error]}`))
       return
     }
 
@@ -147,18 +280,18 @@ export default function Profile() {
       const { data: existing } = await supabase
         .from('profiles')
         .select('user_id')
-        .eq('username', newUsername.trim())
+        .ilike('username', slug)
         .maybeSingle()
 
       if (existing && existing.user_id !== user.id) {
-        alert('Username đã được sử dụng')
+        alert(t('profile.usernameErrorTaken'))
         return
       }
 
       // Update username
       const { error } = await supabase
         .from('profiles')
-        .update({ username: newUsername.trim() })
+        .update({ username: slug, display_name: displayName })
         .eq('user_id', user.id)
 
       if (error) throw error
@@ -170,14 +303,15 @@ export default function Profile() {
       // Dispatch profile update event for global consistency
       window.dispatchEvent(new CustomEvent('profileUpdated', { 
         detail: { 
-          username: newUsername.trim(),
+          username: slug,
+          display_name: displayName,
           field: 'username'
         } 
       }))
       
-      alert('Đã cập nhật username thành công!')
+      alert(t('profile.usernameUpdateSuccess'))
     } catch (e: any) {
-      alert(e.message || 'Lỗi khi cập nhật username')
+      alert(e.message || t('common.error'))
     }
   }
 
@@ -208,9 +342,10 @@ export default function Profile() {
 
       const formatted = (data || []).map((match: any) => {
         const isPlayerX = match.player_x_user_id === user.id
-        const opponent = isPlayerX 
+        const opponentName = isPlayerX 
           ? (match.player_o?.username || match.player_o?.display_name || 'AI')
-          : (match.player_x?.username || match.player_x?.display_name || 'Đối thủ')
+          : (match.player_x?.username || match.player_x?.display_name || t('profile.opponent'))
+        const opponentId = isPlayerX ? match.player_o_user_id : match.player_x_user_id
         
         let result = 'draw'
         if (match.winner_user_id === user.id) result = 'win'
@@ -223,13 +358,28 @@ export default function Profile() {
         return {
           id: match.id,
           result,
-          opponent,
+          opponent: opponentName,
+          opponentId,
           eloChange: eloChange || 0,
           time: timeAgo
         }
       })
 
       setMatchHistory(formatted)
+      
+      // Check which matches have been analyzed (cached)
+      if (formatted.length > 0) {
+        const matchIds = formatted.map((m: any) => m.id)
+        const { data: cachedAnalyses } = await supabase
+          .from('analysis_cache')
+          .select('match_id')
+          .in('match_id', matchIds)
+        
+        if (cachedAnalyses && cachedAnalyses.length > 0) {
+          const analyzedSet = new Set(cachedAnalyses.map((c: any) => c.match_id))
+          setAnalyzedMatches(analyzedSet)
+        }
+      }
     } catch (e) {
       console.error('Load match history failed:', e)
     } finally {
@@ -245,11 +395,11 @@ export default function Profile() {
     const diffHours = Math.floor(diffMins / 60)
     const diffDays = Math.floor(diffHours / 24)
 
-    if (diffMins < 1) return 'Vừa xong'
-    if (diffMins < 60) return `${diffMins} phút trước`
-    if (diffHours < 24) return `${diffHours} giờ trước`
-    if (diffDays < 7) return `${diffDays} ngày trước`
-    return date.toLocaleDateString('vi-VN')
+    if (diffMins < 1) return t('profile.historyTimeJustNow')
+    if (diffMins < 60) return t('profile.historyTimeMinutes', { minutes: diffMins })
+    if (diffHours < 24) return t('profile.historyTimeHours', { hours: diffHours })
+    if (diffDays < 7) return t('profile.historyTimeDays', { days: diffDays })
+    return date.toLocaleDateString(language === 'vi' ? 'vi-VN' : undefined)
   }
 
   async function handleChangePassword() {
@@ -257,18 +407,23 @@ export default function Profile() {
     setPasswordSuccess('')
 
     // Validation
-    if (!newPassword || !confirmPassword) {
-      setPasswordError('Vui lòng nhập đầy đủ thông tin')
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError(t('profile.passwordErrorMissing'))
+      return
+    }
+
+    if (!user?.email) {
+      setPasswordError(t('common.error'))
       return
     }
 
     if (newPassword.length < 8) {
-      setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự')
+      setPasswordError(t('profile.passwordErrorShort'))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('Mật khẩu xác nhận không khớp')
+      setPasswordError(t('profile.passwordErrorMismatch'))
       return
     }
 
@@ -278,12 +433,22 @@ export default function Profile() {
     const hasNumber = /[0-9]/.test(newPassword)
     
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-      setPasswordError('Mật khẩu phải chứa chữ hoa, chữ thường và số')
+      setPasswordError(t('profile.passwordErrorStrength'))
       return
     }
 
     setChangingPassword(true)
     try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      })
+
+      if (reauthError) {
+        setPasswordError(t('profile.passwordErrorCurrent'))
+        return
+      }
+
       // Use Supabase Auth to update password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
@@ -291,7 +456,7 @@ export default function Profile() {
 
       if (error) throw error
 
-      setPasswordSuccess('Đã thay đổi mật khẩu thành công!')
+      setPasswordSuccess(t('profile.passwordSuccess'))
       setShowPasswordChange(false)
       setCurrentPassword('')
       setNewPassword('')
@@ -302,7 +467,7 @@ export default function Profile() {
         setPasswordSuccess('')
       }, 3000)
     } catch (e: any) {
-      setPasswordError(e.message || 'Lỗi khi thay đổi mật khẩu')
+      setPasswordError(e.message || t('common.error'))
     } finally {
       setChangingPassword(false)
     }
@@ -314,20 +479,20 @@ export default function Profile() {
 
     // Validation
     if (!newEmail || !newEmail.trim()) {
-      setEmailError('Vui lòng nhập email mới')
+      setEmailError(t('profile.emailErrorInvalid'))
       return
     }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(newEmail)) {
-      setEmailError('Email không hợp lệ')
+      setEmailError(t('profile.emailErrorInvalid'))
       return
     }
 
     // Check if email is same as current
     if (newEmail === user?.email) {
-      setEmailError('Email mới giống email hiện tại')
+      setEmailError(t('profile.emailErrorSame'))
       return
     }
 
@@ -341,7 +506,7 @@ export default function Profile() {
 
       if (error) throw error
 
-      setEmailSuccess('Đã gửi email xác nhận đến địa chỉ mới. Vui lòng kiểm tra hộp thư và xác nhận để hoàn tất thay đổi.')
+      setEmailSuccess(t('profile.emailSuccess'))
       setShowEmailChange(false)
       setNewEmail('')
       
@@ -349,10 +514,89 @@ export default function Profile() {
         setEmailSuccess('')
       }, 5000)
     } catch (e: any) {
-      setEmailError(e.message || 'Lỗi khi thay đổi email')
+      setEmailError(e.message || t('common.error'))
     } finally {
       setChangingEmail(false)
     }
+  }
+
+  async function handleChangePhone() {
+    setPhoneError('')
+    setPhoneSuccess('')
+
+    if (!newPhone || !newPhone.trim()) {
+      setPhoneError(t('profile.phoneErrorMissing'))
+      return
+    }
+
+    const phoneRegex = /^[0-9+()\-.\s]{8,20}$/
+    if (!phoneRegex.test(newPhone.trim())) {
+      setPhoneError(t('profile.phoneErrorInvalid'))
+      return
+    }
+
+    if (!user) {
+      setPhoneError(t('common.error'))
+      return
+    }
+
+    setChangingPhone(true)
+    try {
+      const { error } = await supabase.auth.updateUser({
+        phone: newPhone.trim()
+      })
+
+      if (error) throw error
+
+      await loadUserData()
+      setPhoneSuccess(t('profile.phoneSuccess'))
+      setShowPhoneChange(false)
+      setNewPhone('')
+
+      setTimeout(() => {
+        setPhoneSuccess('')
+      }, 4000)
+    } catch (e: any) {
+      setPhoneError(e.message || t('common.error'))
+    } finally {
+      setChangingPhone(false)
+    }
+  }
+
+  async function compressAvatar(file: File) {
+    // Giảm kích thước ảnh trước khi upload để tránh lưu base64 nặng
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = () => reject(new Error(t('profile.avatarErrorRead')))
+      reader.readAsDataURL(file)
+    })
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error(t('profile.avatarErrorGeneric')))
+      image.src = dataUrl
+    })
+
+    const maxSize = 640
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.width * scale)
+    canvas.height = Math.round(img.height * scale)
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error(t('common.error'))
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((b) => {
+        if (b) resolve(b)
+        else reject(new Error(t('profile.avatarErrorGeneric')))
+      }, 'image/jpeg', 0.85)
+    })
+
+    return { blob, extension: 'jpg' }
   }
 
   async function handleUploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
@@ -361,74 +605,101 @@ export default function Profile() {
 
     // Validate file
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn file ảnh')
+      alert(t('profile.avatarErrorType'))
+      event.target.value = ''
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Ảnh không được vượt quá 2MB')
+    if (file.size > 5 * 1024 * 1024) {
+      alert(t('profile.avatarErrorSize'))
+      event.target.value = ''
       return
     }
 
     setUploadingAvatar(true)
     try {
-      // Convert image to base64 and store in profile directly
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64String = reader.result as string
-        
-        try {
-          // Update profile with base64 avatar
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ avatar_url: base64String })
-            .eq('user_id', user.id)
-
-          if (updateError) throw updateError
-
-          await loadUserData()
-          
-          // Dispatch profile update event for global consistency
-          window.dispatchEvent(new CustomEvent('profileUpdated', { 
-            detail: { 
-              avatar_url: base64String,
-              field: 'avatar'
-            } 
-          }))
-          
-          alert('Đã cập nhật avatar thành công!')
-        } catch (e: any) {
-          console.error('Update avatar failed:', e)
-          alert(e.message || 'Lỗi khi cập nhật avatar')
-        } finally {
-          setUploadingAvatar(false)
-        }
-      }
+      // Compress và convert sang base64 (hoạt động tốt hơn Storage URL)
+      const { blob } = await compressAvatar(file)
       
-      reader.onerror = () => {
-        alert('Lỗi khi đọc file ảnh')
-        setUploadingAvatar(false)
-      }
+      // Convert blob to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(new Error('Không thể đọc file'))
+        reader.readAsDataURL(blob)
+      })
+
+      // Lưu base64 trực tiếp vào database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: base64 })
+        .eq('user_id', user.id)
+
+      if (updateError) throw updateError
+
+      await loadUserData()
       
-      reader.readAsDataURL(file)
+      // Dispatch profile update event cho các nơi khác
+      window.dispatchEvent(new CustomEvent('profileUpdated', { 
+        detail: { 
+          avatar_url: base64,
+          field: 'avatar'
+        } 
+      }))
+      
+      alert(t('profile.avatarSuccess'))
     } catch (e: any) {
       console.error('Upload avatar failed:', e)
-      alert(e.message || 'Lỗi khi upload avatar')
+      const msg = e?.message || ''
+      if (/Bucket not found/i.test(msg)) {
+        alert(t('profile.avatarErrorBucket'))
+      } else {
+        alert(msg || t('profile.avatarErrorGeneric'))
+      }
+    } finally {
       setUploadingAvatar(false)
+      event.target.value = ''
     }
   }
 
   async function handleLogout() {
-    if (confirm('Bạn có chắc muốn đăng xuất?')) {
+    if (confirm(t('profile.logoutConfirm'))) {
       try {
         await supabase.auth.signOut()
         window.location.href = '/'
       } catch (e) {
         console.error('Logout failed:', e)
-        alert('Lỗi khi đăng xuất')
+        alert(t('profile.logoutError'))
       }
     }
   }
+
+  async function handleLinkFacebook() {
+    setEmailError('')
+    try {
+      // Lưu profile data hiện tại trước khi link để bảo vệ khỏi bị ghi đè
+      if (profile) {
+        localStorage.setItem('profile_backup_before_link', JSON.stringify({
+          user_id: user?.id,
+          username: profile.username,
+          display_name: profile.display_name,
+          avatar_url: profile.avatar_url,
+          timestamp: Date.now()
+        }))
+      }
+      
+      // Sử dụng linkIdentity thay vì signInWithOAuth để liên kết provider
+      // mà không ghi đè session hiện tại
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'facebook',
+        options: { redirectTo: `${window.location.origin}?linked=facebook#profile` }
+      })
+      if (error) throw error
+    } catch (e: any) {
+      setEmailError(e.message || "Liên kết Facebook thất bại")
+    }
+  }
+
 
   // Load settings from localStorage on mount
   const loadSettings = () => {
@@ -547,7 +818,7 @@ export default function Profile() {
 
   // Reset all settings to default
   const handleResetSettings = () => {
-    if (confirm('Bạn có chắc muốn khôi phục toàn bộ cài đặt về mặc định?')) {
+    if (confirm(t('profile.restoreDefaults'))) {
       const defaultSettings = {
         theme: 'dark',
         uiEffects: true,
@@ -588,24 +859,77 @@ export default function Profile() {
     return Math.floor(100 * Math.pow(level, 1.5))
   }
 
-  // Use real data from Supabase
-  const currentLevel = profile?.level || 1
-  const currentExp = profile?.exp || 0
-  const expNeeded = getExpForLevel(currentLevel)
-  const expProgress = Math.min((currentExp / expNeeded) * 100, 100)
+  // EXP/Level state with animation to phản ánh realtime khi exp tăng
+  const targetLevel = profile?.level || 1
+  const targetExp = profile?.exp || 0
+  const [displayLevel, setDisplayLevel] = React.useState(targetLevel)
+  const [displayExp, setDisplayExp] = React.useState(targetExp)
+
+  React.useEffect(() => {
+    let level = displayLevel
+    let exp = displayExp
+    let rafId: number | null = null
+
+    const animate = () => {
+      const targetL = targetLevel
+      const targetE = targetExp
+
+      // Nếu data giảm (hiếm), sync ngay
+      if (targetL < level || (targetL === level && targetE < exp)) {
+        level = targetL
+        exp = targetE
+        setDisplayLevel(level)
+        setDisplayExp(exp)
+        return
+      }
+
+      const expNeededForLevel = getExpForLevel(level)
+      const goalExp = level < targetL ? expNeededForLevel : targetE
+      if (exp >= goalExp) {
+        // lên level
+        exp -= expNeededForLevel
+        level += 1
+      }
+
+      if (level > targetL || (level === targetL && exp >= targetE)) {
+        setDisplayLevel(targetL)
+        setDisplayExp(targetE)
+        return
+      }
+
+      const step = Math.max(1, Math.floor(expNeededForLevel / 40))
+      exp = Math.min(goalExp, exp + step)
+      setDisplayLevel(level)
+      setDisplayExp(exp)
+
+      rafId = requestAnimationFrame(animate)
+    }
+
+    rafId = requestAnimationFrame(animate)
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [targetLevel, targetExp])
+
+  const expNeeded = getExpForLevel(displayLevel)
+  const expProgress = Math.min((displayExp / expNeeded) * 100, 100)
 
   const userData = {
-    username: profile?.username || profile?.display_name || 'Chưa đặt tên',
+    username: profile?.username || profile?.display_name || t('profile.noUsername'),
     email: user?.email || 'user@example.com',
-    phone: user?.phone || 'Chưa cập nhật',
+    phone: user?.phone || t('profile.noPhone'),
     avatar: profile?.avatar_url || '',
-    level: currentLevel,
-    exp: currentExp,
+    level: displayLevel,
+    exp: displayExp,
     expNeeded: expNeeded,
     expProgress: expProgress,
     rank: getRankName(profile?.current_rank || 'vo_danh'),
+    rankCode: (profile?.current_rank || 'vo_danh') as MainRank,
+    rankTier: (profile?.rank_tier || 'so_ky') as RankTier,
+    rankLevel: (profile?.rank_level || 1) as RankLevel,
+    mindpoint: profile?.mindpoint || 0,
     rankIcon: getRankIcon(profile?.current_rank || 'vo_danh'),
-    title: 'Vô Danh Thành Vô Đối',
+    title: t('profile.titleValue'),
     coins: profile?.coins || 0,
     gems: profile?.gems || 0,
     stats: {
@@ -646,7 +970,128 @@ export default function Profile() {
 
   return (
     <div className="profile-container">
+      {/* Frame Selector Modal */}
+      {showFrameSelector && (
+        <div className="popup-overlay" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(2, 6, 23, 0.9)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 20
+        }} onClick={() => setShowFrameSelector(false)}>
+          <div className="popup-content glass-card" style={{
+            padding: 24,
+            maxWidth: 500,
+            width: '100%',
+            borderRadius: 20,
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#F8FAFC' }}>🖼️ {t('profile.selectFrame')}</h3>
+              <button onClick={() => setShowFrameSelector(false)} style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94A3B8',
+                fontSize: 20,
+                cursor: 'pointer'
+              }}>✕</button>
+            </div>
+            
+            {ownedFrames.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🖼️</div>
+                <p>{t('profile.noFrames')}</p>
+                <button 
+                  onClick={() => { window.location.hash = '#shop'; setShowFrameSelector(false) }}
+                  style={{
+                    marginTop: 16,
+                    padding: '10px 24px',
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t('profile.goToShop')}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 12 }}>
+                {/* No frame option */}
+                <div
+                  onClick={async () => {
+                    await equipFrame(null)
+                    // Reload owned frames to update isEquipped status
+                    const updated = await getOwnedFrames(user.id)
+                    setOwnedFrames(updated)
+                    setShowFrameSelector(false)
+                  }}
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: !equippedFrame ? 'rgba(56, 189, 248, 0.15)' : 'rgba(30, 41, 59, 0.5)',
+                    border: `2px solid ${!equippedFrame ? '#38BDF8' : 'rgba(71, 85, 105, 0.3)'}`,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🚫</div>
+                  <div style={{ fontSize: 12, color: '#94A3B8' }}>{t('profile.noFrameOption')}</div>
+                </div>
+                
+                {/* Owned frames */}
+                {ownedFrames.map(frame => {
+                  const isSelected = (frame as any).isEquipped || equippedFrame?.id === frame.id
+                  return (
+                  <div
+                    key={frame.id}
+                    onClick={async () => {
+                      await equipFrame(frame.id)
+                      // Reload owned frames to update isEquipped status
+                      const updated = await getOwnedFrames(user.id)
+                      setOwnedFrames(updated)
+                      setShowFrameSelector(false)
+                    }}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      background: isSelected ? 'rgba(168, 85, 247, 0.15)' : 'rgba(30, 41, 59, 0.5)',
+                      border: `2px solid ${isSelected ? '#A855F7' : 'rgba(71, 85, 105, 0.3)'}`,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {frame.preview_url ? (
+                      <img src={frame.preview_url} alt={frame.name} style={{ width: 64, height: 64, objectFit: 'contain' }} />
+                    ) : (
+                      <div style={{ width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🖼️</div>
+                    )}
+                    <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 6 }}>{frame.name}</div>
+                    <div style={{ 
+                      fontSize: 10, 
+                      color: frame.rarity === 'legendary' ? '#F59E0B' : frame.rarity === 'epic' ? '#A855F7' : frame.rarity === 'rare' ? '#3B82F6' : '#94A3B8',
+                      textTransform: 'capitalize'
+                    }}>{frame.rarity}</div>
+                  </div>
+                )})}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
       {/* Username Popup */}
+      {/* Username Popup - MANDATORY, cannot be closed without setting username */}
       {showUsernamePopup && (
         <div className="popup-overlay" style={{
           position: 'fixed',
@@ -654,70 +1099,197 @@ export default function Profile() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(2, 6, 23, 0.95)',
+          backdropFilter: 'blur(12px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000
+          zIndex: 99999,
+          padding: '20px'
         }}>
           <div className="popup-content glass-card" style={{
-            padding: '32px',
-            maxWidth: '450px',
-            width: '90%',
-            borderRadius: '16px',
-            textAlign: 'center'
+            padding: '40px 36px',
+            maxWidth: '440px',
+            width: '100%',
+            borderRadius: '24px',
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6)'
           }}>
-            <h2 style={{ marginBottom: '16px', fontSize: '24px' }}>🎮 Đặt tên In-Game</h2>
-            <p style={{ marginBottom: '24px', color: 'var(--color-muted)', lineHeight: '1.6' }}>
-              Để bắt đầu hành trình, hãy chọn một username độc nhất.
-              Username này sẽ là danh hiệu của bạn trong game và được dùng để tìm kiếm kết bạn.
+            {/* Icon */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '24px',
+              background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+              fontSize: '40px'
+            }}>
+              🎮
+            </div>
+
+            <h2 style={{ 
+              marginBottom: '8px', 
+              fontSize: '26px', 
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              {t('profile.usernamePopupTitle')}
+            </h2>
+            
+            <p style={{ 
+              marginBottom: '28px', 
+              color: '#94a3b8', 
+              lineHeight: 1.6,
+              fontSize: '15px'
+            }}>
+              {t('profile.usernamePopupDesc')}
             </p>
-            <input
-              type="text"
-              placeholder="Nhập username (VD: VoDanh123)"
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSaveUsername()}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.05)',
-                color: 'white',
-                fontSize: '16px',
+
+            {/* Username Input */}
+            <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#94a3b8',
                 marginBottom: '8px'
-              }}
-            />
-            {usernameError && (
-              <p style={{ color: '#EF4444', fontSize: '14px', marginBottom: '16px' }}>
-                {usernameError}
-              </p>
-            )}
-            <p style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '24px' }}>
-              • Ít nhất 3 ký tự<br/>
-              • Chỉ chứa chữ, số và dấu gạch dưới (_)
-            </p>
+              }}>
+                Username
+              </label>
+              <input
+                type="text"
+                placeholder={t('profile.usernamePlaceholder')}
+                value={newUsername}
+                onChange={(e) => {
+                  setNewUsername(e.target.value)
+                  setUsernameError('')
+                }}
+                onKeyPress={(e) => e.key === 'Enter' && handleSaveUsername()}
+                maxLength={20}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  borderRadius: '14px',
+                  border: `2px solid ${usernameError ? 'rgba(248, 113, 113, 0.5)' : 'rgba(56, 189, 248, 0.2)'}`,
+                  background: 'rgba(15, 23, 42, 0.8)',
+                  color: '#f1f5f9',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box'
+                }}
+              />
+              
+              {/* Character count & error */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '8px'
+              }}>
+                <span style={{
+                  fontSize: '12px',
+                  color: usernameError ? '#f87171' : '#64748b'
+                }}>
+                  {usernameError || ''}
+                </span>
+                <span style={{
+                  fontSize: '12px',
+                  color: newUsername.length > 15 ? '#facc15' : '#64748b'
+                }}>
+                  {newUsername.length}/20
+                </span>
+              </div>
+            </div>
+
+            {/* Rules */}
+            <div style={{
+              background: 'rgba(56, 189, 248, 0.05)',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              marginBottom: '24px',
+              textAlign: 'left'
+            }}>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                marginBottom: '8px',
+                fontWeight: 600
+              }}>
+                {t('profile.usernameRulesTitle') || 'Quy tắc đặt tên:'}
+              </div>
+              <ul style={{
+                margin: 0,
+                padding: '0 0 0 16px',
+                fontSize: '12px',
+                color: '#94a3b8',
+                lineHeight: 1.8
+              }}>
+                <li>{t('profile.usernameRuleMin')}</li>
+                <li>{t('profile.usernameRuleAllowed')}</li>
+                <li>{t('profile.usernameRuleUnique') || '• Username phải là duy nhất'}</li>
+              </ul>
+            </div>
+
+            {/* Submit Button */}
             <button
               onClick={handleSaveUsername}
-              className="btn-primary"
+              disabled={!newUsername || newUsername.length < 3}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '16px',
+                borderRadius: '14px',
+                border: 'none',
+                background: (!newUsername || newUsername.length < 3)
+                  ? 'rgba(148, 163, 184, 0.2)'
+                  : 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
+                color: (!newUsername || newUsername.length < 3) ? '#64748b' : '#0f172a',
                 fontSize: '16px',
-                fontWeight: 600
+                fontWeight: 700,
+                cursor: (!newUsername || newUsername.length < 3) ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              Xác nhận
+              {t('profile.usernameConfirm')}
+              <span>→</span>
             </button>
+
+            {/* Note - cannot skip */}
+            <p style={{
+              marginTop: '16px',
+              fontSize: '12px',
+              color: '#64748b'
+            }}>
+              {t('profile.usernameRequired') || '⚠️ Bạn cần đặt username để tiếp tục sử dụng'}
+            </p>
           </div>
         </div>
       )}
-      <nav className="breadcrumb-nav" style={{ paddingLeft: 0, paddingRight: 0 }}>
-        <a href="#home">{t('breadcrumb.home')}</a>
-        <span>›</span>
-        <span className="breadcrumb-current">{t('breadcrumb.profile')}</span>
-      </nav>
+      {/* Breadcrumb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span 
+          style={{ fontSize: 13, color: 'var(--color-muted)', cursor: 'pointer' }}
+          onClick={() => window.location.hash = '#home'}
+        >
+          {t('breadcrumb.home')}
+        </span>
+        <span style={{ color: 'var(--color-muted)' }}>›</span>
+        <span style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}>
+          {t('breadcrumb.profile')}
+        </span>
+      </div>
       <div className="profile-grid">
         {/* Left Sidebar - Simple BangBang Style */}
         <aside className="profile-sidebar glass-card">
@@ -739,6 +1311,7 @@ export default function Profile() {
             <button 
               className={`profile-nav-item ${activeSection === 'history' ? 'active' : ''}`}
               onClick={() => setActiveSection('history')}
+              data-tour="profile-history"
             >
               <span className="nav-dot">•</span>
               <span className="nav-text">{t('profile.history')}</span>
@@ -751,47 +1324,92 @@ export default function Profile() {
           {activeSection === 'overview' && (
             <div className="profile-overview">
               {/* Avatar Section */}
-              <div className="profile-avatar-section">
-                <div className="profile-avatar-frame">
-                  <div className="profile-avatar-glow"></div>
-                  <div className="profile-avatar">
-                    {userData.avatar ? (
-                      <img src={userData.avatar} alt={userData.username} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                    ) : (
-                      <div className="profile-avatar-placeholder">👤</div>
-                    )}
-                  </div>
+              <div className="profile-avatar-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                <div style={{ position: 'relative' }}>
+                  <AvatarWithFrame
+                    avatarUrl={userData.avatar}
+                    frame={equippedFrame}
+                    size={120}
+                    username={userData.username}
+                    showGlow={false}
+                  />
+                  
+                  {/* Frame selector button */}
+                  <button
+                    onClick={() => setShowFrameSelector(true)}
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #A855F7 0%, #7C3AED 100%)',
+                      border: '2px solid rgba(15, 23, 42, 0.8)',
+                      color: '#fff',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)',
+                      transition: 'all 0.2s'
+                    }}
+                    title={t('profile.changeFrame')}
+                  >
+                    🖼️
+                  </button>
                 </div>
+                
+                {/* Username */}
+                <h2 className="profile-username" style={{ margin: 0, marginTop: '8px' }}>{userData.username}</h2>
                 
                 {/* Level & EXP */}
                 <div className="profile-level">
-                  <span className="level-label">Level {userData.level}</span>
+                  <span className="level-label" style={{ textAlign: 'left', display: 'block' }}>{t('profile.levelLabel')} {userData.level}</span>
                   <div className="exp-bar">
                     <div className="exp-fill" style={{ width: `${userData.expProgress}%` }}></div>
                   </div>
-                  <span className="exp-text">{userData.exp} / {userData.expNeeded} EXP</span>
+                  <span className="exp-text">{userData.exp} / {userData.expNeeded} {t('profile.expText')}</span>
                 </div>
               </div>
 
               {/* User Info */}
               <div className="profile-info">
-                <h2 className="profile-username">{userData.username}</h2>
-                <div className="profile-rank">
-                  <span className="rank-icon">{userData.rankIcon}</span>
-                  <span className="rank-name">Rank: {userData.rank}</span>
+                {/* Rank Section - similar to Level */}
+                <div className="profile-rank-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', width: '100%', maxWidth: '400px', marginBottom: '16px', marginTop: '8px' }}>
+                  <span className="rank-label" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                    Rank: {userData.rank}
+                  </span>
+                  <div className="rank-bar" style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div className="rank-fill" style={{ width: `${(userData.mindpoint % 100)}%`, height: '100%', background: 'linear-gradient(90deg, #38bdf8, #6366f1)', borderRadius: '8px', transition: 'width 0.5s ease-out' }}></div>
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>{userData.mindpoint % 100} / 100 MP</span>
                 </div>
-                <div className="profile-title">
-                  <span className="title-label">Danh hiệu:</span>
-                  <span className="title-value">"{userData.title}"</span>
+                <div 
+                  className="profile-title" 
+                  style={{ marginTop: '16px', cursor: 'pointer' }}
+                  onClick={() => { window.location.hash = '#titles' }}
+                  title={t('title.pageTitle')}
+                >
+                  <span className="title-label">{t('profile.titleLabel')}:</span>
+                  {equippedTitle?.titles ? (
+                    <EquippedTitleBadge title={equippedTitle.titles} size="normal" />
+                  ) : (
+                    <span className="title-value" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      "{t('profile.titleValue')}"
+                      <span style={{ fontSize: '12px', color: 'var(--color-primary)', opacity: 0.7 }}>→</span>
+                    </span>
+                  )}
                 </div>
                 
                 <div className="profile-details">
                   <div className="detail-item">
-                    <span className="detail-label">Email:</span>
+                    <span className="detail-label">{t('profile.emailLabel')}:</span>
                     <span className="detail-value">{userData.email}</span>
                   </div>
                   <div className="detail-item">
-                    <span className="detail-label">Số điện thoại:</span>
+                    <span className="detail-label">{t('profile.phoneLabel')}:</span>
                     <span className="detail-value">{userData.phone}</span>
                   </div>
                 </div>
@@ -801,19 +1419,19 @@ export default function Profile() {
               <div className="profile-stats-box">
                 <div className="stat-item">
                   <div className="stat-value">{userData.stats.winRate}%</div>
-                  <div className="stat-label">Tỷ lệ thắng</div>
+                  <div className="stat-label">{t('profile.stats.winRate')}</div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-value">{userData.stats.totalMatches}</div>
-                  <div className="stat-label">Tổng trận</div>
+                  <div className="stat-label">{t('profile.stats.total')}</div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-value">{userData.stats.currentStreak}</div>
-                  <div className="stat-label">Chuỗi thắng</div>
+                  <div className="stat-label">{t('profile.stats.streak')}</div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-value">{userData.stats.elo}</div>
-                  <div className="stat-label">Elo</div>
+                  <div className="stat-label">{t('profile.stats.elo')}</div>
                 </div>
               </div>
             </div>
@@ -821,7 +1439,7 @@ export default function Profile() {
 
           {activeSection === 'settings' && (
             <div className="profile-settings">
-              <h2 className="section-title">Cài đặt</h2>
+              <h2 className="section-title">{t('profile.settingsTitle')}</h2>
               
               {/* Settings Sidebar */}
               <div className="settings-layout">
@@ -829,18 +1447,21 @@ export default function Profile() {
                   <button 
                     className={`settings-tab ${activeSettingsTab === 'account' ? 'active' : ''}`}
                     onClick={() => setActiveSettingsTab('account')}
+                    data-tour="tab-account"
                   >
                     • {t('profile.account')}
                   </button>
                   <button 
                     className={`settings-tab ${activeSettingsTab === 'ui' ? 'active' : ''}`}
                     onClick={() => setActiveSettingsTab('ui')}
+                    data-tour="tab-ui"
                   >
                     • {t('profile.ui')}
                   </button>
                   <button 
                     className={`settings-tab ${activeSettingsTab === 'sound' ? 'active' : ''}`}
                     onClick={() => setActiveSettingsTab('sound')}
+                    data-tour="tab-sound"
                   >
                     • {t('profile.sound')}
                   </button>
@@ -853,12 +1474,14 @@ export default function Profile() {
                   <button 
                     className={`settings-tab ${activeSettingsTab === 'notifications' ? 'active' : ''}`}
                     onClick={() => setActiveSettingsTab('notifications')}
+                    data-tour="tab-notifications"
                   >
                     • {t('profile.notifications')}
                   </button>
                   <button 
                     className={`settings-tab ${activeSettingsTab === 'language' ? 'active' : ''}`}
                     onClick={() => setActiveSettingsTab('language')}
+                    data-tour="tab-language"
                   >
                     • {t('profile.language')}
                   </button>
@@ -875,7 +1498,7 @@ export default function Profile() {
                     onClick={handleResetSettings}
                   >
                     <span style={{ fontSize: '14px' }}>↻</span>
-                    <span style={{ fontSize: '11px' }}>Khôi phục cài đặt gốc</span>
+                    <span style={{ fontSize: '11px' }}>{t('profile.restoreDefaults')}</span>
                   </button>
                 </aside>
 
@@ -883,26 +1506,26 @@ export default function Profile() {
                   {/* CARD 1 - TÀI KHOẢN */}
                   {activeSettingsTab === 'account' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Tài khoản</h3>
+                      <h3 className="card-title">{t('profile.account')}</h3>
                       <div className="setting-item">
-                        <label>Username</label>
+                        <label>{t('profile.username')}</label>
                         <input type="text" value={userData.username} disabled />
                       </div>
                       <div className="setting-item">
-                        <label>Đổi username</label>
+                        <label>{t('profile.username')}</label>
                         <div className="input-group">
                           <input 
                             type="text" 
-                            placeholder="Username mới" 
+                            placeholder={t('profile.usernamePlaceholder')} 
                             value={newUsername}
                             onChange={(e) => setNewUsername(e.target.value)}
                           />
-                          <button className="btn-primary" onClick={handleUpdateUsername}>Cập nhật</button>
+                          <button className="btn-primary" onClick={handleUpdateUsername}>{t('profile.phoneUpdate')}</button>
                         </div>
                         
                       </div>
                       <div className="setting-item">
-                        <label>Đổi avatar</label>
+                        <label>{t('profile.avatarLabel')}</label>
                         <input 
                           type="file" 
                           id="avatarInput" 
@@ -913,24 +1536,25 @@ export default function Profile() {
                         <button 
                           className="btn-secondary" 
                           onClick={() => document.getElementById('avatarInput')?.click()}
+                          data-tour="avatar-upload"
                           disabled={uploadingAvatar}
                         >
-                          {uploadingAvatar ? 'Đang tải...' : 'Chọn ảnh'}
+                          {uploadingAvatar ? t('profile.avatarUploading') : t('profile.avatarChoose')}
                         </button>
                         
                       </div>
                       <div className="setting-item">
-                        <label>Email</label>
+                        <label>{t('profile.emailLabel')}</label>
                         <input type="text" value={userData.email} disabled />
                       </div>
                       <div className="setting-item">
-                        <label>Đổi email</label>
+                        <label>{t('profile.emailChange')}</label>
                         {!showEmailChange ? (
                           <button 
                             className="btn-secondary" 
                             onClick={() => setShowEmailChange(true)}
                           >
-                            📧 Thay đổi email
+                            📧 {t('profile.emailChange')}
                           </button>
                         ) : (
                           <div className="email-change-form" style={{
@@ -943,7 +1567,7 @@ export default function Profile() {
                             <div style={{ marginBottom: '12px' }}>
                               <input
                                 type="email"
-                                placeholder="Email mới"
+                                placeholder={t('profile.emailPlaceholder')}
                                 value={newEmail}
                                 onChange={(e) => setNewEmail(e.target.value)}
                                 style={{
@@ -968,7 +1592,7 @@ export default function Profile() {
                               </p>
                             )}
                             <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginBottom: '12px' }}>
-                              Bạn sẽ nhận email xác nhận tại địa chỉ mới. Vui lòng xác nhận để hoàn tất thay đổi.
+                              {t('profile.emailInfo')}
                             </p>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button 
@@ -977,7 +1601,7 @@ export default function Profile() {
                                 disabled={changingEmail}
                                 style={{ flex: 1, padding: '8px' }}
                               >
-                                {changingEmail ? 'Đang gửi...' : 'Gửi xác nhận'}
+                                {changingEmail ? t('profile.emailSending') : t('profile.emailSend')}
                               </button>
                               <button 
                                 className="btn-secondary" 
@@ -990,20 +1614,97 @@ export default function Profile() {
                                 disabled={changingEmail}
                                 style={{ flex: 1, padding: '8px' }}
                               >
-                                Hủy
+                                {t('profile.emailCancel')}
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                       <div className="setting-item">
-                        <label>Đổi mật khẩu</label>
+                        <label>{t('profile.phoneLabel')}</label>
+                        <input type="text" value={userData.phone} disabled />
+                      </div>
+                      <div className="setting-item">
+                        <label>{t('profile.phoneChange')}</label>
+                        {!showPhoneChange ? (
+                          <button 
+                            className="btn-secondary" 
+                            onClick={() => setShowPhoneChange(true)}
+                          >
+                            📱 {t('profile.phoneChange')}
+                          </button>
+                        ) : (
+                          <div className="phone-change-form" style={{
+                            marginTop: '12px',
+                            padding: '16px',
+                            background: 'rgba(255,255,255,0.05)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                          }}>
+                            <div style={{ marginBottom: '12px' }}>
+                              <input
+                                type="tel"
+                                placeholder={t('profile.phonePlaceholder')}
+                                value={newPhone}
+                                onChange={(e) => setNewPhone(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  color: 'white',
+                                  fontSize: '14px'
+                                }}
+                              />
+                            </div>
+                            {phoneError && (
+                              <p style={{ color: '#EF4444', fontSize: '13px', marginBottom: '8px' }}>
+                                {phoneError}
+                              </p>
+                            )}
+                            {phoneSuccess && (
+                              <p style={{ color: '#10B981', fontSize: '13px', marginBottom: '8px' }}>
+                                {phoneSuccess}
+                              </p>
+                            )}
+                            <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginBottom: '12px' }}>
+                              {t('profile.phoneInfo')}
+                            </p>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                className="btn-primary" 
+                                onClick={handleChangePhone}
+                                disabled={changingPhone}
+                                style={{ flex: 1, padding: '8px' }}
+                              >
+                                {changingPhone ? t('profile.phoneUpdating') : t('profile.phoneUpdate')}
+                              </button>
+                              <button 
+                                className="btn-secondary" 
+                                onClick={() => {
+                                  setShowPhoneChange(false)
+                                  setNewPhone('')
+                                  setPhoneError('')
+                                  setPhoneSuccess('')
+                                }}
+                                disabled={changingPhone}
+                                style={{ flex: 1, padding: '8px' }}
+                              >
+                                {t('profile.phoneCancel')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="setting-item">
+                        <label>{t('profile.passwordChange')}</label>
                         {!showPasswordChange ? (
                           <button 
                             className="btn-secondary" 
                             onClick={() => setShowPasswordChange(true)}
                           >
-                            🔒 Thay đổi mật khẩu
+                            🔒 {t('profile.passwordChange')}
                           </button>
                         ) : (
                           <div className="password-change-form" style={{
@@ -1016,7 +1717,24 @@ export default function Profile() {
                             <div style={{ marginBottom: '12px' }}>
                               <input
                                 type="password"
-                                placeholder="Mật khẩu mới"
+                                placeholder={t('profile.passwordCurrent')}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  color: 'white',
+                                  fontSize: '14px'
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: '12px' }}>
+                              <input
+                                type="password"
+                                placeholder={t('profile.passwordNew')}
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 style={{
@@ -1033,7 +1751,7 @@ export default function Profile() {
                             <div style={{ marginBottom: '12px' }}>
                               <input
                                 type="password"
-                                placeholder="Xác nhận mật khẩu mới"
+                                placeholder={t('profile.passwordConfirm')}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 style={{
@@ -1058,8 +1776,7 @@ export default function Profile() {
                               </p>
                             )}
                             <p style={{ fontSize: '11px', color: 'var(--color-muted)', marginBottom: '12px' }}>
-                              • Ít nhất 8 ký tự<br/>
-                              • Chứa chữ hoa, chữ thường và số
+                              {t('profile.passwordInfo').split('\\n').map((line, idx) => (<React.Fragment key={idx}>{line}<br/></React.Fragment>))}
                             </p>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button 
@@ -1068,12 +1785,13 @@ export default function Profile() {
                                 disabled={changingPassword}
                                 style={{ flex: 1, padding: '8px' }}
                               >
-                                {changingPassword ? 'Đang lưu...' : 'Lưu'}
+                                {changingPassword ? t('common.loading') : t('profile.passwordSave')}
                               </button>
                               <button 
                                 className="btn-secondary" 
                                 onClick={() => {
                                   setShowPasswordChange(false)
+                                  setCurrentPassword('')
                                   setNewPassword('')
                                   setConfirmPassword('')
                                   setPasswordError('')
@@ -1082,21 +1800,34 @@ export default function Profile() {
                                 disabled={changingPassword}
                                 style={{ flex: 1, padding: '8px' }}
                               >
-                                Hủy
+                                {t('profile.passwordCancel')}
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                       <div className="setting-item">
-                        <label>Liên kết tài khoản</label>
+                        <label>{t('profile.linkAccounts')}</label>
                         <div className="link-accounts">
-                          <button className="link-btn google">🔗 Google</button>
-                          <button className="link-btn email">📧 Email</button>
+                          <button
+                            className="link-btn google"
+                            disabled={linkedProviders.includes('facebook')}
+                            onClick={() => {
+                              if (!linkedProviders.includes('facebook')) {
+                                handleLinkFacebook()
+                              }
+                            }}
+                          >
+                            {linkedProviders.includes('facebook') ? t('profile.facebookLinked') : t('profile.linkFacebook')}
+                          </button>
+                          <button className="link-btn email" disabled>
+                            {user?.email ? `Email (${user.email})` : t('profile.emailDefault')}
+                          </button>
                         </div>
                       </div>
+
                       <div className="setting-item">
-                        <button className="btn-danger" onClick={handleLogout}>Đăng xuất</button>
+                        <button className="btn-danger" onClick={handleLogout}>{t('profile.logout')}</button>
                       </div>
                     </div>
                   )}
@@ -1104,26 +1835,26 @@ export default function Profile() {
                   {/* CARD 2 - GIAO DIỆN */}
                   {activeSettingsTab === 'ui' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Giao diện</h3>
+                      <h3 className="card-title">{t('profile.ui')}</h3>
                       <div className="setting-item">
-                        <label>Chế độ</label>
+                        <label>{t('profile.theme')}</label>
                         <div className="toggle-group">
                           <button 
                             className={`toggle-btn ${settings.theme === 'dark' ? 'active' : ''}`}
                             onClick={() => setSettings({...settings, theme: 'dark'})}
                           >
-                            🌙 Tối
+                            🌙 {t('profile.themeDark')}
                           </button>
                           <button 
                             className={`toggle-btn ${settings.theme === 'light' ? 'active' : ''}`}
                             onClick={() => setSettings({...settings, theme: 'light'})}
                           >
-                            ☀️ Sáng
+                            ☀️ {t('profile.themeLight')}
                           </button>
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Hiệu ứng UI</label>
+                        <label>{t('profile.uiEffects')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1135,71 +1866,25 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Chất lượng hiệu ứng</label>
-                        <select 
-                          value={settings.effectsQuality}
-                          onChange={(e) => setSettings({...settings, effectsQuality: e.target.value})}
-                        >
-                          <option value="low">Thấp</option>
-                          <option value="medium">Trung bình</option>
-                          <option value="high">Cao</option>
-                        </select>
-                      </div>
-                      <div className="setting-item">
-                        <label>Kiểu giao diện</label>
-                        <div className="radio-group">
-                          <label className="radio-label">
-                            <input 
-                              type="radio" 
-                              name="uiStyle" 
-                              value="classic"
-                              checked={settings.uiStyle === 'classic'}
-                              onChange={(e) => setSettings({...settings, uiStyle: e.target.value})}
-                            />
-                            <span>Cổ điển caro</span>
-                          </label>
-                          <label className="radio-label">
-                            <input 
-                              type="radio" 
-                              name="uiStyle" 
-                              value="xianxia"
-                              checked={settings.uiStyle === 'xianxia'}
-                              onChange={(e) => setSettings({...settings, uiStyle: e.target.value})}
-                            />
-                            <span>Tiên hiệp (mặc định)</span>
-                          </label>
-                          <label className="radio-label">
-                            <input 
-                              type="radio" 
-                              name="uiStyle" 
-                              value="anime"
-                              checked={settings.uiStyle === 'anime'}
-                              onChange={(e) => setSettings({...settings, uiStyle: e.target.value})}
-                            />
-                            <span>Anime / Neon</span>
-                          </label>
-                        </div>
-                      </div>
-                      <div className="setting-item">
-                        <label>Cỡ chữ</label>
+                        <label>{t('profile.fontSize')}</label>
                         <div className="toggle-group">
                           <button 
                             className={`toggle-btn ${settings.fontSize === 'small' ? 'active' : ''}`}
                             onClick={() => setSettings({...settings, fontSize: 'small'})}
                           >
-                            Nhỏ
+                            {t('profile.fontSmall')}
                           </button>
                           <button 
                             className={`toggle-btn ${settings.fontSize === 'medium' ? 'active' : ''}`}
                             onClick={() => setSettings({...settings, fontSize: 'medium'})}
                           >
-                            Vừa
+                            {t('profile.fontMedium')}
                           </button>
                           <button 
                             className={`toggle-btn ${settings.fontSize === 'large' ? 'active' : ''}`}
                             onClick={() => setSettings({...settings, fontSize: 'large'})}
                           >
-                            Lớn
+                            {t('profile.fontLarge')}
                           </button>
                         </div>
                       </div>
@@ -1209,9 +1894,9 @@ export default function Profile() {
                   {/* CARD 3 - ÂM THANH */}
                   {activeSettingsTab === 'sound' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Âm thanh</h3>
+                      <h3 className="card-title">{t('profile.soundTitle')}</h3>
                       <div className="setting-item">
-                        <label>Nhạc nền</label>
+                        <label>{t('profile.bgMusic')}</label>
                         <div className="slider-group">
                           <div className="switch-wrapper">
                             <input 
@@ -1234,7 +1919,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Hiệu ứng âm</label>
+                        <label>{t('profile.sfxEffects')}</label>
                         <div className="slider-group">
                           <div className="switch-wrapper">
                             <input 
@@ -1257,7 +1942,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Âm đặt quân</label>
+                        <label>{t('profile.moveSound')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1268,15 +1953,20 @@ export default function Profile() {
                           <label htmlFor="moveSoundEnabled" className="switch"></label>
                         </div>
                       </div>
+                      
+                      {/* Music Selector */}
+                      <div className="setting-item" style={{ marginTop: 16 }}>
+                        <MusicSelector />
+                      </div>
                     </div>
                   )}
 
                   {/* CARD 4 - BÀN CỜ & NƯỚC ĐI */}
                   {activeSettingsTab === 'board' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Bàn cờ & Nước đi</h3>
+                      <h3 className="card-title">{t('profile.boardTitle')}</h3>
                       <div className="setting-item">
-                        <label>Highlight nước vừa đánh</label>
+                        <label>{t('profile.highlightLastMove')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1288,7 +1978,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Hiệu ứng rơi quân</label>
+                        <label>{t('profile.pieceDropEffect')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1300,7 +1990,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Rung phản hồi</label>
+                        <label>{t('profile.vibration')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1317,7 +2007,7 @@ export default function Profile() {
                   {/* CARD 5 - THÔNG BÁO */}
                   {activeSettingsTab === 'notifications' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Thông báo</h3>
+                      <h3 className="card-title">{t('profile.notifTitle')}</h3>
                       <div className="setting-item" style={{
                         padding: '16px',
                         background: notificationPermission === 'granted' 
@@ -1334,14 +2024,14 @@ export default function Profile() {
                         marginBottom: '16px'
                       }}>
                         <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>
-                          Quyền thông báo trình duyệt
+                          {t('profile.notifBrowserTitle')}
                         </label>
                         <p style={{ fontSize: '13px', color: 'var(--color-muted)', marginBottom: '12px', lineHeight: '1.5' }}>
                           {notificationPermission === 'granted' 
-                            ? '✅ Đã cấp quyền. Bạn sẽ nhận thông báo từ game.'
+                            ? `✅ ${t('profile.notifGranted')}`
                             : notificationPermission === 'denied'
-                            ? '❌ Đã từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt.'
-                            : '🔔 Cho phép thông báo để nhận lời mời đấu, tin nhắn và cập nhật game.'}
+                            ? `❌ ${t('profile.notifDenied')}`
+                            : `🔔 ${t('profile.notifDefault')}`}
                         </p>
                         {notificationPermission !== 'granted' && notificationPermission !== 'denied' && (
                           <button 
@@ -1350,28 +2040,28 @@ export default function Profile() {
                               const permission = await NotificationManager.requestPermission()
                               setNotificationPermission(permission)
                               if (permission === 'granted') {
-                                NotificationManager.notifySystem('Thành công!', 'Bạn sẽ nhận được thông báo từ game')
+                                NotificationManager.notifySystem(t('profile.notifTestSuccess'), t('profile.notifTestSuccessMsg'))
                               }
                             }}
                             style={{ padding: '8px 16px', fontSize: '14px' }}
                           >
-                            🔔 Cho phép thông báo
+                            🔔 {t('profile.notifAllow')}
                           </button>
                         )}
                         {notificationPermission === 'granted' && (
                           <button 
                             className="btn-secondary"
                             onClick={() => {
-                              NotificationManager.notifySystem('Thử nghiệm', 'Đây là thông báo thử nghiệm từ MindPoint Arena! 🎮')
+                              NotificationManager.notifySystem(t('profile.notifTestTitle'), t('profile.notifTestMsg'))
                             }}
                             style={{ padding: '8px 16px', fontSize: '14px' }}
                           >
-                            🧪 Thử thông báo
+                            🧪 {t('profile.notifTest')}
                           </button>
                         )}
                       </div>
                       <div className="setting-item">
-                        <label>Thông báo hệ thống</label>
+                        <label>{t('profile.notifSystem')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1383,7 +2073,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Thông báo lời mời đấu</label>
+                        <label>{t('profile.notifInvite')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1395,7 +2085,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Tin nhắn trong game</label>
+                        <label>{t('profile.notifChat')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1407,7 +2097,7 @@ export default function Profile() {
                         </div>
                       </div>
                       <div className="setting-item">
-                        <label>Âm báo khi vào lượt</label>
+                        <label>{t('profile.notifTurn')}</label>
                         <div className="switch-wrapper">
                           <input 
                             type="checkbox" 
@@ -1469,18 +2159,18 @@ export default function Profile() {
                   {/* CARD 7 - KHÁC */}
                   {activeSettingsTab === 'other' && (
                     <div className="settings-card">
-                      <h3 className="card-title">Khác</h3>
+                      <h3 className="card-title">{t('profile.otherTitle')}</h3>
                       <div className="setting-item">
-                        <button className="btn-link">📖 Giới thiệu game</button>
+                        <button className="btn-link">📖 {t('profile.aboutGame')}</button>
                       </div>
                       <div className="setting-item">
-                        <button className="btn-link">📜 Điều khoản sử dụng</button>
+                        <button className="btn-link">📜 {t('profile.termsOfService')}</button>
                       </div>
                       <div className="setting-item">
-                        <button className="btn-link">🔒 Chính sách bảo mật</button>
+                        <button className="btn-link">🔒 {t('profile.privacyPolicy')}</button>
                       </div>
                       <div className="setting-item version-info">
-                        <span>Phiên bản: v1.0.0</span>
+                        <span>{t('profile.version')}: v1.0.0</span>
                       </div>
                     </div>
                   )}
@@ -1491,14 +2181,14 @@ export default function Profile() {
 
           {activeSection === 'history' && (
             <div className="profile-history">
-              <h2 className="section-title">Lịch sử đấu</h2>
+              <h2 className="section-title">{t('profile.historyTitle')}</h2>
               {loadingHistory ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-muted)' }}>
-                  Đang tải lịch sử...
+                  {t('profile.historyLoading')}
                 </div>
               ) : matchHistory.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-muted)' }}>
-                  Chưa có trận đấu nào
+                  {t('profile.historyEmpty')}
                 </div>
               ) : (
               <div className="history-list">
@@ -1506,23 +2196,103 @@ export default function Profile() {
                   <div key={match.id} className={`history-item ${match.result}`}>
                     <div className="history-result">
                       {match.result === 'win' ? (
-                        <span className="result-badge win">Thắng</span>
+                        <span className="result-badge win">{t('profile.historyWin')}</span>
                       ) : (
-                        <span className="result-badge lose">Thua</span>
+                        <span className="result-badge lose">{t('profile.historyLose')}</span>
                       )}
                     </div>
-                    <div className="history-opponent">vs {match.opponent}</div>
-                    <div className={`history-elo ${match.eloChange > 0 ? 'positive' : 'negative'}`}>
-                      {match.eloChange > 0 ? '+' : ''}{match.eloChange} Elo
+                    <div className="history-row" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                      <div className="history-opponent">{t('profile.historyVs')} {match.opponent}</div>
+                      <div className={`history-elo ${match.eloChange > 0 ? 'positive' : 'negative'}`} style={{ minWidth: 70, textAlign: 'right' }}>
+                        {match.eloChange > 0 ? '+' : ''}{match.eloChange} Elo
+                      </div>
                     </div>
-                    <div className="history-time">{match.time}</div>
+                    <div className="history-footer" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, justifyContent: 'space-between' }}>
+                      <div
+                        className="history-time"
+                        style={{
+                          fontSize: 12,
+                          color: '#94A3B8',
+                          background: 'rgba(148,163,184,0.12)',
+                          padding: '4px 10px',
+                          borderRadius: 12,
+                          lineHeight: 1,
+                          minWidth: 90,
+                          textAlign: 'center'
+                        }}
+                      >
+                        {match.time}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {/* Analyze Button - Requirements 16.2, 20.2 */}
+                        <button
+                          className="btn-primary"
+                          onClick={() => { window.location.hash = `#ai-analysis?matchId=${match.id}` }}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(56, 189, 248, 0.5)',
+                            background: analyzedMatches.has(match.id) 
+                              ? 'rgba(34, 197, 94, 0.15)' 
+                              : 'rgba(56, 189, 248, 0.15)',
+                            color: analyzedMatches.has(match.id) ? '#22C55E' : '#38BDF8',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {analyzedMatches.has(match.id) ? '✓' : '🔍'} {t('aiAnalysis.analyzeButton')}
+                        </button>
+                        {/* Report Button */}
+                        <button
+                          className="btn-secondary"
+                          disabled={!match.opponentId}
+                          onClick={() => {
+                            if (!match.opponentId) {
+                              alert(t('report.errorNoReport') || 'Không tìm thấy đối thủ để báo cáo')
+                              return
+                            }
+                            setReportTarget({ userId: match.opponentId, matchId: match.id })
+                            setShowReportModal(true)
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(239,68,68,0.5)',
+                            background: 'rgba(239,68,68,0.08)',
+                            color: '#EF4444',
+                            cursor: match.opponentId ? 'pointer' : 'not-allowed',
+                            fontSize: 12,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          🚩 {t('report.button') || 'Báo cáo'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-              )}
-            </div>
+            )}
+          </div>
           )}
         </main>
+
+      {showReportModal && reportTarget && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => { setShowReportModal(false); setReportTarget(null) }}
+          reportedUserId={reportTarget.userId}
+          matchId={reportTarget.matchId}
+          onSuccess={() => { setShowReportModal(false); setReportTarget(null) }}
+        />
+      )}
       </div>
     </div>
   )

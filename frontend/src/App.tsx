@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { useLanguage } from './contexts/LanguageContext'
+import { RankBadgeV2 } from './components/rank'
+import type { MainRank, RankTier, RankLevel } from './types/rankV2'
+import { useEquippedMusic } from './hooks/useEquippedMusic'
+import { useEquippedFrame } from './hooks/useEquippedFrame'
+import { AvatarWithFrame } from './components/avatar'
 import Home from './pages/Home'
 import AiAnalysis from './pages/AiAnalysis'
 import Lobby from './pages/Lobby'
 import Room from './pages/Room'
 import TrainingRoom from './pages/TrainingRoom'
+import VariantMatch from './pages/VariantMatch'
 import Shop from './pages/Shop'
 import Profile from './pages/Profile'
 import Inventory from './pages/Inventory'
@@ -15,6 +21,7 @@ import InMatch from './pages/InMatch'
 import Quests from './pages/Quests'
 import Guide from './pages/Guide'
 import Events from './pages/Events'
+import Tournament from './pages/Tournament'
 import AuthLanding from './pages/AuthLanding'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -23,35 +30,97 @@ import ResetPassword from './pages/ResetPassword'
 import Hotseat from './pages/Hotseat'
 import Admin from './pages/Admin'
 import KhaiNhan from './pages/KhaiNhan'
+import Subscription from './pages/Subscription'
+import CurrencyShop from './pages/CurrencyShop'
+import PaymentResult from './pages/PaymentResult'
+import CurrencyResult from './pages/CurrencyResult'
+import TestAI from './pages/TestAI'
+import Inbox from './pages/Inbox'
+import AdminNotifications from './pages/AdminNotifications'
+import AdminReports from './pages/AdminReports'
+import AdminAppeals from './pages/AdminAppeals'
+import Titles from './pages/Titles'
+import InboxIcon from './components/notification/InboxIcon'
+import { getEquippedTitle } from './lib/titleApi'
+import UsernamePopup from './components/UsernamePopup'
+import OnboardingTour from './components/OnboardingTour'
 import { AudioManager, loadAudioSettingsFromStorage } from './lib/AudioManager'
 import { NotificationManager, loadNotificationSettingsFromStorage } from './lib/NotificationManager'
+import { preloadDataset } from './lib/caroDataset'
 
 function SettingsPopup({ onClose }: { onClose: () => void }) {
   const { language, setLanguage, t } = useLanguage()
-  const [sfxEnabled, setSfxEnabled] = React.useState(() => localStorage.getItem('sfxEnabled') !== 'false')
-  const [sfxVolume, setSfxVolume] = React.useState(() => Number(localStorage.getItem('sfxVolume') || 80))
-  const [bgMusicEnabled, setBgMusicEnabled] = React.useState(() => localStorage.getItem('bgMusic') !== 'false')
-  const [bgMusicVolume, setBgMusicVolume] = React.useState(() => Number(localStorage.getItem('bgMusicVolume') || 70))
+  const initialAudio = React.useMemo(() => loadAudioSettingsFromStorage(), [])
+  const [sfxEnabled, setSfxEnabled] = React.useState(initialAudio.sfxEnabled)
+  const [sfxVolume, setSfxVolume] = React.useState(initialAudio.sfxVolume)
+  const [bgMusicEnabled, setBgMusicEnabled] = React.useState(initialAudio.bgMusic)
+  const [bgMusicVolume, setBgMusicVolume] = React.useState(initialAudio.bgMusicVolume)
   const [notifEnabled, setNotifEnabled] = React.useState(() => localStorage.getItem('systemNotif') !== 'false')
   const [effectsQuality, setEffectsQuality] = React.useState(() => localStorage.getItem('effectsQuality') || 'high')
 
+  const getStoredGameSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem('gameSettings') || '{}')
+    } catch {
+      return {}
+    }
+  }
+
+  const updateAudioSettings = (partial: Partial<ReturnType<typeof loadAudioSettingsFromStorage>>) => {
+    const stored = getStoredGameSettings()
+    const next = {
+      ...stored,
+      bgMusic: partial.bgMusic ?? bgMusicEnabled,
+      bgMusicVolume: partial.bgMusicVolume ?? bgMusicVolume,
+      sfxEnabled: partial.sfxEnabled ?? sfxEnabled,
+      sfxVolume: partial.sfxVolume ?? sfxVolume,
+      moveSoundEnabled: stored.moveSoundEnabled ?? true
+    }
+
+    localStorage.setItem('gameSettings', JSON.stringify(next))
+    // Legacy keys to keep older UI parts in sync
+    localStorage.setItem('bgMusic', String(next.bgMusic))
+    localStorage.setItem('bgMusicVolume', String(next.bgMusicVolume))
+    localStorage.setItem('sfxEnabled', String(next.sfxEnabled))
+    localStorage.setItem('sfxVolume', String(next.sfxVolume))
+
+    AudioManager.updateSettings({
+      bgMusic: next.bgMusic,
+      bgMusicVolume: next.bgMusicVolume,
+      sfxEnabled: next.sfxEnabled,
+      sfxVolume: next.sfxVolume,
+      moveSoundEnabled: next.moveSoundEnabled
+    })
+
+    // thông báo cho các màn khác (Profile) đồng bộ UI
+    window.dispatchEvent(new CustomEvent('audioSettingsUpdated', { detail: next }))
+
+    if (next.bgMusic) {
+      AudioManager.playBackgroundMusic()
+    } else {
+      AudioManager.pauseBackgroundMusic()
+    }
+  }
+
   const handleSfxToggle = (enabled: boolean) => {
     setSfxEnabled(enabled)
-    localStorage.setItem('sfxEnabled', String(enabled))
+    updateAudioSettings({ sfxEnabled: enabled })
     // Play feedback sound when enabling
     if (enabled) playClickSound()
   }
 
   const handleSfxVolumeChange = (volume: number) => {
+    const enable = volume > 0
     setSfxVolume(volume)
-    localStorage.setItem('sfxVolume', String(volume))
+    setSfxEnabled(enable)
+    updateAudioSettings({ sfxVolume: volume, sfxEnabled: enable })
     // Debounced sound preview
     playVolumePreview()
   }
 
   const handleBgMusicToggle = (enabled: boolean) => {
     setBgMusicEnabled(enabled)
-    localStorage.setItem('bgMusic', String(enabled))
+    updateAudioSettings({ bgMusic: enabled })
   }
 
   const playClickSound = () => {
@@ -165,18 +234,7 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
                 min="0" 
                 max="100" 
                 value={sfxVolume}
-                onChange={(e) => {
-                  const vol = Number(e.target.value)
-                  setSfxVolume(vol)
-                  localStorage.setItem('sfxVolume', String(vol))
-                  if (vol > 0 && !sfxEnabled) {
-                    setSfxEnabled(true)
-                    localStorage.setItem('sfxEnabled', 'true')
-                  } else if (vol === 0 && sfxEnabled) {
-                    setSfxEnabled(false)
-                    localStorage.setItem('sfxEnabled', 'false')
-                  }
-                }}
+                onChange={(e) => handleSfxVolumeChange(Number(e.target.value))}
                 style={{
                   width: '100%',
                   height: '6px',
@@ -207,14 +265,12 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
                 onChange={(e) => {
                   const vol = Number(e.target.value)
                   setBgMusicVolume(vol)
-                  localStorage.setItem('bgMusicVolume', String(vol))
                   if (vol > 0 && !bgMusicEnabled) {
                     setBgMusicEnabled(true)
-                    localStorage.setItem('bgMusic', 'true')
                   } else if (vol === 0 && bgMusicEnabled) {
                     setBgMusicEnabled(false)
-                    localStorage.setItem('bgMusic', 'false')
                   }
+                  updateAudioSettings({ bgMusicVolume: vol, bgMusic: vol === 0 ? false : true })
                 }}
                 style={{
                   width: '100%',
@@ -410,39 +466,63 @@ function SettingsPopup({ onClose }: { onClose: () => void }) {
 }
 
 export default function App() {
-  const [page, setPage] = useState<'home' | 'lobby' | 'room' | 'training' | 'shop' | 'profile' | 'inventory' | 'matchmaking' | 'createroom' | 'inmatch' | 'quests' | 'guide' | 'events' | 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'hotseat' | 'khainhan' | 'admin' | 'ai-analysis'>('home')
+  const [page, setPage] = useState<'home' | 'lobby' | 'room' | 'training' | 'variant' | 'shop' | 'profile' | 'inventory' | 'matchmaking' | 'createroom' | 'tournament' | 'inmatch' | 'quests' | 'guide' | 'events' | 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'hotseat' | 'khainhan' | 'admin' | 'ai-analysis' | 'subscription' | 'currency-shop' | 'payment-result' | 'currency-result' | 'test-ai' | 'inbox' | 'admin-notifications' | 'admin-reports' | 'admin-appeals' | 'titles'>('home')
   const [user, setUser] = useState<any>(null)
   const [showSettingsPopup, setShowSettingsPopup] = useState(false)
+  
+  // Load equipped music from user inventory
+  useEquippedMusic()
+  
+  // Load equipped avatar frame
+  const { frame: equippedFrame } = useEquippedFrame(user?.id)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showMobileWallet, setShowMobileWallet] = useState(true)
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [showUsernamePopup, setShowUsernamePopup] = useState(false)
+  const [needsUsername, setNeedsUsername] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true)
+  const adminAudioBackup = React.useRef<ReturnType<typeof loadAudioSettingsFromStorage> | null>(null)
 
   useEffect(() => {
     // Initialize AudioManager
     const audioSettings = loadAudioSettingsFromStorage()
     AudioManager.initialize(audioSettings)
     
-    // Start background music if enabled
-    if (audioSettings.bgMusic) {
-      // Delay to allow user interaction first (required by browsers)
-      const playMusic = () => {
-        AudioManager.playBackgroundMusic()
-        document.removeEventListener('click', playMusic)
-      }
-      document.addEventListener('click', playMusic, { once: true })
+    // Start background music when user tương tác lần đầu (bắt buộc cho autoplay)
+    const handleFirstInteract = () => {
+      AudioManager.playBackgroundMusic()
+      document.removeEventListener('pointerdown', handleFirstInteract)
     }
+    document.addEventListener('pointerdown', handleFirstInteract, { once: true })
+
+    // Global UI click sound
+    const handleUiClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      const clickable = target?.closest('button, [role="button"], a, .mode-btn, .cta-primary, .nav-item')
+      if (clickable) {
+        AudioManager.playSoundEffect('button')
+      }
+    }
+    document.addEventListener('click', handleUiClick)
     
     // Initialize NotificationManager
     const notifSettings = loadNotificationSettingsFromStorage()
     NotificationManager.initialize(notifSettings)
     
-    // initialize from hash
-    const hash = window.location.hash.replace('#', '')
-    if (hash === 'home' || hash === 'lobby' || hash === 'room' || hash === 'training' || hash === 'shop' || hash === 'profile' || hash === 'inventory' || hash === 'matchmaking' || hash === 'createroom' || hash === 'inmatch' || hash === 'quests' || hash === 'guide' || hash === 'events' || hash === 'landing' || hash === 'login' || hash === 'signup' || hash === 'forgot-password' || hash === 'reset-password' || hash === 'hotseat' || hash === 'khainhan' || hash === 'admin' || hash === 'ai-analysis') setPage(hash as any)
+    // Preload AI dataset khi browser rảnh (không block UI)
+    // Điều này giúp dataset sẵn sàng khi user mở AI chat
+    preloadDataset()
+    
+    // initialize from hash (strip query params for route matching)
+    const rawHash = window.location.hash.replace('#', '')
+    const hash = rawHash.split('?')[0]
+    if (hash === 'home' || hash === 'lobby' || hash === 'room' || hash === 'training' || hash === 'variant' || hash === 'shop' || hash === 'profile' || hash === 'inventory' || hash === 'matchmaking' || hash === 'createroom' || hash === 'tournament' || hash === 'inmatch' || hash === 'quests' || hash === 'guide' || hash === 'events' || hash === 'landing' || hash === 'login' || hash === 'signup' || hash === 'forgot-password' || hash === 'reset-password' || hash === 'hotseat' || hash === 'khainhan' || hash === 'admin' || hash === 'ai-analysis' || hash === 'subscription' || hash === 'currency-shop' || hash === 'payment-result' || hash === 'currency-result' || hash === 'test-ai' || hash === 'inbox' || hash === 'admin-notifications' || hash === 'admin-reports' || hash === 'admin-appeals' || hash === 'titles') setPage(hash as any)
 
     const onHash = () => {
-      const h = window.location.hash.replace('#', '')
-      if (h === 'home' || h === 'lobby' || h === 'room' || h === 'training' || h === 'shop' || h === 'profile' || h === 'inventory' || h === 'matchmaking' || h === 'createroom' || h === 'inmatch' || h === 'quests' || h === 'guide' || h === 'events' || h === 'landing' || h === 'login' || h === 'signup' || h === 'forgot-password' || h === 'reset-password' || h === 'hotseat' || h === 'khainhan' || h === 'admin' || h === 'ai-analysis') setPage(h as any)
+      const rawH = window.location.hash.replace('#', '')
+      const h = rawH.split('?')[0]
+      if (h === 'home' || h === 'lobby' || h === 'room' || h === 'training' || h === 'variant' || h === 'shop' || h === 'profile' || h === 'inventory' || h === 'matchmaking' || h === 'createroom' || h === 'tournament' || h === 'inmatch' || h === 'quests' || h === 'guide' || h === 'events' || h === 'landing' || h === 'login' || h === 'signup' || h === 'forgot-password' || h === 'reset-password' || h === 'hotseat' || h === 'khainhan' || h === 'admin' || h === 'ai-analysis' || h === 'subscription' || h === 'currency-shop' || h === 'payment-result' || h === 'currency-result' || h === 'test-ai' || h === 'inbox' || h === 'admin-notifications' || h === 'admin-reports' || h === 'admin-appeals' || h === 'titles') setPage(h as any)
     }
 
     window.addEventListener('hashchange', onHash)
@@ -477,8 +557,32 @@ export default function App() {
     })
 
     // Listen for profile updates from Profile page
-    const handleProfileUpdate = (event: any) => {
-      const detail = event.detail
+    const handleProfileUpdate = async (event: any) => {
+      const detail = event.detail || {}
+      if (detail.field === 'currency' || detail.coins !== undefined || detail.gems !== undefined) {
+        if (detail.coins !== undefined) setCoin(toNumber(detail.coins))
+        if (detail.gems !== undefined) setGem(toNumber(detail.gems))
+        
+        // If only field='currency' without values, refetch from database
+        if (detail.field === 'currency' && detail.coins === undefined && detail.gems === undefined) {
+          try {
+            const { data: session } = await supabase.auth.getSession()
+            if (session?.session?.user?.id) {
+              const { data } = await supabase
+                .from('profiles')
+                .select('coins,gems')
+                .eq('user_id', session.session.user.id)
+                .single()
+              if (data) {
+                setCoin(toNumber(data.coins))
+                setGem(toNumber(data.gems))
+              }
+            }
+          } catch (e) {
+            console.error('Failed to refetch currency:', e)
+          }
+        }
+      }
       if (detail.field === 'username' && detail.username) {
         setUsername(detail.username)
       } else if (detail.field === 'avatar' && detail.avatar_url) {
@@ -488,6 +592,8 @@ export default function App() {
     window.addEventListener('profileUpdated', handleProfileUpdate)
     
     return () => {
+      document.removeEventListener('pointerdown', handleFirstInteract)
+      document.removeEventListener('click', handleUiClick)
       window.removeEventListener('hashchange', onHash)
       window.removeEventListener('profileUpdated', handleProfileUpdate)
       listener?.subscription.unsubscribe()
@@ -497,9 +603,13 @@ export default function App() {
   const [coin, setCoin] = useState<number>(1000)
   const [gem, setGem] = useState<number>(0)
   const [rankCode, setRankCode] = useState<string>('vo_danh')
+  const [rankTier, setRankTier] = useState<string>('so_ky')
+  const [rankLevel, setRankLevel] = useState<number>(1)
+  const [mindpoint, setMindpoint] = useState<number>(0)
   const [rank, setRank] = useState<string>('Vô danh')
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const [equippedTitle, setEquippedTitle] = useState<any>(null)
 
   // helper to normalize numeric values (fallback to 0)
   function toNumber(v: any) {
@@ -515,6 +625,8 @@ export default function App() {
       setRank('Vô danh')
       setUsername('')
       setAvatarUrl('')
+      setNeedsUsername(false)
+      setShowUsernamePopup(false)
       return
     }
 
@@ -524,8 +636,9 @@ export default function App() {
         // try to read from profiles table (common pattern)
         const { data, error } = await supabase
           .from('profiles')
-          .select('coins,gems,current_rank,display_name,username,user_id,avatar_url')
+          .select('coins,gems,current_rank,mindpoint,display_name,username,user_id,avatar_url,onboarding_completed')
           .eq('user_id', user.id)
+          .limit(1)
           .maybeSingle()
 
         if (!cancelled && !error && data) {
@@ -533,9 +646,32 @@ export default function App() {
           setGem(toNumber((data as any).gems))
           const code = (data as any).current_rank || 'vo_danh'
           setRankCode(code)
+          // Calculate tier and level from mindpoint instead of DB columns
+          const mp = toNumber((data as any).mindpoint) || 0
+          setMindpoint(mp)
+          // Default tier/level - will be calculated by useRankV2 if needed
+          setRankTier('so_ky')
+          setRankLevel(1)
           setRank(formatRankLabel(code))
           setUsername((data as any).username || (data as any).display_name || '')
           setAvatarUrl((data as any).avatar_url || '')
+          
+          // Check if user needs to set username
+          const hasUsername = !!(data as any).username && (data as any).username.trim() !== ''
+          if (!hasUsername && !cancelled) {
+            setNeedsUsername(true)
+            setShowUsernamePopup(true)
+          } else {
+            setNeedsUsername(false)
+            setShowUsernamePopup(false)
+            
+            // Check if user needs onboarding tour (only if has username)
+            const hasCompletedOnboarding = !!(data as any).onboarding_completed
+            setOnboardingCompleted(hasCompletedOnboarding)
+            if (!hasCompletedOnboarding && !cancelled) {
+              setShowOnboarding(true)
+            }
+          }
           return
         }
       } catch (e) {
@@ -550,6 +686,11 @@ export default function App() {
         const code = meta?.current_rank ?? meta?.rank ?? 'vo_danh'
         setRankCode(code)
         setRank(formatRankLabel(code))
+        // No profile found, user needs username
+        if (!cancelled) {
+          setNeedsUsername(true)
+          setShowUsernamePopup(true)
+        }
       } catch (e) {
         setCoin(0)
         setGem(0)
@@ -560,6 +701,31 @@ export default function App() {
 
     return () => { cancelled = true }
   }, [user])
+
+  // Load equipped title
+  useEffect(() => {
+    if (user?.id) {
+      getEquippedTitle(user.id).then(setEquippedTitle)
+    } else {
+      setEquippedTitle(null)
+    }
+  }, [user?.id])
+
+  // Khi vao trang Admin: tat nhac nen + tat SFX, ra khoi admin thi khoi phuc
+  useEffect(() => {
+    if (page === 'admin') {
+      adminAudioBackup.current = AudioManager.getSettings()
+      AudioManager.updateSettings({
+        bgMusic: false,
+        sfxEnabled: false,
+        moveSoundEnabled: false
+      })
+      AudioManager.pauseBackgroundMusic()
+    } else if (adminAudioBackup.current) {
+      AudioManager.updateSettings(adminAudioBackup.current)
+      adminAudioBackup.current = null
+    }
+  }, [page])
 
   // Realtime subscription: update coin/gem/rank when profiles row for this user changes
   useEffect(() => {
@@ -596,53 +762,101 @@ export default function App() {
     }
   }, [user])
 
-  // Check admin permission from public.admin table
+  // Check admin permission from public.admin table (with timeout to prevent blocking)
   useEffect(() => {
     if (!user) { setIsAdmin(false); return }
     let cancelled = false
-    ;(async () => {
+    
+    const checkAdmin = async () => {
       try {
-        const { data, error } = await supabase
-          .from('admin')
-          .select('user_id')
-          .eq('user_id', user.id)
-          .maybeSingle()
-        if (!cancelled) setIsAdmin(!!data && !error)
-      } catch {
+        // Add timeout to prevent blocking when Supabase is down
+        const result = await Promise.race([
+          supabase
+            .from('admin')
+            .select('user_id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then(r => r),
+          new Promise<{ data: null; error: Error }>((resolve) => 
+            setTimeout(() => resolve({ data: null, error: new Error('Timeout') }), 5000)
+          )
+        ])
+        
+        if (!cancelled) setIsAdmin(!!result.data && !result.error)
+      } catch (e: any) {
+        // Silently fail - user is not admin if check fails
+        console.warn('[App] Admin check failed (Supabase may be unavailable):', e?.message?.slice(0, 50))
         if (!cancelled) setIsAdmin(false)
       }
-    })()
+    }
+    
+    checkAdmin()
     return () => { cancelled = true }
   }, [user])
 
   // Heartbeat: update profiles.last_active periodically to support Admin online metric
+  // With backoff when Supabase is unavailable
   useEffect(() => {
     if (!user) return
 
     let cancelled = false
+    let consecutiveFailures = 0
+    const maxBackoff = 300000 // 5 minutes max
+    
     const updateLastSeen = async () => {
       try {
-        await supabase
-          .from('profiles')
-          .update({ last_active: new Date().toISOString() })
-          .eq('user_id', user.id)
+        // Add timeout using Promise.race
+        await Promise.race([
+          supabase
+            .from('profiles')
+            .update({ last_active: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .then(r => r),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ])
+        
+        consecutiveFailures = 0 // Reset on success
       } catch (e) {
-        // ignore
+        consecutiveFailures++
+        // Don't log every failure to avoid console spam
+        if (consecutiveFailures === 1 || consecutiveFailures % 10 === 0) {
+          console.warn('[App] Heartbeat failed, consecutive failures:', consecutiveFailures)
+        }
       }
     }
 
-    // initial ping
-    void updateLastSeen()
-    // interval every 30s
-    const id = setInterval(() => { if (!cancelled) void updateLastSeen() }, 30000)
+    // initial ping (delayed to not block startup)
+    const initialTimeout = setTimeout(() => { if (!cancelled) void updateLastSeen() }, 2000)
+    
+    // interval with exponential backoff on failures
+    let intervalId: number | null = null
+    const scheduleNext = () => {
+      if (cancelled) return
+      const baseInterval = 30000 // 30s
+      const backoff = Math.min(baseInterval * Math.pow(1.5, consecutiveFailures), maxBackoff)
+      intervalId = window.setTimeout(() => {
+        if (!cancelled) {
+          void updateLastSeen()
+          scheduleNext()
+        }
+      }, backoff)
+    }
+    scheduleNext()
 
-    // update when tab becomes visible again
-    const onVis = () => { if (!cancelled && document.visibilityState === 'visible') void updateLastSeen() }
+    // update when tab becomes visible again (but not too frequently)
+    let lastVisUpdate = 0
+    const onVis = () => { 
+      if (!cancelled && document.visibilityState === 'visible' && Date.now() - lastVisUpdate > 10000) {
+        lastVisUpdate = Date.now()
+        void updateLastSeen() 
+      }
+    }
     document.addEventListener('visibilitychange', onVis)
 
     return () => {
       cancelled = true
-      clearInterval(id)
+      clearTimeout(initialTimeout)
+      if (intervalId) clearTimeout(intervalId)
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [user])
@@ -670,7 +884,9 @@ export default function App() {
       }
     })
 
-    return () => { try { void channel.unsubscribe() } catch (e) {} }
+    return () => { 
+      try { void channel.unsubscribe() } catch (e) {} 
+    }
   }, [user, isAdmin])
 
   const { t, language } = useLanguage()
@@ -707,7 +923,7 @@ export default function App() {
     // compute a displayPage that respects the current URL hash as a last-resort
     (() => {
       const currentHash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : ''
-      let displayPage = (currentHash === 'shop' || currentHash === 'room' || currentHash === 'training' || currentHash === 'lobby' || currentHash === 'home' || currentHash === 'profile' || currentHash === 'inventory' || currentHash === 'matchmaking' || currentHash === 'createroom' || currentHash === 'inmatch' || currentHash === 'quests' || currentHash === 'guide' || currentHash === 'landing' || currentHash === 'login' || currentHash === 'signup' || currentHash === 'forgot-password' || currentHash === 'reset-password' || currentHash === 'hotseat' || currentHash === 'khainhan' || currentHash === 'admin' || currentHash === 'ai-analysis') ? (currentHash as any) : page
+      let displayPage = (currentHash === 'shop' || currentHash === 'room' || currentHash === 'training' || currentHash === 'variant' || currentHash === 'lobby' || currentHash === 'home' || currentHash === 'profile' || currentHash === 'inventory' || currentHash === 'matchmaking' || currentHash === 'createroom' || currentHash === 'tournament' || currentHash === 'inmatch' || currentHash === 'quests' || currentHash === 'guide' || currentHash === 'landing' || currentHash === 'login' || currentHash === 'signup' || currentHash === 'forgot-password' || currentHash === 'reset-password' || currentHash === 'hotseat' || currentHash === 'khainhan' || currentHash === 'admin' || currentHash === 'ai-analysis' || currentHash === 'subscription' || currentHash === 'currency-shop' || currentHash === 'inbox' || currentHash === 'admin-notifications' || currentHash === 'admin-reports' || currentHash === 'admin-appeals') ? (currentHash as any) : page
 
       // If user is not authenticated, always show landing/login/signup/forgot-password/reset-password
       if (!user) {
@@ -717,14 +933,77 @@ export default function App() {
         }
       }
 
-      // If user is admin, force Admin page only
+      // If user is admin, keep them on admin-only views but allow admin subpages
       if (user && isAdmin) {
-        displayPage = 'admin'
+        const adminPages = ['admin', 'admin-notifications', 'admin-reports', 'admin-appeals']
+        if (!adminPages.includes(displayPage)) {
+          displayPage = 'admin'
+        }
       }
 
       return (
         <div className="app-container">
-      {user && (displayPage === 'home' || displayPage === 'shop' || displayPage === 'profile' || displayPage === 'inventory' || displayPage === 'matchmaking' || displayPage === 'createroom' || displayPage === 'quests' || displayPage === 'guide' || displayPage === 'events' || displayPage === 'hotseat' || displayPage === 'khainhan') ? (
+      {/* Username Popup - shown globally when user needs to set username */}
+      {user && showUsernamePopup && needsUsername && !isAdmin && (
+        <UsernamePopup
+          userId={user.id}
+          currentUsername=""
+          onComplete={(newUsername) => {
+            console.log('[App] Username set complete:', newUsername)
+            
+            // Update local state - close popup first
+            setUsername(newUsername)
+            setShowUsernamePopup(false)
+            setNeedsUsername(false)
+            
+            // Use setTimeout to ensure state updates are flushed before showing onboarding
+            setTimeout(() => {
+              console.log('[App] Checking onboarding status:', { onboardingCompleted })
+              if (!onboardingCompleted) {
+                console.log('[App] Showing onboarding tour')
+                setShowOnboarding(true)
+              }
+            }, 100)
+          }}
+          // No onSkip - user MUST set username
+        />
+      )}
+
+      {/* Onboarding Tour - shown after username is set */}
+      {user && showOnboarding && !needsUsername && !isAdmin && (
+        <OnboardingTour
+          isOpen={showOnboarding}
+          userId={user.id}
+          onComplete={async () => {
+            setShowOnboarding(false)
+            setOnboardingCompleted(true)
+            // Save to database
+            try {
+              await supabase
+                .from('profiles')
+                .update({ onboarding_completed: true })
+                .eq('user_id', user.id)
+            } catch (e) {
+              console.error('Failed to save onboarding status:', e)
+            }
+          }}
+          onSkip={async () => {
+            setShowOnboarding(false)
+            setOnboardingCompleted(true)
+            // Save to database even if skipped
+            try {
+              await supabase
+                .from('profiles')
+                .update({ onboarding_completed: true })
+                .eq('user_id', user.id)
+            } catch (e) {
+              console.error('Failed to save onboarding status:', e)
+            }
+          }}
+        />
+      )}
+      
+      {user && (displayPage === 'home' || displayPage === 'shop' || displayPage === 'profile' || displayPage === 'inventory' || displayPage === 'matchmaking' || displayPage === 'createroom' || displayPage === 'tournament' || displayPage === 'quests' || displayPage === 'guide' || displayPage === 'events' || displayPage === 'hotseat' || displayPage === 'khainhan' || displayPage === 'subscription' || displayPage === 'currency-shop' || displayPage === 'inbox' || displayPage === 'admin-notifications' || displayPage === 'admin-reports' || displayPage === 'admin-appeals' || displayPage === 'titles') ? (
         <>
         {displayPage === 'home' && (
           <button className="mobile-menu-toggle" onClick={() => setShowMobileMenu(!showMobileMenu)}>
@@ -734,16 +1013,21 @@ export default function App() {
         
         <header className="app-header">
           <div className="user-snippet" role="button" onClick={() => { window.location.hash = '#profile' }}>
-            <div className="avatar">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={username} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>👤</div>
-              )}
+            <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+              <AvatarWithFrame
+                avatarUrl={avatarUrl}
+                frame={equippedFrame}
+                size={64}
+                username={username}
+                showGlow={false}
+                className="header-avatar"
+              />
             </div>
             <div className="user-text">
-              <div className="user-name">{username || user?.user_metadata?.name || 'Chưa đặt tên'}</div>
-              <div className="user-rank">{t('rank.label')}: {rank}</div>
+              <div className="user-name">
+                {username || user?.user_metadata?.name || 'Chưa đặt tên'}
+              </div>
+              <div className="user-rank">Rank: {rank}</div>
             </div>
           </div>
 
@@ -753,7 +1037,7 @@ export default function App() {
 
           <nav className="header-right">
             {/* Desktop wallet and gear */}
-            <div className="wallet desktop-wallet" title={`Nguyên Thần: ${gem} — Tinh Thạch: ${coin}`}>
+            <div className="wallet desktop-wallet" title={`Nguyên Thần: ${gem} — Tinh Thạch: ${coin}`} style={{ cursor: 'pointer' }} onClick={() => { window.location.hash = '#currency-shop'; }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <img 
                   src="/gem.png" 
@@ -772,8 +1056,36 @@ export default function App() {
                 />
                 <strong style={{ color: '#FACC15', fontSize: 14, fontWeight: 700 }}>{fmt(coin)}</strong>
               </div>
+              <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700, marginLeft: 4 }}>+</span>
             </div>
-            <div className="gear desktop-gear" onClick={() => setShowSettingsPopup(true)} style={{ cursor: 'pointer' }}>⚙</div>
+            <InboxIcon className="desktop-inbox" />
+            <div 
+              className="gear desktop-gear" 
+              onClick={() => setShowSettingsPopup(true)} 
+              style={{ 
+                cursor: 'pointer',
+                padding: '8px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2))',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.35))'
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2))'
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)'
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)'
+              }}
+            >⚙</div>
 
             {/* Mobile toggle button */}
             <button className="mobile-wallet-toggle" onClick={() => setShowMobileWallet(!showMobileWallet)}>
@@ -784,7 +1096,7 @@ export default function App() {
             
             {/* Mobile dropdown content */}
             <div className={`mobile-wallet-content ${showMobileWallet ? 'content-visible' : 'content-hidden'}`}>
-              <div className="wallet" title={`Nguyên Thần: ${gem} — Tinh Thạch: ${coin}`}>
+              <div className="wallet" title={`Nguyên Thần: ${gem} — Tinh Thạch: ${coin}`} style={{ cursor: 'pointer' }} onClick={() => { window.location.hash = '#currency-shop'; setShowMobileWallet(false); }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <img 
                     src="/gem.png" 
@@ -803,8 +1115,26 @@ export default function App() {
                   />
                   <strong style={{ color: '#FACC15', fontSize: 14, fontWeight: 700 }}>{fmt(coin)}</strong>
                 </div>
+                <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700, marginLeft: 4 }}>+</span>
               </div>
-              <button className="gear mobile-gear" onClick={() => { setShowSettingsPopup(true); setShowMobileWallet(false); }}>
+              <InboxIcon className="mobile-inbox" />
+              <button 
+                className="gear mobile-gear" 
+                onClick={() => { setShowSettingsPopup(true); setShowMobileWallet(false); }}
+                style={{
+                  padding: '8px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.2))',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: '#93C5FD',
+                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.15)'
+                }}
+              >
                 ⚙
               </button>
             </div>
@@ -834,15 +1164,17 @@ export default function App() {
         {displayPage === 'signup' && <Register />}
         {displayPage === 'forgot-password' && <ForgotPassword />}
         {displayPage === 'reset-password' && <ResetPassword />}
-        {displayPage === 'home' && <Home mobileMenuOpen={showMobileMenu} onCloseMobileMenu={() => setShowMobileMenu(false)} user={user} rank={rank} />}
+        {displayPage === 'home' && <Home mobileMenuOpen={showMobileMenu} onCloseMobileMenu={() => setShowMobileMenu(false)} user={user} rank={rank} avatarUrl={avatarUrl} equippedFrame={equippedFrame} />}
         {displayPage === 'lobby' && <Lobby />}
         {displayPage === 'room' && <Room />}
         {displayPage === 'training' && <TrainingRoom />}
+        {displayPage === 'variant' && <VariantMatch />}
         {displayPage === 'shop' && <Shop />}
         {displayPage === 'profile' && <Profile />}
         {displayPage === 'inventory' && <Inventory />}
         {displayPage === 'matchmaking' && <Matchmaking />}
         {displayPage === 'createroom' && <CreateRoom />}
+        {displayPage === 'tournament' && <Tournament />}
         {displayPage === 'inmatch' && <InMatch />}
         {displayPage === 'quests' && <Quests />}
         {displayPage === 'guide' && <Guide />}
@@ -856,6 +1188,31 @@ export default function App() {
         ))}
         {displayPage === 'khainhan' && <KhaiNhan />}
         {displayPage === 'ai-analysis' && <AiAnalysis />}
+        {displayPage === 'subscription' && <Subscription userId={user?.id} />}
+        {displayPage === 'currency-shop' && <CurrencyShop userId={user?.id} />}
+        {displayPage === 'payment-result' && <PaymentResult />}
+        {displayPage === 'currency-result' && <CurrencyResult />}
+        {displayPage === 'test-ai' && <TestAI />}
+        {displayPage === 'inbox' && <Inbox />}
+        {displayPage === 'admin-notifications' && (isAdmin ? <AdminNotifications /> : (
+          <div style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Not authorized</div>
+            <button onClick={() => { window.location.hash = '#home' }}>Back</button>
+          </div>
+        ))}
+        {displayPage === 'admin-reports' && (isAdmin ? <AdminReports /> : (
+          <div style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Not authorized</div>
+            <button onClick={() => { window.location.hash = '#home' }}>Back</button>
+          </div>
+        ))}
+        {displayPage === 'admin-appeals' && (isAdmin ? <AdminAppeals /> : (
+          <div style={{ padding: 20 }}>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>Not authorized</div>
+            <button onClick={() => { window.location.hash = '#home' }}>Back</button>
+          </div>
+        ))}
+        {displayPage === 'titles' && <Titles />}
       </main>
       </div>
       )

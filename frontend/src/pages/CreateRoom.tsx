@@ -25,6 +25,8 @@ export default function CreateRoom() {
   const [matchSettings, setMatchSettings] = useState({
     mode: 'rank' as 'rank' | 'casual' | 'ai' | 'tournament',
     gameType: 'normal' as 'normal' | 'skill' | 'hidden' | 'terrain' | 'pair',
+    // Skill mode sub-options: ranked (xếp hạng skill) hoặc matchmaking (ghép trận/mời bạn)
+    skillMode: 'ranked' as 'ranked' | 'matchmaking',
     aiDifficulty: 'beginner' as 'beginner' | 'expert' | 'master',
     tournamentType: 'solo' as 'solo' | 'pair',
     boardSize: '19x19' as 'infinite' | '19x19' | '15x15' | '9x9',
@@ -39,13 +41,31 @@ export default function CreateRoom() {
     allowUndo: false,
     maxUndo: 1,
     recordMatch: true,
-    toxicFilter: false
+    toxicFilter: false,
+    swap2Enabled: true // Swap 2 opening rule - always true for ranked/matchmaking
   })
 
   useEffect(() => {
     loadUser()
     loadFriends()
   }, [])
+
+  // Auto-enable/disable Swap 2 based on mode (Requirements 4.1)
+  useEffect(() => {
+    // Swap2 bắt buộc cho: rank mode, hoặc skill gameType với ranked/matchmaking
+    const isSwap2Required = matchSettings.mode === 'rank' || 
+      (matchSettings.gameType === 'skill' && (matchSettings.skillMode === 'ranked' || matchSettings.skillMode === 'matchmaking'))
+    
+    // Swap2 mặc định TẮT cho AI mode (Thí Luyện)
+    const isAIMode = matchSettings.mode === 'ai'
+    
+    if (isSwap2Required) {
+      setMatchSettings(prev => ({ ...prev, swap2Enabled: true }))
+    } else if (isAIMode) {
+      // AI mode: mặc định tắt Swap2, người chơi có thể bật nếu muốn luyện tập
+      setMatchSettings(prev => ({ ...prev, swap2Enabled: false }))
+    }
+  }, [matchSettings.mode, matchSettings.gameType, matchSettings.skillMode])
 
   async function loadUser() {
     try {
@@ -174,16 +194,22 @@ export default function CreateRoom() {
         }
       } else {
         // Create private room with friends or AI
+        const isSkillMode = matchSettings.gameType === 'skill'
         const { data: room, error: roomError } = await supabase
           .from('rooms')
           .insert({
             name: roomInfo.name,
-            mode: matchSettings.mode,
+            mode: isSkillMode ? 'skill' : matchSettings.mode,
             host_id: user.id,
             is_private: roomInfo.accessType !== 'public',
             password: roomInfo.password || null,
             max_players: 2,
             game_settings: matchSettings,
+            game_config: {
+              swap2_enabled: matchSettings.swap2Enabled,
+              skill_mode: isSkillMode,
+              skill_sub_mode: isSkillMode ? matchSettings.skillMode : null
+            },
             status: 'waiting'
           })
           .select()
@@ -254,6 +280,10 @@ export default function CreateRoom() {
   const isAIMode = matchSettings.mode === 'ai'
   const isTournamentMode = matchSettings.mode === 'tournament'
   const isCasualMode = matchSettings.mode === 'casual'
+  // Skill mode với ranked hoặc matchmaking
+  const isSkillOnline = matchSettings.gameType === 'skill' && (matchSettings.skillMode === 'ranked' || matchSettings.skillMode === 'matchmaking')
+  // Swap2 bắt buộc cho: rank, hoặc skill online (ranked/matchmaking)
+  const isSwap2Mandatory = isRankMode || isSkillOnline
 
   const filteredFriends = friends.filter(friend => 
     friend.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -286,7 +316,16 @@ export default function CreateRoom() {
             Chánh Điện
         </a>
         <span style={{ color: 'rgba(255,255,255,0.5)' }}>›</span>
-        <span style={{ color: '#fff' }}>Vạn Môn Tranh Đấu</span>
+        <span style={{ color: '#fff' }}>
+          {matchSettings.mode === 'rank' ? 'Xếp Hạng' : 
+           matchSettings.mode === 'tournament' ? 'Vạn Môn Tranh Đấu' :
+           matchSettings.mode === 'ai' ? 'Thí Luyện' : 
+           matchSettings.mode === 'casual' ? (
+             matchSettings.gameType === 'skill' ? 
+               (matchSettings.skillMode === 'ranked' ? 'Skill Ranked' : 'Skill Ghép Trận') : 
+               'Tiêu Dao'
+           ) : 'Tiêu Dao'}
+        </span>
       </nav>        {/* Header */}
         <div className="createroom-header">
           <h1 className="createroom-title">TẠO PHÒNG MỚI</h1>
@@ -477,7 +516,11 @@ export default function CreateRoom() {
                       <span className="summary-label">Chế độ:</span>
                       <span className="summary-value">
                         {matchSettings.mode === 'rank' ? 'Rank' : 
-                         matchSettings.mode === 'casual' ? 'Giải trí' :
+                         matchSettings.mode === 'casual' ? (
+                           matchSettings.gameType === 'skill' ? 
+                             (matchSettings.skillMode === 'ranked' ? 'Skill Ranked' : 'Skill Ghép Trận') : 
+                             'Giải trí'
+                         ) :
                          matchSettings.mode === 'ai' ? 'Đánh với AI' : 'Giải đấu'}
                       </span>
                     </div>
@@ -512,6 +555,12 @@ export default function CreateRoom() {
                     <div className="summary-item">
                       <span className="summary-label">Thời gian:</span>
                       <span className="summary-value">{matchSettings.turnTime}s / lượt, {matchSettings.totalTime}' / ván</span>
+                    </div>
+                    <div className="summary-item">
+                      <span className="summary-label">Swap 2:</span>
+                      <span className={`summary-value ${isSwap2Mandatory ? 'swap2-mandatory' : (matchSettings.swap2Enabled ? 'swap2-on' : 'swap2-off')}`}>
+                        {isSwap2Mandatory ? 'BẮT BUỘC' : (matchSettings.swap2Enabled ? 'ON' : 'OFF')}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -566,55 +615,118 @@ export default function CreateRoom() {
                     <p className="info-text">⚡ Luật rank chuẩn, auto, không chỉnh được.</p>
                     <p className="info-text">✓ Tính điểm: <strong>BẬT</strong></p>
                     <p className="info-text">🎯 Giới hạn rank ghép: Vô Danh – Vô Đối</p>
+                    <p className="info-text">🔄 Swap 2: <strong>BẮT BUỘC</strong> <span style={{ fontSize: '11px', opacity: 0.7 }}>(Luật mở đầu công bằng)</span></p>
                   </div>
                 )}
 
                 {isCasualMode && (
-                  <div className="form-group">
-                    <label>Kiểu chơi</label>
-                    <div className="radio-group">
-                      <label className="radio-label">
-                        <input 
-                          type="radio"
-                          checked={matchSettings.gameType === 'normal'}
-                          onChange={() => setMatchSettings({...matchSettings, gameType: 'normal'})}
-                        />
-                        <span>Normal</span>
-                      </label>
-                      <label className="radio-label">
-                        <input 
-                          type="radio"
-                          checked={matchSettings.gameType === 'skill'}
-                          onChange={() => setMatchSettings({...matchSettings, gameType: 'skill'})}
-                        />
-                        <span>Caro Skill</span>
-                      </label>
-                      <label className="radio-label">
-                        <input 
-                          type="radio"
-                          checked={matchSettings.gameType === 'hidden'}
-                          onChange={() => setMatchSettings({...matchSettings, gameType: 'hidden'})}
-                        />
-                        <span>Caro Ẩn</span>
-                      </label>
-                      <label className="radio-label">
-                        <input 
-                          type="radio"
-                          checked={matchSettings.gameType === 'terrain'}
-                          onChange={() => setMatchSettings({...matchSettings, gameType: 'terrain'})}
-                        />
-                        <span>Caro Địa Hình</span>
-                      </label>
-                      <label className="radio-label">
-                        <input 
-                          type="radio"
-                          checked={matchSettings.gameType === 'pair'}
-                          onChange={() => setMatchSettings({...matchSettings, gameType: 'pair'})}
-                        />
-                        <span>Caro theo cặp</span>
-                      </label>
+                  <>
+                    <div className="form-group">
+                      <label>Kiểu chơi</label>
+                      <div className="radio-group">
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'normal'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'normal'})}
+                          />
+                          <span>Normal</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'skill'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'skill'})}
+                          />
+                          <span>Caro Skill</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'hidden'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'hidden'})}
+                          />
+                          <span>Caro Ẩn</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'terrain'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'terrain'})}
+                          />
+                          <span>Caro Địa Hình</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'pair'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'pair'})}
+                          />
+                          <span>Caro theo cặp</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Skill Mode Sub-options: Ranked hoặc Ghép Trận */}
+                    {matchSettings.gameType === 'skill' && (
+                      <>
+                        <div className="form-group" style={{ marginTop: '12px', padding: '12px', background: 'rgba(34, 211, 238, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 211, 238, 0.3)' }}>
+                          <label style={{ color: '#22D3EE', fontWeight: 600 }}>🎯 Chế độ Skill Online</label>
+                          <div className="radio-group" style={{ marginTop: '8px' }}>
+                            <label className="radio-label">
+                              <input 
+                                type="radio"
+                                checked={matchSettings.skillMode === 'ranked'}
+                                onChange={() => setMatchSettings({...matchSettings, skillMode: 'ranked'})}
+                              />
+                              <span>Ranked (Xếp hạng Skill)</span>
+                            </label>
+                            <label className="radio-label">
+                              <input 
+                                type="radio"
+                                checked={matchSettings.skillMode === 'matchmaking'}
+                                onChange={() => setMatchSettings({...matchSettings, skillMode: 'matchmaking'})}
+                              />
+                              <span>Ghép Trận (Mời bạn / Người lạ)</span>
+                            </label>
+                          </div>
+                          <div className="mode-info" style={{ marginTop: '8px' }}>
+                            {matchSettings.skillMode === 'ranked' ? (
+                              <>
+                                <p className="info-text">🏆 Xếp hạng riêng cho chế độ Skill</p>
+                                <p className="info-text">✓ Tính điểm Skill ELO: <strong>BẬT</strong></p>
+                                <p className="info-text">🎯 Ghép trận theo Skill ELO</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="info-text">🎮 Mời bạn bè hoặc ghép với người lạ online</p>
+                                <p className="info-text">✓ Tính điểm: <strong>BẬT</strong></p>
+                              </>
+                            )}
+                            <p className="info-text">🔄 Swap 2: <strong>BẮT BUỘC</strong></p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Swap2 toggle cho các gameType khác (không phải skill) */}
+                    {matchSettings.gameType !== 'skill' && (
+                      <div className="form-group">
+                        <label className="checkbox-label swap2-toggle">
+                          <input 
+                            type="checkbox"
+                            checked={matchSettings.swap2Enabled}
+                            onChange={e => setMatchSettings({...matchSettings, swap2Enabled: e.target.checked})}
+                          />
+                          <span>Swap 2 Opening</span>
+                          <span className="swap2-hint" title="Luật mở đầu công bằng: P1 đặt 3 quân, P2 chọn màu hoặc đặt thêm 2 quân">ⓘ</span>
+                        </label>
+                        <p className="hint-text" style={{ marginTop: '4px', fontSize: '11px' }}>
+                          🔄 Luật mở đầu công bằng cho cả hai người chơi
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {isAIMode && (
@@ -649,6 +761,20 @@ export default function CreateRoom() {
                         </label>
                       </div>
                     </div>
+                    <div className="form-group">
+                      <label className="checkbox-label swap2-toggle">
+                        <input 
+                          type="checkbox"
+                          checked={matchSettings.swap2Enabled}
+                          onChange={e => setMatchSettings({...matchSettings, swap2Enabled: e.target.checked})}
+                        />
+                        <span>Swap 2 Opening</span>
+                        <span className="swap2-hint" title="Luật mở đầu công bằng: P1 đặt 3 quân, P2 chọn màu hoặc đặt thêm 2 quân">ⓘ</span>
+                      </label>
+                      <p className="hint-text" style={{ marginTop: '4px', fontSize: '11px' }}>
+                        🔄 Luyện tập luật mở đầu chuyên nghiệp với AI
+                      </p>
+                    </div>
                     <p className="hint-text">💡 Luật auto theo độ khó, không chỉnh chi tiết.</p>
                   </>
                 )}
@@ -676,13 +802,72 @@ export default function CreateRoom() {
                         </label>
                       </div>
                     </div>
+                    <div className="form-group">
+                      <label>Chế độ chơi (Dị Biến Kỳ)</label>
+                      <div className="radio-group">
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'normal'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'normal'})}
+                          />
+                          <span>Normal</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'skill'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'skill'})}
+                          />
+                          <span>Caro Skill</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'hidden'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'hidden'})}
+                          />
+                          <span>Caro Ẩn</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'terrain'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'terrain'})}
+                          />
+                          <span>Caro Địa Hình</span>
+                        </label>
+                        <label className="radio-label">
+                          <input 
+                            type="radio"
+                            checked={matchSettings.gameType === 'pair'}
+                            onChange={() => setMatchSettings({...matchSettings, gameType: 'pair'})}
+                          />
+                          <span>Caro theo cặp</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="checkbox-label swap2-toggle">
+                        <input 
+                          type="checkbox"
+                          checked={matchSettings.swap2Enabled}
+                          onChange={e => setMatchSettings({...matchSettings, swap2Enabled: e.target.checked})}
+                        />
+                        <span>Swap 2 Opening</span>
+                        <span className="swap2-hint" title="Luật mở đầu công bằng: P1 đặt 3 quân, P2 chọn màu hoặc đặt thêm 2 quân">ⓘ</span>
+                      </label>
+                      <p className="hint-text" style={{ marginTop: '4px', fontSize: '11px' }}>
+                        🔄 Luật mở đầu công bằng cho giải đấu chuyên nghiệp
+                      </p>
+                    </div>
                     <p className="hint-text">⚙️ Chỉ chủ phòng/BTC chỉnh luật.</p>
                   </>
                 )}
               </div>
 
               {/* Card B: Board & Rules */}
-              <div className={`createroom-card ${isRankMode || isAIMode ? 'readonly' : ''}`}>
+              <div className={`createroom-card ${isRankMode || isSkillOnline || isAIMode ? 'readonly' : ''}`}>
                 <h3 className="card-heading">Bàn Cờ & Luật Thắng</h3>
                 
                 {isRankMode && (
@@ -701,6 +886,32 @@ export default function CreateRoom() {
                     </div>
                     <div className="info-row">
                       <span>Cấm 3–3:</span>
+                      <strong>Bật</strong>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skill Online (Ranked hoặc Matchmaking) - luật cố định */}
+                {isSkillOnline && (
+                  <div className="readonly-info">
+                    <div className="info-row">
+                      <span>Kích thước:</span>
+                      <strong>19x19</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Thắng khi:</span>
+                      <strong>5 quân</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Luật chặn:</span>
+                      <strong>Bật</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Cấm 3–3:</span>
+                      <strong>Bật</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Skill System:</span>
                       <strong>Bật</strong>
                     </div>
                   </div>
@@ -829,7 +1040,7 @@ export default function CreateRoom() {
               </div>
 
               {/* Card C: Time & Turns */}
-              <div className={`createroom-card ${isRankMode || isAIMode ? 'readonly' : ''}`}>
+              <div className={`createroom-card ${isRankMode || isSkillOnline || isAIMode ? 'readonly' : ''}`}>
                 <h3 className="card-heading">Thời Gian & Lượt Đi</h3>
                 
                 {isRankMode && (
@@ -841,6 +1052,28 @@ export default function CreateRoom() {
                     <div className="info-row">
                       <span>Thời gian tổng:</span>
                       <strong>10'</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Người đi trước:</span>
+                      <strong>Ngẫu nhiên</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Hết giờ:</span>
+                      <strong>Tự thua</strong>
+                    </div>
+                  </div>
+                )}
+
+                {/* Skill Online - luật thời gian cố định */}
+                {isSkillOnline && (
+                  <div className="readonly-info">
+                    <div className="info-row">
+                      <span>Thời gian lượt:</span>
+                      <strong>30s</strong>
+                    </div>
+                    <div className="info-row">
+                      <span>Thời gian tổng:</span>
+                      <strong>15'</strong>
                     </div>
                     <div className="info-row">
                       <span>Người đi trước:</span>
@@ -971,10 +1204,10 @@ export default function CreateRoom() {
               </div>
 
               {/* Card D: Advanced Options */}
-              <div className={`createroom-card ${isRankMode ? 'readonly' : ''}`}>
+              <div className={`createroom-card ${isRankMode || isSkillOnline ? 'readonly' : ''}`}>
                 <h3 className="card-heading">Tùy Chọn Nâng Cao</h3>
                 
-                {isRankMode && (
+                {(isRankMode || isSkillOnline) && (
                   <div className="readonly-info">
                     <div className="checkbox-item">
                       <input type="checkbox" checked disabled />

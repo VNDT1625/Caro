@@ -2,6 +2,9 @@ import React from 'react'
 import { supabase } from '../lib/supabase'
 import { useChat } from '../hooks/useChat'
 import { useLanguage } from '../contexts/LanguageContext'
+import { SeriesScoreDisplay, GameNumberBadge, PlayerSideIndicator, DisconnectWarning } from '../components/series'
+import { useSeriesRealtime, SeriesEvents } from '../hooks/useSeriesRealtime'
+import { prepareNextSeriesGame, forfeitSeriesGame } from '../lib/seriesApi'
 
 interface InMatchProps {
   user?: any
@@ -26,6 +29,8 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
   // Room and player info
   const [roomId, setRoomId] = React.useState<string | null>(null)
   const [matchId, setMatchId] = React.useState<string | null>(null)
+  const [seriesId, setSeriesId] = React.useState<string | null>(null)
+  const [seriesData, setSeriesData] = React.useState<any>(null)
   const [playerSymbol, setPlayerSymbol] = React.useState<'X' | 'O'>('X')
   const opponentSymbol = playerSymbol === 'X' ? 'O' : 'X'
   
@@ -94,6 +99,133 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
     newRank: string
     mindpoint: number
   } | null>(null)
+
+  // Series realtime state - Requirements: 7.1, 7.2, 8.3, 8.5
+  const [showDisconnectWarning, setShowDisconnectWarning] = React.useState(false)
+  const [nextGameCountdown, setNextGameCountdown] = React.useState<number | null>(null)
+  const [seriesRewards, setSeriesRewards] = React.useState<any>(null)
+
+  // Series realtime hook - subscribes to ranked_series table updates
+  const {
+    seriesData: realtimeSeriesData,
+    disconnectState,
+    isSubscribed: isSeriesSubscribed
+  } = useSeriesRealtime({
+    seriesId,
+    userId: user?.id,
+    enabled: !!seriesId && !!user?.id,
+    onGameEnded: (event) => {
+      console.log('🎮 Series game ended event:', event)
+      // Update local series data
+      if (realtimeSeriesData) {
+        setSeriesData({
+          ...seriesData,
+          player1_wins: event.score.split('-')[0],
+          player2_wins: event.score.split('-')[1]
+        })
+      }
+    },
+    onSeriesCompleted: (event) => {
+      console.log('🏆 Series completed event:', event)
+      setSeriesRewards(event.rewards)
+      // Match winner will be set by the game state update
+    },
+    onSideSwapped: (event) => {
+      console.log('🔄 Side swapped event:', event)
+      // Update player symbol based on new sides
+      if (seriesData && user?.id) {
+        const newSide = seriesData.player1_id === user.id 
+          ? event.player1Side 
+          : event.player2Side
+        setPlayerSymbol(newSide)
+      }
+    },
+    onNextGameReady: (event) => {
+      console.log('⏭️ Next game ready event:', event)
+      // Start countdown for next game
+      setNextGameCountdown(event.countdownSeconds)
+    },
+    onPlayerDisconnected: (event) => {
+      console.log('⚠️ Player disconnected event:', event)
+      setShowDisconnectWarning(true)
+    },
+    onPlayerReconnected: (event) => {
+      console.log('✅ Player reconnected event:', event)
+      setShowDisconnectWarning(false)
+    },
+    onGameForfeited: async (event) => {
+      console.log('🏳️ Game forfeited event:', event)
+      // Handle forfeit - opponent wins this game
+      if (event.forfeitingPlayerId !== user?.id) {
+        // We won by forfeit
+        await handleGameEnd(playerSymbol)
+      } else {
+        // We forfeited
+        await handleGameEnd(opponentSymbol)
+      }
+    },
+    onSeriesAbandoned: (event) => {
+      console.log('🚪 Series abandoned event:', event)
+      // Set match winner based on who abandoned
+      if (event.abandoningPlayerId === user?.id) {
+        setMatchWinner(opponentSymbol)
+      } else {
+        setMatchWinner(playerSymbol)
+      }
+    },
+    onSeriesDataChanged: (data) => {
+      console.log('📊 Series data changed:', data)
+      setSeriesData(data)
+    }
+  })
+
+  // Handle disconnect timeout - forfeit game when timer expires
+  React.useEffect(() => {
+    if (disconnectState.isDisconnected && disconnectState.remainingSeconds <= 0) {
+      // Opponent timed out - forfeit their game
+      if (seriesId && disconnectState.disconnectedPlayerId) {
+        console.log('⏰ Disconnect timeout - forfeiting game for:', disconnectState.disconnectedPlayerId)
+        forfeitSeriesGame(seriesId, disconnectState.disconnectedPlayerId)
+          .then(result => {
+            if (result.success) {
+              console.log('✅ Game forfeited due to disconnect timeout')
+            }
+          })
+          .catch(err => console.error('Failed to forfeit game:', err))
+      }
+    }
+  }, [disconnectState.remainingSeconds, disconnectState.isDisconnected, seriesId, disconnectState.disconnectedPlayerId])
+
+  // Handle next game countdown
+  React.useEffect(() => {
+    if (nextGameCountdown === null || nextGameCountdown <= 0) return
+
+    const timer = setInterval(() => {
+      setNextGameCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer)
+          // Start next game
+          if (roomId && seriesId) {
+            prepareNextSeriesGame(roomId, seriesId)
+              .then(result => {
+                if (result.success && result.gameState) {
+                  setGameState(result.gameState)
+                  setGameWinner(null)
+                  setTimeLeft(30)
+                  setOpponentTimeLeft(30)
+                  setLastMovePosition(null)
+                }
+              })
+              .catch(err => console.error('Failed to prepare next game:', err))
+          }
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [nextGameCountdown, roomId, seriesId])
 
   // Load opponent data from localStorage or generate mock
   const opponent = React.useMemo(() => {
@@ -164,7 +296,8 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           return
         }
 
-        const { roomId: storedRoomId } = JSON.parse(matchData)
+        const parsedMatchData = JSON.parse(matchData)
+        const { roomId: storedRoomId, seriesId: storedSeriesId, series: storedSeries } = parsedMatchData
         if (!storedRoomId) {
           console.error('No roomId in match data')
           setIsLoading(false)
@@ -173,6 +306,13 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
 
         setRoomId(storedRoomId)
         console.log('Loaded room:', storedRoomId)
+
+        // Load series info if available (for ranked matches)
+        if (storedSeriesId) {
+          setSeriesId(storedSeriesId)
+          setSeriesData(storedSeries)
+          console.log('🏆 Loaded series:', storedSeriesId, storedSeries)
+        }
 
         // Get player side (X or O) from room_players
         const { data: roomPlayer, error: rpError } = await supabase
@@ -1108,6 +1248,47 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           </div>
         </div>
       )}
+
+      {/* Disconnect Warning - Requirements: 7.1, 7.2 */}
+      {showDisconnectWarning && disconnectState.isDisconnected && (
+        <DisconnectWarning
+          disconnectedPlayerName={opponent.name}
+          remainingSeconds={disconnectState.remainingSeconds}
+          isOpponent={disconnectState.disconnectedPlayerId !== user?.id}
+          onClose={() => setShowDisconnectWarning(false)}
+        />
+      )}
+
+      {/* Next Game Countdown - Requirements: 8.5 */}
+      {nextGameCountdown !== null && nextGameCountdown > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 1000,
+          backgroundColor: 'rgba(0, 0, 0, 0.95)',
+          border: '2px solid #3b82f6',
+          borderRadius: '16px',
+          padding: '32px 48px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '24px', color: '#9ca3af', marginBottom: '16px' }}>
+            {t('series.nextGameStarting') || 'Ván tiếp theo bắt đầu trong'}
+          </div>
+          <div style={{
+            fontSize: '72px',
+            fontWeight: 'bold',
+            color: '#3b82f6',
+            fontFamily: 'monospace'
+          }}>
+            {nextGameCountdown}
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '16px' }}>
+            {t('series.sidesSwapped') || 'Bên đã được đổi'}
+          </div>
+        </div>
+      )}
       
       {/* Winner Modal - Show for both game end and match end */}
       {displayWinner && (
@@ -1129,16 +1310,18 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
             </h2>
             
             {/* Best of 3 Score Display */}
-            <div className="match-score" style={{ margin: '20px 0', fontSize: '24px', fontWeight: 'bold' }}>
-              <span style={{ color: '#22D3EE' }}>X: {scores.X}</span>
-              <span style={{ margin: '0 20px', color: '#666' }}>-</span>
-              <span style={{ color: '#F59E0B' }}>O: {scores.O}</span>
+            <div className="match-score" style={{ margin: '20px 0', display: 'flex', justifyContent: 'center' }}>
+              <SeriesScoreDisplay
+                player1Wins={scores.X}
+                player2Wins={scores.O}
+                size="large"
+                showNames={false}
+              />
             </div>
             
             <div className="winner-stats">
-              <div className="stat-item">
-                <span className="stat-label">Ván hiện tại:</span>
-                <span className="stat-value">{currentGame}/3</span>
+              <div className="stat-item" style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                <GameNumberBadge currentGame={currentGame} totalGames={3} size="medium" />
               </div>
               <div className="stat-item">
                 <span className="stat-label">Tổng nước đi:</span>
@@ -1182,7 +1365,7 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
         position: 'relative',
         zIndex: 10
       }}>
-        <button className="back-btn" onClick={() => window.location.hash = '#home'} title="Quay lại" style={{
+        <button className="back-btn" onClick={() => window.location.hash = '#home'} title={t('room.back')} style={{
           background: 'rgba(239, 68, 68, 0.2)',
           border: '1px solid #EF4444',
           color: '#EF4444',
@@ -1192,7 +1375,7 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           fontSize: '14px',
           fontWeight: 600
         }}>
-          ← Rời trận
+          ← {t('room.leaveMatch')}
         </button>
 
         {/* Center Title */}
@@ -1202,12 +1385,12 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           color: '#fff',
           textAlign: 'center'
         }}>
-          🎮 Trận Đấu - Best of 3
+          🎮 {t('room.matchTitle')}
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button className="action-btn" onClick={() => setShowMoveInfo(!showMoveInfo)} title="Lịch sử nước đi" style={{
+          <button className="action-btn" onClick={() => setShowMoveInfo(!showMoveInfo)} title={t('room.moveHistory')} style={{
             padding: '8px',
             borderRadius: '6px',
             border: '1px solid rgba(34, 211, 238, 0.5)',
@@ -1224,7 +1407,7 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           }}>
             📜
           </button>
-          <button className="action-btn" onClick={handleRequestDraw} title="Yêu cầu hòa" style={{
+          <button className="action-btn" onClick={handleRequestDraw} title={t('room.requestDraw')} style={{
             padding: '8px',
             borderRadius: '6px',
             border: '1px solid rgba(251, 191, 36, 0.5)',
@@ -1241,7 +1424,7 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           }}>
             🤝
           </button>
-          <button className="action-btn danger" onClick={handleSurrender} title="Đầu hàng" style={{
+          <button className="action-btn danger" onClick={handleSurrender} title={t('room.surrender')} style={{
             padding: '8px',
             borderRadius: '6px',
             border: '1px solid rgba(239, 68, 68, 0.5)',
@@ -1258,6 +1441,47 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
           }}>
             🏳️
           </button>
+        </div>
+      </div>
+
+      {/* Series Info Bar - Score and Game Number */}
+      <div className="series-info-bar" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '24px',
+        padding: '12px 24px',
+        background: 'rgba(15, 23, 42, 0.7)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)'
+      }}>
+        <GameNumberBadge 
+          currentGame={currentGame} 
+          totalGames={3} 
+          size="medium"
+        />
+        <SeriesScoreDisplay
+          player1Wins={scores.X}
+          player2Wins={scores.O}
+          player1Name={playerSymbol === 'X' 
+            ? (user?.user_metadata?.display_name || user?.user_metadata?.name || 'You')
+            : opponent.name
+          }
+          player2Name={playerSymbol === 'O' 
+            ? (user?.user_metadata?.display_name || user?.user_metadata?.name || 'You')
+            : opponent.name
+          }
+          currentPlayerNumber={playerSymbol === 'X' ? 1 : 2}
+          size="medium"
+          showNames={false}
+        />
+        <div style={{
+          fontSize: '12px',
+          color: '#64748B',
+          padding: '4px 12px',
+          background: 'rgba(0,0,0,0.3)',
+          borderRadius: '6px'
+        }}>
+          {t('series.bestOf3') || 'Best of 3'}
         </div>
       </div>
 
@@ -1336,14 +1560,38 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
             }}>X</div>
           </div>
 
-          {/* VS Divider */}
+          {/* VS Divider with Side Indicators */}
           <div style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#666',
-            textShadow: '0 0 10px rgba(255,255,255,0.3)',
-            padding: '0 8px'
-          }}>VS</div>
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center'
+            }}>
+              <PlayerSideIndicator 
+                side="X" 
+                isActiveTurn={currentTurn === 'X'}
+                isCurrentUser={playerSymbol === 'X'}
+                size="small"
+              />
+              <span style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#666',
+                padding: '0 4px'
+              }}>VS</span>
+              <PlayerSideIndicator 
+                side="O" 
+                isActiveTurn={currentTurn === 'O'}
+                isCurrentUser={playerSymbol === 'O'}
+                size="small"
+              />
+            </div>
+          </div>
 
           {/* Player O Info - Bên phải */}
           <div className="player-card" style={{ 
@@ -1554,12 +1802,12 @@ export default function InMatch({ user, rank }: InMatchProps = {}) {
               <div className="chat-input-box">
                 <input
                   type="text"
-                  placeholder="Nhập tin nhắn..."
+                  placeholder={t('room.typeMessage')}
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
                 />
-                <button onClick={handleSendChat}>Gửi</button>
+                <button onClick={handleSendChat}>{t('matchmaking.send')}</button>
               </div>
             </>
           )}

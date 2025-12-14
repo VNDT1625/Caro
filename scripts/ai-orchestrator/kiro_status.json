@@ -1,0 +1,9 @@
+{
+  "agent": "kiro",
+  "status": "idle",
+  "current_task": null,
+  "last_update": null,
+  "completed_tasks": [],
+  "errors": [],
+  "message_for_gpt": null
+}

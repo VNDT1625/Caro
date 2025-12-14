@@ -25,11 +25,13 @@ Open a shell and run:
 
 # cmd.exe
 cd /d C:\PJ\caro\backend\public
-php -S localhost:8000
+php -S localhost:8001 router.php
 
 # PowerShell
 Set-Location -Path 'C:\PJ\caro\backend\public'
-php -S localhost:8000
+php -S localhost:8001 router.php
+
+Note: PHP backend uses port 8001 because Node.js socket server uses port 8000
 
 ### Socket server (Node)
 

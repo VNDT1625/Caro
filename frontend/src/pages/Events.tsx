@@ -3,55 +3,167 @@ import { supabase } from '../lib/supabase'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface EventReward {
-  day?: number
-  matches?: number
-  coin: number
-  gem: number
+  id: string
+  title: string
+  target: number
+  current: number
+  reward: { coin: number; gem: number; item?: string }
   claimed: boolean
+}
+
+interface GameEvent {
+  id: string
+  icon: string
+  name: string
+  description: string
+  startDate: string
+  endDate: string
+  type: 'hot' | 'new' | 'ending' | 'permanent'
+  rewards: EventReward[]
 }
 
 export default function Events() {
   const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [currentBanner, setCurrentBanner] = useState(0)
-  const [loginRewards, setLoginRewards] = useState<EventReward[]>([])
-  const [matchRewards, setMatchRewards] = useState<EventReward[]>([])
-  const [consecutiveLogins, setConsecutiveLogins] = useState(0)
-  const [todayMatches, setTodayMatches] = useState(0)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [events, setEvents] = useState<GameEvent[]>([])
+  const [claimingId, setClaimingId] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [showDetail, setShowDetail] = useState(false)
 
-  const banners = [
-    {
-      id: 1,
-      title: t('events.loginEvent'),
-      subtitle: t('events.loginEventDesc'),
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      icon: '📅',
-      type: 'login'
-    },
-    {
-      id: 2,
-      title: t('events.matchEvent'),
-      subtitle: t('events.matchEventDesc'),
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-      icon: '⚔️',
-      type: 'matches'
-    },
-    {
-      id: 3,
-      title: t('events.specialEvent'),
-      subtitle: t('events.specialEventDesc'),
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-      icon: '🎁',
-      type: 'special'
-    }
-  ]
-
+  // Handle resize
   useEffect(() => {
-    loadUser()
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (!mobile) setShowDetail(false)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  async function loadUser() {
+  // Calculate time remaining
+  function getTimeRemaining(endDate: string): { text: string; urgent: boolean } {
+    const [day, month, year] = endDate.split('/')
+    const end = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+    const now = new Date()
+    const diff = end.getTime() - now.getTime()
+    
+    if (diff <= 0) return { text: t('events.ended'), urgent: false }
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    
+    if (days > 7) return { text: `${days} ${t('events.daysLeft')}`, urgent: false }
+    if (days > 0) return { text: `${days} ${t('events.daysLeft')}`, urgent: days <= 3 }
+    return { text: `${hours} ${t('events.hoursLeft')}`, urgent: true }
+  }
+
+  // Get type badge
+  function getTypeBadge(type: GameEvent['type']) {
+    switch (type) {
+      case 'hot': return { text: t('events.badge.hot'), color: '#EF4444' }
+      case 'new': return { text: t('events.badge.new'), color: '#22D3EE' }
+      case 'ending': return { text: t('events.badge.ending'), color: '#F59E0B' }
+      case 'permanent': return { text: t('events.badge.permanent'), color: '#8B5CF6' }
+      default: return null
+    }
+  }
+
+  useEffect(() => {
+    const sampleEvents: GameEvent[] = [
+      {
+        id: 'noel_2025',
+        icon: '🎄',
+        name: t('events.noel.name'),
+        description: t('events.noel.desc'),
+        startDate: '01/12/2025',
+        endDate: '25/12/2025',
+        type: 'hot',
+        rewards: [
+          { id: 'noel1', title: t('events.reward.loginNDays', { n: 1 }), target: 1, current: 0, reward: { coin: 100, gem: 10 }, claimed: false },
+          { id: 'noel3', title: t('events.reward.loginNDays', { n: 3 }), target: 3, current: 0, reward: { coin: 300, gem: 30 }, claimed: false },
+          { id: 'noel5', title: t('events.reward.loginNDays', { n: 5 }), target: 5, current: 0, reward: { coin: 500, gem: 50 }, claimed: false },
+          { id: 'noel7', title: t('events.reward.loginNDays', { n: 7 }), target: 7, current: 0, reward: { coin: 1000, gem: 100, item: t('events.item.santaAvatar') }, claimed: false },
+        ]
+      },
+      {
+        id: 'new_year_2026',
+        icon: '🎆',
+        name: t('events.newyear.name'),
+        description: t('events.newyear.desc'),
+        startDate: '25/12/2025',
+        endDate: '15/01/2026',
+        type: 'new',
+        rewards: [
+          { id: 'ny1', title: t('events.reward.playNMatches', { n: 5 }), target: 5, current: 0, reward: { coin: 200, gem: 20 }, claimed: false },
+          { id: 'ny2', title: t('events.reward.winNMatches', { n: 3 }), target: 3, current: 0, reward: { coin: 500, gem: 50 }, claimed: false },
+          { id: 'ny3', title: t('events.reward.loginNDays', { n: 7 }), target: 7, current: 0, reward: { coin: 1000, gem: 100, item: t('events.item.snakeFrame') }, claimed: false },
+        ]
+      },
+      {
+        id: 'weekend_bonus',
+        icon: '🎁',
+        name: t('events.weekend.name'),
+        description: t('events.weekend.desc'),
+        startDate: '06/12/2025',
+        endDate: '08/12/2025',
+        type: 'ending',
+        rewards: [
+          { id: 'wb1', title: t('events.reward.winNMatches', { n: 3 }), target: 3, current: 0, reward: { coin: 300, gem: 30 }, claimed: false },
+          { id: 'wb2', title: t('events.reward.winNMatches', { n: 5 }), target: 5, current: 0, reward: { coin: 600, gem: 60, item: t('events.item.hotStreak') }, claimed: false },
+        ]
+      },
+      {
+        id: 'first_win',
+        icon: '🏆',
+        name: t('events.firstwin.name'),
+        description: t('events.firstwin.desc'),
+        startDate: '01/01/2025',
+        endDate: '31/12/2025',
+        type: 'permanent',
+        rewards: [
+          { id: 'fw1', title: t('events.reward.playFirstMatch'), target: 1, current: 0, reward: { coin: 100, gem: 50 }, claimed: false },
+          { id: 'fw2', title: t('events.reward.winFirstMatch'), target: 1, current: 0, reward: { coin: 300, gem: 100 }, claimed: false },
+          { id: 'fw3', title: t('events.reward.playNMatches', { n: 10 }), target: 10, current: 0, reward: { coin: 500, gem: 200, item: t('events.item.starterPack') }, claimed: false },
+        ]
+      }
+    ]
+
+    setEvents(sampleEvents)
+    setSelectedEventId(sampleEvents[0]?.id || null)
+    loadUser(sampleEvents)
+  }, [t])
+
+  async function checkDailyLogin(prof: any) {
+    const today = new Date().toISOString().split('T')[0]
+    const eventData = prof.metadata?.events || {}
+    const lastLogin = eventData.lastLoginDate
+    
+    if (lastLogin === today) return prof
+
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    let consecutiveLogins = eventData.consecutiveLogins || 0
+    consecutiveLogins = (lastLogin === yesterdayStr) ? consecutiveLogins + 1 : 1
+
+    const newMetadata = {
+      ...prof.metadata,
+      events: { ...eventData, lastLoginDate: today, consecutiveLogins }
+    }
+
+    await supabase
+      .from('profiles')
+      .update({ metadata: newMetadata })
+      .eq('user_id', prof.user_id)
+
+    return { ...prof, metadata: newMetadata }
+  }
+
+  async function loadUser(eventList: GameEvent[]) {
     try {
       const { data } = await supabase.auth.getUser()
       const u = data?.user ?? null
@@ -65,8 +177,9 @@ export default function Events() {
           .maybeSingle()
         
         if (prof) {
-          setProfile(prof)
-          loadEventProgress(prof)
+          const updatedProf = await checkDailyLogin(prof)
+          setProfile(updatedProf)
+          loadEventProgress(updatedProf, eventList)
         }
       }
     } catch (e) {
@@ -74,567 +187,590 @@ export default function Events() {
     }
   }
 
-  function loadEventProgress(prof: any) {
+  function loadEventProgress(prof: any, eventList: GameEvent[]) {
     const eventData = prof.metadata?.events || {}
-    
-    // Login rewards: 7 days
-    const loginRewardList: EventReward[] = [
-      { day: 1, coin: 50, gem: 0, claimed: eventData.login?.[1] || false },
-      { day: 2, coin: 100, gem: 0, claimed: eventData.login?.[2] || false },
-      { day: 3, coin: 150, gem: 5, claimed: eventData.login?.[3] || false },
-      { day: 4, coin: 200, gem: 0, claimed: eventData.login?.[4] || false },
-      { day: 5, coin: 250, gem: 10, claimed: eventData.login?.[5] || false },
-      { day: 6, coin: 300, gem: 0, claimed: eventData.login?.[6] || false },
-      { day: 7, coin: 500, gem: 20, claimed: eventData.login?.[7] || false }
-    ]
+    const consecutiveLogins = eventData.consecutiveLogins || 0
+    const todayMatches = eventData.todayMatches || 0
+    const totalWins = prof.total_wins || 0
 
-    // Match rewards: 5 milestones
-    const matchRewardList: EventReward[] = [
-      { matches: 1, coin: 30, gem: 0, claimed: eventData.matches?.[1] || false },
-      { matches: 3, coin: 100, gem: 0, claimed: eventData.matches?.[3] || false },
-      { matches: 5, coin: 200, gem: 5, claimed: eventData.matches?.[5] || false },
-      { matches: 10, coin: 400, gem: 10, claimed: eventData.matches?.[10] || false },
-      { matches: 20, coin: 1000, gem: 30, claimed: eventData.matches?.[20] || false }
-    ]
+    const updatedEvents = eventList.map(event => {
+      const rewards = event.rewards.map(reward => {
+        let current = 0
+        let claimed = eventData[event.id]?.[reward.id] || false
 
-    setLoginRewards(loginRewardList)
-    setMatchRewards(matchRewardList)
-    setConsecutiveLogins(eventData.consecutiveLogins || 0)
-    setTodayMatches(eventData.todayMatches || 0)
+        if (reward.title.includes('Đăng nhập') || reward.title.includes('Login')) {
+          current = consecutiveLogins
+        } else if (reward.title.includes('Chơi') || reward.title.includes('Play')) {
+          current = todayMatches
+        } else if (reward.title.includes('Thắng') || reward.title.includes('Win')) {
+          current = totalWins
+        }
+
+        return { ...reward, current, claimed }
+      })
+
+      return { ...event, rewards }
+    })
+
+    setEvents(updatedEvents)
   }
 
-  async function claimLoginReward(day: number) {
+  async function claimReward(eventId: string, rewardId: string) {
     if (!user || !profile) return
-    
-    const reward = loginRewards.find(r => r.day === day)
-    if (!reward || reward.claimed) return
-    if (consecutiveLogins < day) {
-      alert(t('events.notEligible'))
-      return
-    }
+
+    const event = events.find(e => e.id === eventId)
+    const reward = event?.rewards.find(r => r.id === rewardId)
+    if (!reward || reward.claimed || reward.current < reward.target) return
+
+    if (claimingId) return
+    setClaimingId(rewardId)
 
     try {
-      const newCoins = (profile.coins || 0) + reward.coin
-      const newGems = (profile.gems || 0) + reward.gem
+      const coinReward = reward.reward.coin || 0
+      const gemReward = reward.reward.gem || 0
+      const newCoins = (profile.coins || 0) + coinReward
+      const newGems = (profile.gems || 0) + gemReward
 
-      const eventData = profile.metadata?.events || {}
-      if (!eventData.login) eventData.login = {}
-      eventData.login[day] = true
+      const eventData = { ...(profile.metadata?.events || {}) }
+      if (!eventData[eventId]) eventData[eventId] = {}
+      eventData[eventId][rewardId] = true
 
-      const newMetadata = {
-        ...profile.metadata,
-        events: eventData
+      const newMetadata = { ...profile.metadata, events: eventData }
+
+      const { data: updatedProfile, error } = await supabase
+        .from('profiles')
+        .update({ coins: newCoins, gems: newGems, metadata: newMetadata })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Failed to claim reward:', error)
+        setClaimingId(null)
+        return
       }
 
-      await supabase
-        .from('profiles')
-        .update({ 
-          coins: newCoins, 
-          gems: newGems,
-          metadata: newMetadata
-        })
-        .eq('user_id', user.id)
+      setProfile(updatedProfile)
+      
+      setEvents(prev => prev.map(e => {
+        if (e.id !== eventId) return e
+        return { ...e, rewards: e.rewards.map(r => r.id === rewardId ? { ...r, claimed: true } : r) }
+      }))
 
-      setProfile({ ...profile, coins: newCoins, gems: newGems, metadata: newMetadata })
-      setLoginRewards(prev => prev.map(r => 
-        r.day === day ? { ...r, claimed: true } : r
-      ))
+      window.dispatchEvent(new CustomEvent('profileUpdated', {
+        detail: { field: 'currency', coins: updatedProfile.coins, gems: updatedProfile.gems }
+      }))
 
-      alert(t('events.claimSuccess', { coins: reward.coin, gems: reward.gem > 0 ? ` ${t('common.and')} ${reward.gem} ${t('shop.gems')}` : '' }))
+      setClaimingId(null)
     } catch (e) {
-      console.error('Claim login reward failed:', e)
-      alert(t('events.claimFailed'))
+      console.error('Claim reward failed:', e)
+      setClaimingId(null)
     }
   }
 
-  async function claimMatchReward(matches: number) {
-    if (!user || !profile) return
-    
-    const reward = matchRewards.find(r => r.matches === matches)
-    if (!reward || reward.claimed) return
-    if (todayMatches < matches) {
-      alert(`${t('events.needMatches')} ${matches} ${t('events.matches')}! (${t('events.current')}: ${todayMatches} ${t('events.matches')})`)
-      return
-    }
-
-    try {
-      const newCoins = (profile.coins || 0) + reward.coin
-      const newGems = (profile.gems || 0) + reward.gem
-
-      const eventData = profile.metadata?.events || {}
-      if (!eventData.matches) eventData.matches = {}
-      eventData.matches[matches] = true
-
-      const newMetadata = {
-        ...profile.metadata,
-        events: eventData
-      }
-
-      await supabase
-        .from('profiles')
-        .update({ 
-          coins: newCoins, 
-          gems: newGems,
-          metadata: newMetadata
-        })
-        .eq('user_id', user.id)
-
-      setProfile({ ...profile, coins: newCoins, gems: newGems, metadata: newMetadata })
-      setMatchRewards(prev => prev.map(r => 
-        r.matches === matches ? { ...r, claimed: true } : r
-      ))
-
-      alert(t('events.claimSuccess', { coins: reward.coin, gems: reward.gem > 0 ? ` ${t('common.and')} ${reward.gem} ${t('shop.gems')}` : '' }))
-    } catch (e) {
-      console.error('Claim match reward failed:', e)
-      alert(t('events.claimFailed'))
-    }
-  }
-
-  const nextBanner = () => {
-    setCurrentBanner((prev) => (prev + 1) % banners.length)
-  }
-
-  const prevBanner = () => {
-    setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length)
-  }
-
-  const currentBannerData = banners[currentBanner]
+  const selectedEvent = events.find(e => e.id === selectedEventId)
 
   return (
-    <div className="app-container" style={{ paddingTop: '32px' }}>
-      {/* Breadcrumb Navigation */}
-      <nav style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px', 
-        fontSize: '13px', 
-        color: 'var(--color-muted)',
-        marginBottom: '16px',
-        paddingLeft: '24px'
-      }}>
-        <a 
-          href="#home" 
-          style={{ 
-            color: 'var(--color-muted)', 
-            textDecoration: 'none',
-            transition: 'color 0.2s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
-        >
-          {t('breadcrumb.home')}
-        </a>
-        <span style={{ color: 'var(--color-muted)' }}>›</span>
-        <span style={{ color: 'var(--color-text)' }}>{t('events.title')}</span>
-      </nav>
-
-      <div className="grid-3">
-        {/* Left Sidebar */}
-        <div className="panel" style={{ height: 'fit-content' }}>
-          <div className="menu-list">
-            <div style={{ 
-              padding: '12px 18px',
-              borderRadius: '10px',
-              background: 'linear-gradient(90deg, rgba(245,158,11,0.08), rgba(251,191,36,0.05))',
-              border: '1px solid rgba(245,158,11,0.2)',
-              fontWeight: 600,
-              color: '#F59E0B'
-            }}>
-              🎉 {t('events.title')}
-            </div>
-          </div>
+    <div className="app-container">
+      {/* Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span 
+            onClick={() => window.location.hash = '#home'} 
+            style={{ fontSize: '13px', color: 'var(--color-muted)', cursor: 'pointer' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
+          >
+            {t('breadcrumb.home')}
+          </span>
+          <span style={{ color: 'var(--color-muted)' }}>›</span>
+          <span style={{ fontSize: '13px', color: 'var(--color-text)', fontWeight: 500 }}>{t('events.title')}</span>
         </div>
+        <h1 style={{
+          margin: 0,
+          fontSize: '26px',
+          fontWeight: 800,
+          background: 'linear-gradient(135deg, #F59E0B, #EF4444)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          🎉 {t('events.title')}
+        </h1>
+        <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: 'var(--color-muted)' }}>
+          {t('events.subtitle')}
+        </p>
+      </div>
 
-        {/* Center Content */}
-        <div className="panel" style={{ padding: '24px' }}>
-          {/* Banner Carousel */}
-          <div style={{ 
-            position: 'relative', 
-            width: '100%', 
-            height: '280px',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            marginBottom: '32px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-          }}>
-            {/* Banner Content */}
-            <div style={{
-              width: '100%',
-              height: '100%',
-              background: currentBannerData.gradient,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              transition: 'all 0.5s ease'
-            }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>
-                {currentBannerData.icon}
-              </div>
-              <h2 style={{ fontSize: '32px', fontWeight: 700, margin: '0 0 8px 0', textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                {currentBannerData.title}
-              </h2>
-              <p style={{ fontSize: '16px', opacity: 0.9, margin: 0 }}>
-                {currentBannerData.subtitle}
-              </p>
-            </div>
+      {/* Main Layout */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '12px' : '20px',
+        height: isMobile ? 'auto' : 'calc(100vh - 200px)',
+        minHeight: isMobile ? 'auto' : '450px'
+      }}>
+        {/* Left: Event List - Hidden on mobile when showing detail */}
+        <div style={{
+          width: isMobile ? '100%' : '340px',
+          flexShrink: 0,
+          display: isMobile && showDetail ? 'none' : 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          overflowY: isMobile ? 'visible' : 'auto',
+          paddingRight: isMobile ? '0' : '8px',
+          maxHeight: isMobile ? 'none' : 'calc(100vh - 200px)'
+        }}>
+          {events.map((event) => {
+            const isSelected = selectedEventId === event.id
+            const claimableCount = event.rewards.filter(r => r.current >= r.target && !r.claimed).length
+            const timeInfo = getTimeRemaining(event.endDate)
+            const badge = getTypeBadge(event.type)
 
-            {/* Navigation Arrows */}
-            <button
-              onClick={prevBanner}
-              style={{
-                position: 'absolute',
-                left: '16px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                border: 'none',
-                background: 'rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(10px)',
-                color: 'white',
-                fontSize: '24px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-                zIndex: 10
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-            >
-              ←
-            </button>
-            <button
-              onClick={nextBanner}
-              style={{
-                position: 'absolute',
-                right: '16px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                border: 'none',
-                background: 'rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(10px)',
-                color: 'white',
-                fontSize: '24px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-                zIndex: 10
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-            >
-              →
-            </button>
-
-            {/* Dots Indicator */}
-            <div style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              gap: '8px',
-              zIndex: 10
-            }}>
-              {banners.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentBanner(index)}
-                  style={{
-                    width: currentBanner === index ? '24px' : '8px',
-                    height: '8px',
-                    borderRadius: '4px',
-                    border: 'none',
-                    background: currentBanner === index ? 'white' : 'rgba(255,255,255,0.5)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Event Content Based on Current Banner */}
-          {currentBannerData.type === 'login' && (
-            <div>
-              <h3 style={{ fontSize: '24px', marginBottom: '20px', color: 'var(--color-primary)' }}>
-                📅 {t('events.dailyCheckin')}
-              </h3>
-              <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(102,126,234,0.1)', borderRadius: '12px', border: '1px solid rgba(102,126,234,0.3)' }}>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text)' }}>
-                  {t('events.consecutiveLogins')}: <strong style={{ color: '#667eea', fontSize: '18px' }}>{consecutiveLogins} {t('events.day')}</strong>
-                </p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '16px' }}>
-                {loginRewards.map((reward) => (
-                  <div
-                    key={reward.day}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '12px',
-                      background: reward.claimed 
-                        ? 'rgba(255,255,255,0.02)' 
-                        : reward.day! <= consecutiveLogins
-                        ? 'linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.1))'
-                        : 'rgba(255,255,255,0.05)',
-                      border: reward.claimed
-                        ? '1px solid rgba(255,255,255,0.05)'
-                        : reward.day! <= consecutiveLogins
-                        ? '2px solid rgba(102,126,234,0.4)'
-                        : '1px solid rgba(255,255,255,0.1)',
-                      textAlign: 'center',
-                      opacity: reward.claimed ? 0.5 : 1,
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>
-                      {reward.day === 7 ? '🎁' : '📅'}
-                    </div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text)' }}>
-                      {t('events.dayN', { n: reward.day })}
-                    </div>
-                    <div style={{ fontSize: '14px', marginBottom: '4px', color: '#FBBF24' }}>
-                      💰 {reward.coin}
-                    </div>
-                    {reward.gem > 0 && (
-                      <div style={{ fontSize: '14px', marginBottom: '12px', color: '#22D3EE' }}>
-                        💎 {reward.gem}
-                      </div>
-                    )}
-                    {!reward.claimed ? (
-                      reward.day! <= consecutiveLogins ? (
-                        <button
-                          onClick={() => claimLoginReward(reward.day!)}
-                          style={{
-                            width: '100%',
-                            padding: '8px',
-                            borderRadius: '8px',
-                            border: 'none',
-                            background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                            color: 'white',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                        >
-                          {t('events.claimReward')}
-                        </button>
-                      ) : (
-                        <div style={{ fontSize: '12px', color: 'var(--color-muted)', padding: '8px' }}>
-                          🔒 {t('events.locked')}
-                        </div>
-                      )
-                    ) : (
-                      <div style={{ fontSize: '12px', color: '#4ADE80', fontWeight: 600, padding: '8px' }}>
-                        ✓ {t('events.claimed')}
-                      </div>
-                    )}
+            return (
+              <div
+                key={event.id}
+                onClick={() => {
+                  setSelectedEventId(event.id)
+                  if (isMobile) setShowDetail(true)
+                }}
+                style={{
+                  padding: '16px',
+                  borderRadius: '14px',
+                  background: isSelected
+                    ? 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.08))'
+                    : 'rgba(255,255,255,0.03)',
+                  border: isSelected
+                    ? '2px solid rgba(245,158,11,0.4)'
+                    : '1px solid rgba(255,255,255,0.06)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}
+              >
+                {/* Claimable indicator */}
+                {claimableCount > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(239,68,68,0.4)'
+                  }}>
+                    🎁 {claimableCount}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                )}
 
-          {currentBannerData.type === 'matches' && (
-            <div>
-              <h3 style={{ fontSize: '24px', marginBottom: '20px', color: 'var(--color-primary)' }}>
-                ⚔️ {t('events.battleQuests')}
-              </h3>
-              <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(240,147,251,0.1)', borderRadius: '12px', border: '1px solid rgba(240,147,251,0.3)' }}>
-                <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text)' }}>
-                  {t('events.todayMatches')}: <strong style={{ color: '#f093fb', fontSize: '18px' }}>{todayMatches} {t('events.matches')}</strong>
-                </p>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {matchRewards.map((reward) => (
-                  <div
-                    key={reward.matches}
-                    style={{
-                      padding: '20px',
-                      borderRadius: '12px',
-                      background: reward.claimed 
-                        ? 'rgba(255,255,255,0.02)' 
-                        : todayMatches >= reward.matches!
-                        ? 'linear-gradient(135deg, rgba(240,147,251,0.15), rgba(245,87,108,0.1))'
-                        : 'rgba(255,255,255,0.05)',
-                      border: reward.claimed
-                        ? '1px solid rgba(255,255,255,0.05)'
-                        : todayMatches >= reward.matches!
-                        ? '2px solid rgba(240,147,251,0.4)'
-                        : '1px solid rgba(255,255,255,0.1)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      opacity: reward.claimed ? 0.5 : 1,
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--color-text)' }}>
-                        {reward.matches === 20 ? '🏆' : '⚔️'} {t('events.playMatches', { n: reward.matches })}
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <div style={{ fontSize: '14px', color: '#FBBF24', fontWeight: 600 }}>
-                          💰 {reward.coin} {t('shop.coins')}
-                        </div>
-                        {reward.gem > 0 && (
-                          <div style={{ fontSize: '14px', color: '#22D3EE', fontWeight: 600 }}>
-                            💎 {reward.gem} {t('shop.gems')}
-                          </div>
-                        )}
-                      </div>
-                      {/* Progress Bar */}
-                      <div style={{ marginTop: '12px', width: '300px' }}>
-                        <div style={{
-                          fontSize: '11px',
-                          color: 'var(--color-muted)',
-                          marginBottom: '4px',
-                          display: 'flex',
-                          justifyContent: 'space-between'
-                        }}>
-                          <span>{t('events.progress')}</span>
-                          <span>{Math.min(todayMatches, reward.matches!)}/{reward.matches}</span>
-                        </div>
-                        <div style={{
-                          width: '100%',
-                          height: '8px',
-                          background: 'rgba(255,255,255,0.1)',
+                <div style={{ display: 'flex', gap: '14px' }}>
+                  {/* Icon */}
+                  <div style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '12px',
+                    background: isSelected
+                      ? 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(239,68,68,0.15))'
+                      : 'rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '26px',
+                    flexShrink: 0,
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    {event.icon}
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      {badge && (
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          padding: '2px 6px',
                           borderRadius: '4px',
-                          overflow: 'hidden'
+                          background: `${badge.color}20`,
+                          color: badge.color
                         }}>
-                          <div style={{
-                            width: `${Math.min((todayMatches / reward.matches!) * 100, 100)}%`,
-                            height: '100%',
-                            background: 'linear-gradient(90deg, #f093fb, #f5576c)',
-                            transition: 'width 0.3s ease'
-                          }}></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      {!reward.claimed ? (
-                        todayMatches >= reward.matches! ? (
-                          <button
-                            onClick={() => claimMatchReward(reward.matches!)}
-                            style={{
-                              padding: '12px 24px',
-                              borderRadius: '10px',
-                              border: 'none',
-                              background: 'linear-gradient(135deg, #f093fb, #f5576c)',
-                              color: 'white',
-                              fontSize: '16px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 4px 12px rgba(240,147,251,0.4)'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-2px)'
-                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(240,147,251,0.6)'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)'
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(240,147,251,0.4)'
-                            }}
-                          >
-                            {t('events.claimReward')}
-                          </button>
-                        ) : (
-                          <div style={{ fontSize: '14px', color: 'var(--color-muted)', padding: '12px 24px' }}>
-                            🔒 {t('events.notEnough')}
-                          </div>
-                        )
-                      ) : (
-                        <div style={{ 
-                          fontSize: '14px', 
-                          color: '#4ADE80', 
-                          fontWeight: 600,
-                          padding: '12px 24px',
-                          background: 'rgba(74,222,128,0.1)',
-                          borderRadius: '10px',
-                          border: '1px solid rgba(74,222,128,0.3)'
-                        }}>
-                          ✓ {t('events.claimed')}
-                        </div>
+                          {badge.text}
+                        </span>
                       )}
                     </div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: isSelected ? '#F59E0B' : 'var(--color-text)',
+                      marginBottom: '4px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {event.name}
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: 'var(--color-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <span>📅 {event.startDate} ~ {event.endDate}</span>
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: timeInfo.urgent ? '#EF4444' : 'var(--color-muted)',
+                      marginTop: '4px',
+                      fontWeight: timeInfo.urgent ? 600 : 400
+                    }}>
+                      ⏳ {timeInfo.text}
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {currentBannerData.type === 'special' && (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ fontSize: '80px', marginBottom: '20px' }}>🎁</div>
-              <h3 style={{ fontSize: '28px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-                {t('events.specialEvent')}
-              </h3>
-              <p style={{ fontSize: '16px', color: 'var(--color-muted)', marginBottom: '24px' }}>
-                {t('events.specialEventDesc')}
-              </p>
-              <div style={{ 
-                display: 'inline-block',
-                padding: '16px 32px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, rgba(79,172,254,0.2), rgba(0,242,254,0.15))',
-                border: '2px solid rgba(79,172,254,0.4)',
-                fontSize: '14px',
-                color: '#4facfe',
-                fontWeight: 600
-              }}>
-                ⏰ {t('events.preparing')}
-              </div>
-            </div>
-          )}
+            )
+          })}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="panel glass-card" style={{ height: 'fit-content' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-            💰 {t('events.aboutCoins')}
-          </h3>
-          <div style={{ fontSize: '14px', color: 'var(--color-muted)', lineHeight: '1.6' }}>
-            <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(251,191,36,0.1)', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#FBBF24', marginBottom: '8px' }}>
-                {t('shop.coins')}
+        {/* Right: Event Detail */}
+        <div className="panel" style={{
+          flex: 1,
+          display: isMobile && !showDetail ? 'none' : 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          minWidth: 0,
+          maxHeight: isMobile ? 'none' : 'calc(100vh - 200px)'
+        }}>
+          {selectedEvent ? (
+            <>
+              {/* Event Header */}
+              <div style={{
+                padding: isMobile ? '14px 16px' : '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                background: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(239,68,68,0.03))'
+              }}>
+                {/* Back button for mobile */}
+                {isMobile && (
+                  <button
+                    onClick={() => setShowDetail(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      color: 'var(--color-muted)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      marginBottom: '12px'
+                    }}
+                  >
+                    ← {t('common.back') || 'Quay lại'}
+                  </button>
+                )}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: isMobile ? 'flex-start' : 'center', 
+                  gap: isMobile ? '12px' : '16px',
+                  flexDirection: isMobile ? 'column' : 'row'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: isMobile ? '100%' : 'auto' }}>
+                    <div style={{
+                      width: isMobile ? '48px' : '64px',
+                      height: isMobile ? '48px' : '64px',
+                      borderRadius: isMobile ? '12px' : '16px',
+                      background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(239,68,68,0.15))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: isMobile ? '24px' : '32px',
+                      border: '2px solid rgba(245,158,11,0.3)',
+                      flexShrink: 0
+                    }}>
+                      {selectedEvent.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h2 style={{
+                        margin: 0,
+                        fontSize: isMobile ? '18px' : '22px',
+                        fontWeight: 700,
+                        color: '#F59E0B'
+                      }}>
+                        {selectedEvent.name}
+                      </h2>
+                      <p style={{
+                        margin: '4px 0 0 0',
+                        fontSize: isMobile ? '12px' : '13px',
+                        color: 'var(--color-muted)',
+                        display: isMobile ? '-webkit-box' : 'block',
+                        WebkitLineClamp: isMobile ? 2 : 'unset',
+                        WebkitBoxOrient: 'vertical',
+                        overflow: isMobile ? 'hidden' : 'visible'
+                      }}>
+                        {selectedEvent.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{
+                    textAlign: isMobile ? 'left' : 'right',
+                    fontSize: '12px',
+                    color: 'var(--color-muted)',
+                    display: 'flex',
+                    flexDirection: isMobile ? 'row' : 'column',
+                    gap: isMobile ? '12px' : '2px',
+                    flexWrap: 'wrap',
+                    alignItems: isMobile ? 'center' : 'flex-end'
+                  }}>
+                    <div>📅 {selectedEvent.startDate} ~ {selectedEvent.endDate}</div>
+                    <div style={{
+                      fontWeight: 600,
+                      color: getTimeRemaining(selectedEvent.endDate).urgent ? '#EF4444' : '#F59E0B'
+                    }}>
+                      ⏳ {getTimeRemaining(selectedEvent.endDate).text}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>{t('events.aboutCoinsDesc')}</p>
-            </div>
-            
-            <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(34,211,238,0.1)', borderRadius: '8px', border: '1px solid rgba(34,211,238,0.2)' }}>
-              <div style={{ fontSize: '16px', fontWeight: 600, color: '#22D3EE', marginBottom: '8px' }}>
-                {t('shop.gems')}
-              </div>
-              <p style={{ margin: '0 0 8px 0', fontSize: '13px' }}>{t('events.aboutGemsDesc')}</p>
-            </div>
 
-            <div style={{ padding: '12px', background: 'rgba(34,197,94,0.1)', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#22C55E', marginBottom: '8px' }}>
-                💡 {t('events.howToEarn')}
+              {/* Rewards List */}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: isMobile ? '14px 12px' : '20px 24px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: 'var(--color-text)',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  🎁 {t('quests.rewards')} ({selectedEvent.rewards.filter(r => r.claimed).length}/{selectedEvent.rewards.length} {t('events.claimed').toLowerCase()})
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {selectedEvent.rewards.map((reward, idx) => {
+                    const progress = Math.min((reward.current / reward.target) * 100, 100)
+                    const canClaim = reward.current >= reward.target && !reward.claimed
+
+                    return (
+                      <div
+                        key={reward.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: isMobile ? 'flex-start' : 'center',
+                          flexDirection: isMobile ? 'column' : 'row',
+                          gap: isMobile ? '10px' : '16px',
+                          padding: isMobile ? '12px' : '16px 18px',
+                          background: reward.claimed
+                            ? 'rgba(74,222,128,0.05)'
+                            : canClaim
+                            ? 'linear-gradient(90deg, rgba(245,158,11,0.08), rgba(239,68,68,0.05))'
+                            : 'rgba(255,255,255,0.02)',
+                          borderRadius: '12px',
+                          border: canClaim
+                            ? '1px solid rgba(245,158,11,0.3)'
+                            : reward.claimed
+                            ? '1px solid rgba(74,222,128,0.2)'
+                            : '1px solid rgba(255,255,255,0.05)',
+                          opacity: reward.claimed ? 0.6 : 1,
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {/* Top row: Step number + Info */}
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: isMobile ? '10px' : '16px',
+                          width: '100%'
+                        }}>
+                          {/* Step number */}
+                          <div style={{
+                            width: isMobile ? '32px' : '36px',
+                            height: isMobile ? '32px' : '36px',
+                            borderRadius: '10px',
+                            background: reward.claimed
+                              ? 'rgba(74,222,128,0.2)'
+                              : canClaim
+                              ? 'linear-gradient(135deg, #F59E0B, #EF4444)'
+                              : 'rgba(255,255,255,0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: isMobile ? '12px' : '14px',
+                            fontWeight: 700,
+                            color: reward.claimed ? '#4ADE80' : 'white',
+                            flexShrink: 0
+                          }}>
+                            {reward.claimed ? '✓' : idx + 1}
+                          </div>
+
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: isMobile ? '13px' : '14px',
+                              fontWeight: 500,
+                              color: 'var(--color-text)',
+                              marginBottom: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              flexWrap: 'wrap'
+                            }}>
+                              <span style={{ 
+                                wordBreak: 'break-word',
+                                flex: isMobile ? '1 1 100%' : 'unset'
+                              }}>{reward.title}</span>
+                              <span style={{
+                                fontSize: '12px',
+                                color: canClaim ? '#F59E0B' : 'var(--color-muted)',
+                                fontWeight: canClaim ? 600 : 400
+                              }}>
+                                {reward.current}/{reward.target}
+                              </span>
+                            </div>
+                            
+                            {/* Progress bar */}
+                            <div style={{
+                              width: '100%',
+                              height: '4px',
+                              background: 'rgba(255,255,255,0.1)',
+                              borderRadius: '2px',
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{
+                                width: `${progress}%`,
+                                height: '100%',
+                                background: reward.claimed
+                                  ? 'rgba(74,222,128,0.5)'
+                                  : canClaim
+                                  ? 'linear-gradient(90deg, #F59E0B, #EF4444)'
+                                  : 'rgba(255,255,255,0.3)',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bottom row on mobile: Rewards + Button */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          width: '100%',
+                          justifyContent: isMobile ? 'space-between' : 'flex-end',
+                          marginLeft: isMobile ? '0' : 'auto'
+                        }}>
+                          {/* Rewards */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: isMobile ? '8px' : '12px',
+                            padding: isMobile ? '6px 10px' : '8px 14px',
+                            background: 'rgba(0,0,0,0.2)',
+                            borderRadius: '8px',
+                            flexShrink: 0
+                          }}>
+                            {reward.reward.coin > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <img src="/coin.png" alt="coin" style={{ width: isMobile ? '16px' : '18px', height: isMobile ? '16px' : '18px', objectFit: 'contain' }} />
+                                <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 600, color: '#FBBF24' }}>
+                                  {reward.reward.coin}
+                                </span>
+                              </div>
+                            )}
+                            {reward.reward.gem > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <img src="/gem.png" alt="gem" style={{ width: isMobile ? '16px' : '18px', height: isMobile ? '16px' : '18px', objectFit: 'contain' }} />
+                                <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 600, color: '#22D3EE' }}>
+                                  {reward.reward.gem}
+                                </span>
+                              </div>
+                            )}
+                            {reward.reward.item && (
+                              <div style={{
+                                fontSize: isMobile ? '11px' : '12px',
+                                color: '#A78BFA',
+                                fontWeight: 500,
+                                maxWidth: isMobile ? '80px' : '120px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {reward.reward.item}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Claim button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              canClaim && !claimingId && claimReward(selectedEvent.id, reward.id)
+                            }}
+                            disabled={!canClaim || reward.claimed || claimingId === reward.id}
+                            style={{
+                              padding: isMobile ? '8px 14px' : '10px 20px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: reward.claimed
+                                ? 'rgba(74,222,128,0.15)'
+                                : canClaim
+                                ? 'linear-gradient(135deg, #F59E0B, #EF4444)'
+                                : 'rgba(255,255,255,0.08)',
+                              color: reward.claimed
+                                ? '#4ADE80'
+                                : canClaim
+                                ? 'white'
+                                : 'var(--color-muted)',
+                              fontSize: isMobile ? '12px' : '13px',
+                              fontWeight: 600,
+                              cursor: canClaim && !claimingId ? 'pointer' : 'default',
+                              minWidth: isMobile ? '70px' : '80px',
+                              transition: 'all 0.2s ease',
+                              boxShadow: canClaim ? '0 4px 15px rgba(245,158,11,0.3)' : 'none',
+                              flexShrink: 0
+                            }}
+                          >
+                            {reward.claimed
+                              ? `✓ ${t('events.claimed')}`
+                              : claimingId === reward.id
+                              ? '...'
+                              : canClaim
+                              ? t('events.claimReward')
+                              : t('events.progress')}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', lineHeight: '1.6' }}>
-                <li>{t('events.loginEventDesc')}</li>
-                <li>{t('quests.subtitle')}</li>
-                <li>{t('events.matchEventDesc')}</li>
-                <li>{t('events.specialEventDesc')}</li>
-              </ul>
+            </>
+          ) : (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-muted)'
+            }}>
+              {t('events.selectEvent')}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

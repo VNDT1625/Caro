@@ -3,645 +3,950 @@ import { supabase } from '../lib/supabase'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Quest {
-  id: number
-  title: string
-  desc: string
-  coins: number
-  gems: number
-  exp: number
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
-  difficulty: 'Dễ' | 'Trung bình' | 'Khó' | 'Cực khó'
-  completed: boolean
+  id: string
+  titleKey: string
+  descKey: string
+  target: number
+  current: number
+  reward: { coin: number; gem: number; exp?: number }
   claimed: boolean
-  progress?: { current: number; total: number }
 }
 
-function getDifficultyTranslation(difficulty: string, t: any): string {
-  switch (difficulty) {
-    case 'Dễ': return t('quests.difficultyEasy')
-    case 'Trung bình': return t('quests.difficultyMedium')
-    case 'Khó': return t('quests.difficultyHard')
-    case 'Cực khó': return t('quests.difficultyVeryHard')
-    default: return difficulty
+interface QuestCategory {
+  id: string
+  icon: string
+  nameKey: string
+  badge?: number
+  startDate?: string
+  endDate?: string
+  quests: Quest[]
+}
+
+// Quest definitions (static templates)
+const QUEST_TEMPLATES: QuestCategory[] = [
+  {
+    id: 'login_dec',
+    icon: '🌸',
+    nameKey: 'events.loginDecember',
+    startDate: '01/12/2025',
+    endDate: '31/12/2025',
+    quests: [
+      { id: 'login1', titleKey: 'quests.loginDay1', descKey: 'quests.loginDay1Desc', target: 1, current: 0, reward: { coin: 50, gem: 0 }, claimed: false },
+      { id: 'login2', titleKey: 'quests.loginDay2', descKey: 'quests.loginDay2Desc', target: 2, current: 0, reward: { coin: 100, gem: 0 }, claimed: false },
+      { id: 'login3', titleKey: 'quests.loginDay3', descKey: 'quests.loginDay3Desc', target: 3, current: 0, reward: { coin: 150, gem: 5 }, claimed: false },
+      { id: 'login5', titleKey: 'quests.loginDay5', descKey: 'quests.loginDay5Desc', target: 5, current: 0, reward: { coin: 250, gem: 10 }, claimed: false },
+      { id: 'login7', titleKey: 'quests.loginDay7', descKey: 'quests.loginDay7Desc', target: 7, current: 0, reward: { coin: 500, gem: 20 }, claimed: false },
+    ]
+  },
+  {
+    id: 'daily',
+    icon: '📅',
+    nameKey: 'quests.daily',
+    quests: [
+      { id: 'daily_play1', titleKey: 'quests.playRanked', descKey: 'quests.playRankedDesc', target: 1, current: 0, reward: { coin: 50, gem: 30 }, claimed: false },
+      { id: 'daily_win1', titleKey: 'quests.winMatch', descKey: 'quests.winMatchDesc', target: 1, current: 0, reward: { coin: 100, gem: 50 }, claimed: false },
+      { id: 'daily_play3', titleKey: 'quests.playMatches', descKey: 'quests.playMatchesDesc', target: 3, current: 0, reward: { coin: 200, gem: 100, exp: 5 }, claimed: false },
+      { id: 'daily_streak', titleKey: 'quests.winStreak', descKey: 'quests.winStreakDesc', target: 3, current: 0, reward: { coin: 300, gem: 200, exp: 10 }, claimed: false },
+    ]
+  },
+  {
+    id: 'weekly',
+    icon: '📆',
+    nameKey: 'quests.weekly',
+    quests: [
+      { id: 'weekly_play10', titleKey: 'quests.play10Matches', descKey: 'quests.play10MatchesDesc', target: 10, current: 0, reward: { coin: 500, gem: 200 }, claimed: false },
+      { id: 'weekly_win5', titleKey: 'quests.win5Matches', descKey: 'quests.win5MatchesDesc', target: 5, current: 0, reward: { coin: 800, gem: 300, exp: 20 }, claimed: false },
+      { id: 'weekly_login7', titleKey: 'quests.login7Days', descKey: 'quests.login7DaysDesc', target: 7, current: 0, reward: { coin: 1000, gem: 500, exp: 50 }, claimed: false },
+    ]
+  },
+  {
+    id: 'achievement',
+    icon: '🏆',
+    nameKey: 'quests.achievement',
+    quests: [
+      { id: 'ach_first_win', titleKey: 'quests.firstWin', descKey: 'quests.firstWinDesc', target: 1, current: 0, reward: { coin: 200, gem: 50 }, claimed: false },
+      { id: 'ach_win10', titleKey: 'quests.win10Total', descKey: 'quests.win10TotalDesc', target: 10, current: 0, reward: { coin: 500, gem: 100 }, claimed: false },
+      { id: 'ach_win50', titleKey: 'quests.win50Total', descKey: 'quests.win50TotalDesc', target: 50, current: 0, reward: { coin: 2000, gem: 500, exp: 100 }, claimed: false },
+      { id: 'ach_win100', titleKey: 'quests.win100Total', descKey: 'quests.win100TotalDesc', target: 100, current: 0, reward: { coin: 5000, gem: 1000, exp: 200 }, claimed: false },
+    ]
   }
-}
-
-function formatRewardValue(value: number) {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}k`
-  return `${value}`
-}
-
-// Calculate EXP needed for next level (exponential scaling)
-function getExpForLevel(level: number): number {
-  // Base: 100 EXP for level 1->2
-  // Formula: 100 * level^1.5 (tăng theo cấp bậc)
-  return Math.floor(100 * Math.pow(level, 1.5))
-}
+]
 
 export default function Quests() {
   const { t } = useLanguage()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'achievement'>('daily')
-  const [quests, setQuests] = useState<Quest[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('login_dec')
+  const [categories, setCategories] = useState<QuestCategory[]>([])
+  const [claimingId, setClaimingId] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [showDetail, setShowDetail] = useState(false)
+
+  // Handle resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (!mobile) setShowDetail(false)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     loadUser()
   }, [])
+
+  // Check and update daily login streak
+  async function checkDailyLogin(prof: any): Promise<any> {
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const metadata = prof.metadata || {}
+    const questsData = metadata.quests || {}
+    const lastLoginDate = questsData.lastLoginDate
+
+    // If already logged in today, skip update
+    if (lastLoginDate === today) {
+      return prof
+    }
+
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+    // Calculate consecutive logins
+    let consecutiveLogins = questsData.consecutiveLogins || 0
+    if (lastLoginDate === yesterdayStr) {
+      consecutiveLogins += 1
+    } else {
+      consecutiveLogins = 1
+    }
+
+    // Calculate monthly logins (for login_dec)
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
+    let monthlyLogins = questsData.monthlyLogins || 0
+    const lastLoginMonth = questsData.lastLoginMonth
+    const lastLoginYear = questsData.lastLoginYear
+
+    if (lastLoginMonth === currentMonth && lastLoginYear === currentYear) {
+      monthlyLogins += 1
+    } else {
+      monthlyLogins = 1
+    }
+
+    // Calculate weekly logins
+    const currentWeek = getWeekNumber(new Date())
+    let weeklyLogins = questsData.weeklyLogins || 0
+    const lastWeek = questsData.lastWeek
+
+    if (lastWeek === currentWeek) {
+      weeklyLogins += 1
+    } else {
+      weeklyLogins = 1
+    }
+
+    const newQuestsData = {
+      ...questsData,
+      lastLoginDate: today,
+      consecutiveLogins,
+      monthlyLogins,
+      lastLoginMonth: currentMonth,
+      lastLoginYear: currentYear,
+      weeklyLogins,
+      lastWeek: currentWeek
+    }
+
+    const newMetadata = { ...metadata, quests: newQuestsData }
+
+    // Update database
+    const { data: updatedProfile, error } = await supabase
+      .from('profiles')
+      .update({ metadata: newMetadata })
+      .eq('user_id', prof.user_id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to update login streak:', error)
+      return prof
+    }
+
+    console.log(`✅ Login streak updated: ${consecutiveLogins} days, Monthly: ${monthlyLogins}`)
+    return updatedProfile
+  }
+
+  // Get week number (ISO week)
+  function getWeekNumber(date: Date): string {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+    return `${d.getUTCFullYear()}-W${weekNo}`
+  }
 
   async function loadUser() {
     try {
       const { data } = await supabase.auth.getUser()
       const u = data?.user ?? null
       setUser(u)
-      
+
       if (u) {
         const { data: prof } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', u.id)
           .maybeSingle()
-        
+
         if (prof) {
-          setProfile(prof)
-          loadQuests(prof)
+          // Check daily login and update streak
+          const updatedProf = await checkDailyLogin(prof)
+          setProfile(updatedProf)
+          updateQuestProgress(updatedProf)
         }
+      } else {
+        // No user logged in - show empty quests
+        initializeCategories({})
       }
     } catch (e) {
       console.error('Load user failed:', e)
+      initializeCategories({})
     }
   }
 
-  function loadQuests(prof: any) {
-    const questProgress = prof.metadata?.quests || {}
-    
-    const dailyQuestList: Quest[] = [
-      { 
-        id: 101, 
-        title: 'Chơi 1 trận xếp hạng', 
-        desc: 'Thử sức với MindPoint Arena', 
-        coins: 30, 
-        gems: 0, 
-        exp: 50,
-        tier: 'bronze', 
-        difficulty: 'Dễ',
-        completed: false, 
-        claimed: questProgress[101] || false,
-        progress: { current: 0, total: 1 }
-      },
-      { 
-        id: 102, 
-        title: 'Thắng 1 trận bất kỳ', 
-        desc: 'Chứng tỏ kỹ năng của bạn', 
-        coins: 50, 
-        gems: 0, 
-        exp: 100,
-        tier: 'bronze', 
-        difficulty: 'Dễ',
-        completed: false, 
-        claimed: questProgress[102] || false,
-        progress: { current: 0, total: 1 }
-      },
-      { 
-        id: 103, 
-        title: 'Chơi 3 trận trong ngày', 
-        desc: 'Rèn luyện thường xuyên', 
-        coins: 100, 
-        gems: 5, 
-        exp: 200,
-        tier: 'silver', 
-        difficulty: 'Trung bình',
-        completed: false, 
-        claimed: questProgress[103] || false,
-        progress: { current: 0, total: 3 }
-      },
-      { 
-        id: 104, 
-        title: 'Thắng 3 trận liên tiếp', 
-        desc: 'Thể hiện sự ổn định', 
-        coins: 200, 
-        gems: 10, 
-        exp: 300,
-        tier: 'gold', 
-        difficulty: 'Khó',
-        completed: false, 
-        claimed: questProgress[104] || false,
-        progress: { current: 0, total: 3 }
-      }
-    ]
-
-    const weeklyQuestList: Quest[] = [
-      { 
-        id: 201, 
-        title: 'Chơi 10 trận xếp hạng', 
-        desc: 'Kiên trì leo rank', 
-        coins: 200, 
-        gems: 5, 
-        exp: 500,
-        tier: 'bronze', 
-        difficulty: 'Dễ',
-        completed: false, 
-        claimed: questProgress[201] || false,
-        progress: { current: 0, total: 10 }
-      },
-      { 
-        id: 202, 
-        title: 'Thắng 5 trận xếp hạng', 
-        desc: 'Chứng tỏ đẳng cấp', 
-        coins: 350, 
-        gems: 10, 
-        exp: 800,
-        tier: 'silver', 
-        difficulty: 'Trung bình',
-        completed: false, 
-        claimed: questProgress[202] || false,
-        progress: { current: 0, total: 5 }
-      },
-      { 
-        id: 203, 
-        title: 'Leo lên rank cao hơn', 
-        desc: 'Tiến bộ trong tuần này', 
-        coins: 500, 
-        gems: 20, 
-        exp: 1000,
-        tier: 'gold', 
-        difficulty: 'Khó',
-        completed: false, 
-        claimed: questProgress[203] || false,
-        progress: { current: 0, total: 1 }
-      }
-    ]
-
-    const achievementList: Quest[] = [
-      { 
-        id: 301, 
-        title: '🏆 Thắng 50 trận', 
-        desc: 'Chiến thần bất bại', 
-        coins: 500, 
-        gems: 30, 
-        exp: 2000,
-        tier: 'gold', 
-        difficulty: 'Khó',
-        completed: false, 
-        claimed: questProgress[301] || false,
-        progress: { current: 0, total: 50 }
-      },
-      { 
-        id: 302, 
-        title: '💎 Đạt rank Học Kỳ', 
-        desc: 'Bậc thầy caro', 
-        coins: 1000, 
-        gems: 50, 
-        exp: 5000,
-        tier: 'platinum', 
-        difficulty: 'Cực khó',
-        completed: false, 
-        claimed: questProgress[302] || false,
-        progress: { current: 0, total: 1 }
-      },
-      { 
-        id: 303, 
-        title: '⚔️ Chơi 100 trận', 
-        desc: 'Người không biết mệt', 
-        coins: 800, 
-        gems: 40, 
-        exp: 3000,
-        tier: 'gold', 
-        difficulty: 'Khó',
-        completed: false, 
-        claimed: questProgress[303] || false,
-        progress: { current: 0, total: 100 }
-      }
-    ]
-
-    const currentList = activeTab === 'daily' ? dailyQuestList : activeTab === 'weekly' ? weeklyQuestList : achievementList
-    setQuests(currentList)
+  function initializeCategories(claimedQuests: Record<string, boolean>) {
+    const cats = QUEST_TEMPLATES.map(cat => ({
+      ...cat,
+      quests: cat.quests.map(q => ({
+        ...q,
+        claimed: claimedQuests[q.id] || false
+      }))
+    }))
+    setCategories(cats)
   }
 
-  async function handleClaimQuest(quest: Quest) {
+  // Update quest progress from profile data
+  function updateQuestProgress(prof: any) {
+    const metadata = prof.metadata || {}
+    const questsData = metadata.quests || {}
+    const claimedQuests = questsData.claimed || {}
+
+    // Get stats from questsData
+    const consecutiveLogins = questsData.consecutiveLogins || 0
+    const monthlyLogins = questsData.monthlyLogins || 0
+    const weeklyLogins = questsData.weeklyLogins || 0
+
+    // Daily stats - get from today's data
+    const today = new Date().toISOString().split('T')[0]
+    const todayMatches = questsData.lastMatchDate === today ? (questsData.todayMatches || 0) : 0
+    const todayWins = questsData.lastMatchDate === today ? (questsData.todayWins || 0) : 0
+    const winStreak = questsData.currentWinStreak || 0
+
+    // Weekly stats
+    const currentWeek = getWeekNumber(new Date())
+    const weeklyMatches = questsData.lastWeek === currentWeek ? (questsData.weeklyMatches || 0) : 0
+    const weeklyWins = questsData.lastWeek === currentWeek ? (questsData.weeklyWins || 0) : 0
+
+    // Lifetime stats
+    const totalWins = prof.total_wins || 0
+
+    const updatedCategories = QUEST_TEMPLATES.map(cat => {
+      const updatedQuests = cat.quests.map(quest => {
+        let current = 0
+        const claimed = claimedQuests[quest.id] === true
+
+        // Calculate current progress based on quest type
+        switch (quest.id) {
+          // Login December (monthly logins)
+          case 'login1':
+          case 'login2':
+          case 'login3':
+          case 'login5':
+          case 'login7':
+            current = monthlyLogins
+            break
+
+          // Daily quests
+          case 'daily_play1':
+            current = todayMatches >= 1 ? 1 : 0
+            break
+          case 'daily_win1':
+            current = todayWins >= 1 ? 1 : 0
+            break
+          case 'daily_play3':
+            current = todayMatches
+            break
+          case 'daily_streak':
+            current = winStreak
+            break
+
+          // Weekly quests
+          case 'weekly_play10':
+            current = weeklyMatches
+            break
+          case 'weekly_win5':
+            current = weeklyWins
+            break
+          case 'weekly_login7':
+            current = weeklyLogins
+            break
+
+          // Achievements (lifetime)
+          case 'ach_first_win':
+            current = totalWins >= 1 ? 1 : 0
+            break
+          case 'ach_win10':
+          case 'ach_win50':
+          case 'ach_win100':
+            current = totalWins
+            break
+
+          default:
+            current = 0
+        }
+
+        return { ...quest, current, claimed }
+      })
+
+      // Calculate badge (unclaimed completable quests)
+      const badge = updatedQuests.filter(q => q.current >= q.target && !q.claimed).length
+
+      return { ...cat, quests: updatedQuests, badge: badge > 0 ? badge : undefined }
+    })
+
+    setCategories(updatedCategories)
+  }
+
+  async function claimReward(categoryId: string, questId: string) {
     if (!user || !profile) return
-    if (quest.claimed) return
+
+    const category = categories.find(c => c.id === categoryId)
+    const quest = category?.quests.find(q => q.id === questId)
+    if (!quest || quest.claimed || quest.current < quest.target) return
+
+    // Prevent double-click
+    if (claimingId) return
+    setClaimingId(questId)
 
     try {
-      const newCoins = (profile.coins || 0) + quest.coins
-      const newGems = (profile.gems || 0) + quest.gems
-      const newExp = (profile.exp || 0) + quest.exp
-      const currentLevel = profile.level || 1
-      
-      // Calculate level up
-      let finalLevel = currentLevel
-      let finalExp = newExp
-      const expNeeded = getExpForLevel(currentLevel)
-      
-      if (finalExp >= expNeeded) {
-        finalLevel = currentLevel + 1
-        finalExp = finalExp - expNeeded
-      }
+      // Calculate new values
+      const coinReward = quest.reward.coin || 0
+      const gemReward = quest.reward.gem || 0
+      const newCoins = (profile.coins || 0) + coinReward
+      const newGems = (profile.gems || 0) + gemReward
 
-      const questProgress = profile.metadata?.quests || {}
-      questProgress[quest.id] = true
+      // Build updated quest tracking data
+      const metadata = profile.metadata || {}
+      const questsData = { ...(metadata.quests || {}) }
+      const claimedQuests = { ...(questsData.claimed || {}) }
+      claimedQuests[questId] = true
+      questsData.claimed = claimedQuests
 
-      const newMetadata = {
-        ...profile.metadata,
-        quests: questProgress
-      }
+      const newMetadata = { ...metadata, quests: questsData }
 
-      await supabase
+      // Update database
+      const { data: updatedProfile, error } = await supabase
         .from('profiles')
-        .update({ 
-          coins: newCoins, 
+        .update({
+          coins: newCoins,
           gems: newGems,
-          level: finalLevel,
-          exp: finalExp,
           metadata: newMetadata
         })
         .eq('user_id', user.id)
+        .select()
+        .single()
 
-      // Show level up notification if leveled up
-      if (finalLevel > currentLevel) {
-        alert(`🎉 Chúc mừng! Bạn đã lên cấp ${finalLevel}!\n+${quest.exp} EXP`)
+      if (error) {
+        console.error('Failed to claim reward:', error)
+        setClaimingId(null)
+        return
       }
 
-      setProfile({ ...profile, coins: newCoins, gems: newGems, level: finalLevel, exp: finalExp, metadata: newMetadata })
-      
-      setQuests(prev => prev.map(q => 
-        q.id === quest.id ? { ...q, claimed: true } : q
-      ))
+      console.log(`✅ Quest Claimed: +${coinReward} coins, +${gemReward} gems`)
 
-      const parts: string[] = []
-      if (quest.gems > 0) parts.push(`${quest.gems} Nguyên Thần`)
-      if (quest.coins > 0) parts.push(`${quest.coins} Tinh Thạch`)
-      alert(`Đã nhận ${parts.join(' và ') || 'phần thưởng'}!`)
+      // Update local profile state
+      setProfile(updatedProfile)
+
+      // Update local categories state
+      setCategories(prev => prev.map(cat => {
+        if (cat.id !== categoryId) return cat
+        const quests = cat.quests.map(q => q.id === questId ? { ...q, claimed: true } : q)
+        const badge = quests.filter(q => q.current >= q.target && !q.claimed).length
+        return { ...cat, quests, badge: badge > 0 ? badge : undefined }
+      }))
+
+      // Update header currency display
+      window.dispatchEvent(new CustomEvent('profileUpdated', {
+        detail: {
+          field: 'currency',
+          coins: updatedProfile.coins,
+          gems: updatedProfile.gems
+        }
+      }))
+
+      setClaimingId(null)
+
     } catch (e) {
-      console.error('Claim quest failed:', e)
-      alert('Lỗi khi nhận thưởng!')
+      console.error('Claim reward failed:', e)
+      setClaimingId(null)
     }
   }
 
-  useEffect(() => {
-    if (profile) {
-      loadQuests(profile)
-    }
-  }, [activeTab])
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId)
 
   return (
-    <div className="app-container" style={{ paddingTop: '32px' }}>
-      {/* Breadcrumb Navigation */}
-      <nav style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px', 
-        fontSize: '13px', 
-        color: 'var(--color-muted)',
-        marginBottom: '16px',
-        paddingLeft: '24px'
+    <div className="app-container">
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '12px' : '16px',
+        height: isMobile ? 'auto' : 'calc(100vh - 140px)',
+        minHeight: isMobile ? 'auto' : '500px'
       }}>
-        <a 
-          href="#home" 
-          style={{ 
-            color: 'var(--color-muted)', 
-            textDecoration: 'none',
-            transition: 'color 0.2s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
-        >
-          {t('breadcrumb.home')}
-        </a>
-        <span style={{ color: 'var(--color-muted)' }}>›</span>
-        <span style={{ color: 'var(--color-text)' }}>Tiên Duyên</span>
-      </nav>
-      <div className="grid-3">
-        {/* Left Sidebar */}
-        <div className="panel" style={{ height: 'fit-content' }}>
-          <div className="menu-list">
-            <div style={{ 
-              padding: '12px 18px',
-              borderRadius: '10px',
-              background: 'linear-gradient(90deg, rgba(34,211,238,0.08), rgba(251,191,36,0.05))',
-              border: '1px solid rgba(34,211,238,0.2)',
-              fontWeight: 600,
-              color: 'var(--color-primary)'
+        {/* Left Sidebar - Quest Categories */}
+        <aside className="panel" style={{
+          width: isMobile ? '100%' : '240px',
+          minWidth: isMobile ? 'auto' : '240px',
+          padding: 0,
+          overflow: 'hidden',
+          display: isMobile && showDetail ? 'none' : 'flex',
+          flexDirection: 'column',
+          flexShrink: 0
+        }}>
+          {/* Mobile Breadcrumb */}
+          {isMobile && (
+            <nav style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '13px',
+              color: 'var(--color-muted)',
+              padding: '12px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(0,0,0,0.2)'
             }}>
-              🎯 Nhiệm Vụ
-            </div>
-          </div>
-        </div>
-
-        {/* Center Content */}
-        <div className="panel glass-card particle-bg" style={{ minHeight: '700px' }}>
-          <h2 className="energy-text" style={{ fontSize: '32px', marginBottom: '24px', textAlign: 'center' }}>
-            🎯 Nhiệm Vụ
-          </h2>
-
-          {/* Tab Navigation */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            marginBottom: '32px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-            paddingBottom: '12px'
-          }}>
-            <button
-              onClick={() => setActiveTab('daily')}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activeTab === 'daily' ? 'var(--energy-gradient)' : 'rgba(255,255,255,0.03)',
-                color: 'white',
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: activeTab === 'daily' ? '0 4px 12px rgba(34,211,238,0.4)' : 'none'
-              }}
-            >
-              📅 {t('quests.daily')}
-            </button>
-            <button
-              onClick={() => setActiveTab('weekly')}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activeTab === 'weekly' ? 'var(--energy-gradient)' : 'rgba(255,255,255,0.03)',
-                color: 'white',
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: activeTab === 'weekly' ? '0 4px 12px rgba(168,85,247,0.4)' : 'none'
-              }}
-            >
-              📆 {t('quests.weekly')}
-            </button>
-            <button
-              onClick={() => setActiveTab('achievement')}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '10px',
-                border: 'none',
-                background: activeTab === 'achievement' ? 'var(--energy-gradient)' : 'rgba(255,255,255,0.03)',
-                color: 'white',
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: activeTab === 'achievement' ? '0 4px 12px rgba(251,191,36,0.4)' : 'none'
-              }}
-            >
-              🏆 Thành Tựu
-            </button>
-          </div>
-
-          {/* Quest List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {quests.map((quest) => (
-              <div
-                key={quest.id}
-                className={`glass-card quest-${quest.tier} ${quest.claimed ? 'quest-claimed' : ''}`}
-                style={{
-                  padding: '20px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'all 0.3s ease',
-                  background: quest.claimed 
-                    ? 'rgba(255,255,255,0.02)' 
-                    : quest.tier === 'platinum'
-                    ? 'linear-gradient(135deg, rgba(229,228,226,0.1), rgba(156,163,175,0.08))'
-                    : quest.tier === 'gold' 
-                    ? 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(251,191,36,0.05))' 
-                    : quest.tier === 'silver'
-                    ? 'rgba(192,192,192,0.08)'
-                    : 'rgba(205,127,50,0.08)',
-                  border: quest.claimed 
-                    ? '1px solid rgba(255,255,255,0.05)' 
-                    : quest.tier === 'platinum'
-                    ? '1px solid rgba(229,228,226,0.3)'
-                    : quest.tier === 'gold' 
-                    ? '1px solid rgba(255,215,0,0.3)' 
-                    : quest.tier === 'silver'
-                    ? '1px solid rgba(192,192,192,0.3)'
-                    : '1px solid rgba(205,127,50,0.3)',
-                  opacity: quest.claimed ? 0.6 : 1
-                }}
+              <span 
+                onClick={() => window.location.hash = '#home'} 
+                style={{ color: 'var(--color-muted)', textDecoration: 'none', cursor: 'pointer' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
               >
-                <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                {t('breadcrumb.home')}
+              </span>
+              <span>›</span>
+              <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('quests.title')}</span>
+            </nav>
+          )}
+
+          {/* Sidebar Header */}
+          <div style={{
+            padding: '16px 18px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(139,92,246,0.04))'
+          }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#A855F7',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📋 {t('quests.title')}
+            </h2>
+            <p style={{
+              margin: '6px 0 0 0',
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.5)'
+            }}>
+              {t('quests.subtitle')}
+            </p>
+          </div>
+
+          {/* Category List */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '8px'
+          }}>
+            {categories.map((category) => {
+              const isSelected = selectedCategoryId === category.id
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => {
+                    setSelectedCategoryId(category.id)
+                    if (isMobile) setShowDetail(true)
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: '12px',
-                    marginBottom: '8px',
-                    flexWrap: 'wrap'
-                  }}>
+                    padding: '12px 14px',
+                    marginBottom: '4px',
+                    background: isSelected
+                      ? 'linear-gradient(90deg, rgba(168,85,247,0.12), rgba(139,92,246,0.08))'
+                      : 'transparent',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    textAlign: 'left',
+                    borderLeft: isSelected ? '3px solid #A855F7' : '3px solid transparent'
+                  }}
+                >
+                  {/* Icon Container */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      background: quest.tier === 'platinum' ? 'linear-gradient(135deg, #E5E4E2, #9CA3AF)' 
-                                : quest.tier === 'gold' ? 'linear-gradient(135deg, #FFD700, #FFA500)' 
-                                : quest.tier === 'silver' ? 'linear-gradient(135deg, #C0C0C0, #808080)' 
-                                : 'linear-gradient(135deg, #CD7F32, #8B4513)',
-                      color: '#000',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                      textTransform: 'uppercase'
-                    }}>
-                      {quest.tier === 'platinum' ? '💠 Platinum' 
-                      : quest.tier === 'gold' ? '⭐ Gold' 
-                      : quest.tier === 'silver' ? '⚪ Silver' 
-                      : '🟤 Bronze'}
-                    </div>
-                    <div style={{
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      background: quest.difficulty === 'Cực khó' ? 'rgba(239,68,68,0.2)'
-                                : quest.difficulty === 'Khó' ? 'rgba(245,158,11,0.2)'
-                                : quest.difficulty === 'Trung bình' ? 'rgba(34,211,238,0.2)'
-                                : 'rgba(34,197,94,0.2)',
-                      color: quest.difficulty === 'Cực khó' ? '#EF4444'
-                           : quest.difficulty === 'Khó' ? '#F59E0B'
-                           : quest.difficulty === 'Trung bình' ? '#22D3EE'
-                           : '#22C55E',
-                      border: '1px solid ' + (quest.difficulty === 'Cực khó' ? '#EF4444'
-                           : quest.difficulty === 'Khó' ? '#F59E0B'
-                           : quest.difficulty === 'Trung bình' ? '#22D3EE'
-                           : '#22C55E')
-                    }}>
-                      {getDifficultyTranslation(quest.difficulty, t)}
-                    </div>
-                  </div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 6px 0' }}>
-                    {quest.title}
-                  </h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: 'var(--color-muted)', 
-                    margin: '0 0 12px 0' 
-                  }}>
-                    {quest.desc}
-                  </p>
-                  {quest.progress && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: 'var(--color-muted)', 
-                        marginBottom: '4px',
-                        display: 'flex',
-                        justifyContent: 'space-between'
-                      }}>
-                        <span>{t('quests.progress')}</span>
-                        <span>{quest.progress.current}/{quest.progress.total}</span>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '6px',
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: '3px',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${(quest.progress.current / quest.progress.total) * 100}%`,
-                          height: '100%',
-                          background: quest.tier === 'platinum' ? 'linear-gradient(90deg, #E5E4E2, #9CA3AF)'
-                                    : quest.tier === 'gold' ? 'linear-gradient(90deg, #FFD700, #FFA500)'
-                                    : quest.tier === 'silver' ? 'linear-gradient(90deg, #C0C0C0, #808080)'
-                                    : 'linear-gradient(90deg, #CD7F32, #8B4513)',
-                          transition: 'width 0.3s ease'
-                        }}></div>
-                      </div>
-                    </div>
-                  )}
-                  <div className="quest-reward-pair">
-                    {[
-                      { key: 'exp', icon: '⚡', value: quest.exp, label: t('quests.exp'), activeColor: '#A78BFA' },
-                      { key: 'gem', icon: '/gem.png', value: quest.gems, label: t('shop.gems'), activeColor: '#7DD3FC' },
-                      { key: 'coin', icon: '/coin.png', value: quest.coins, label: t('shop.coins'), activeColor: '#FCD34D' }
-                    ].map((reward) => (
-                      <div
-                        key={`${quest.id}-${reward.key}`}
-                        className={`quest-reward-chip reward-${reward.key} ${reward.value <= 0 ? 'is-empty' : ''}`}
-                        title={`${reward.label}: ${reward.value}`}
-                      >
-                        <span className="quest-reward-chip__icon">
-                          {reward.key === 'exp' ? (
-                            <span style={{ fontSize: '18px' }}>{reward.icon}</span>
-                          ) : (
-                            <img
-                              src={reward.icon}
-                              alt={reward.label}
-                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            />
-                          )}
-                        </span>
-                        <span
-                          className="quest-reward-chip__value"
-                          style={{ color: reward.value > 0 ? reward.activeColor : '#94A3B8' }}
-                        >
-                          {formatRewardValue(reward.value)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ marginLeft: '20px' }}>
-                  {!quest.claimed ? (
-                    <button
-                      className="claim-button"
-                      onClick={() => handleClaimQuest(quest)}
-                      disabled={!(quest.progress && quest.progress.current >= quest.progress.total)}
-                      style={{
-                        padding: '12px 24px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        background: (quest.progress && quest.progress.current >= quest.progress.total)
-                          ? 'linear-gradient(135deg, #22D3EE, #06B6D4)'
-                          : 'linear-gradient(135deg, #94A3B8, #CBD5E1)',
-                        color: 'white',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        cursor: (quest.progress && quest.progress.current >= quest.progress.total) ? 'pointer' : 'not-allowed',
-                        boxShadow: (quest.progress && quest.progress.current >= quest.progress.total)
-                          ? '0 4px 12px rgba(34,211,238,0.4)'
-                          : 'none',
-                        opacity: (quest.progress && quest.progress.current >= quest.progress.total) ? 1 : 0.5,
-                        transition: 'all 0.2s ease',
-                        textTransform: 'uppercase'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (quest.progress && quest.progress.current >= quest.progress.total) {
-                          e.currentTarget.style.transform = 'translateY(-2px)'
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(34,211,238,0.6)'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (quest.progress && quest.progress.current >= quest.progress.total) {
-                          e.currentTarget.style.transform = 'translateY(0)'
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(34,211,238,0.4)'
-                        }
-                      }}
-                    >
-                      {t('quests.claim')}
-                    </button>
-                  ) : (
-                    <div style={{ 
-                      color: '#4ADE80', 
-                      fontSize: '16px',
-                      fontWeight: 700,
-                      padding: '12px 20px',
-                      background: 'rgba(74,222,128,0.1)',
+                      width: '42px',
+                      height: '42px',
                       borderRadius: '10px',
-                      border: '1px solid rgba(74,222,128,0.3)',
-                      textAlign: 'center'
+                      background: isSelected
+                        ? 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(139,92,246,0.15))'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      border: isSelected
+                        ? '1px solid rgba(168,85,247,0.4)'
+                        : '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: isSelected ? '0 4px 12px rgba(168,85,247,0.2)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}>
-                      ✓ {t('quests.claimed')}
+                      {category.icon}
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                    {/* Badge */}
+                    {category.badge && category.badge > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-5px',
+                        right: '-5px',
+                        background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        minWidth: '18px',
+                        height: '18px',
+                        padding: '0 4px',
+                        borderRadius: '9px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid var(--color-bg)',
+                        boxShadow: '0 2px 6px rgba(239,68,68,0.4)'
+                      }}>
+                        {category.badge}
+                      </div>
+                    )}
+                  </div>
 
-        {/* Right Sidebar */}
-        <div className="panel glass-card" style={{ height: 'fit-content' }}>
-          <h3 style={{ fontSize: '18px', marginBottom: '16px', color: 'var(--color-primary)' }}>
-            ℹ️ Cấp độ nhiệm vụ
-          </h3>
-          <div style={{ fontSize: '14px', color: 'var(--color-muted)', lineHeight: '1.6' }}>
-            <div style={{ marginBottom: '12px', padding: '10px', background: 'rgba(205,127,50,0.1)', borderRadius: '8px', border: '1px solid rgba(205,127,50,0.3)' }}>
-              <strong style={{ color: '#CD7F32', fontSize: '13px' }}>🟤 BRONZE</strong>
-              <p style={{ margin: '6px 0 0 0', fontSize: '12px', lineHeight: '1.5' }}>Nhiệm vụ cơ bản, dễ hoàn thành. Thưởng chủ yếu là Coin.</p>
-            </div>
-            <div style={{ marginBottom: '12px', padding: '10px', background: 'rgba(192,192,192,0.1)', borderRadius: '8px', border: '1px solid rgba(192,192,192,0.3)' }}>
-              <strong style={{ color: '#C0C0C0', fontSize: '13px' }}>⚪ SILVER</strong>
-              <p style={{ margin: '6px 0 0 0', fontSize: '12px', lineHeight: '1.5' }}>Nhiệm vụ trung bình, cần nỗ lực. Thưởng Coin + ít Gem.</p>
-            </div>
-            <div style={{ marginBottom: '12px', padding: '10px', background: 'rgba(255,215,0,0.1)', borderRadius: '8px', border: '1px solid rgba(255,215,0,0.3)' }}>
-              <strong style={{ color: '#FFD700', fontSize: '13px' }}>⭐ GOLD</strong>
-              <p style={{ margin: '6px 0 0 0', fontSize: '12px', lineHeight: '1.5' }}>Nhiệm vụ khó, thử thách kỹ năng. Thưởng lớn cả Coin và Gem.</p>
-            </div>
-            <div style={{ padding: '10px', background: 'linear-gradient(135deg, rgba(229,228,226,0.15), rgba(156,163,175,0.1))', borderRadius: '8px', border: '1px solid rgba(229,228,226,0.3)' }}>
-              <strong style={{ color: '#E5E4E2', fontSize: '13px' }}>💠 PLATINUM</strong>
-              <p style={{ margin: '6px 0 0 0', fontSize: '12px', lineHeight: '1.5' }}>Nhiệm vụ cực khó, chỉ cao thủ mới làm được. Phần thưởng khổng lồ!</p>
-            </div>
+                  {/* Category Name */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: isSelected ? 600 : 500,
+                      color: isSelected ? '#A855F7' : 'var(--color-text)',
+                      lineHeight: 1.3,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      transition: 'color 0.2s ease'
+                    }}>
+                      {t(category.nameKey)}
+                    </div>
+                    {category.startDate && (
+                      <div style={{
+                        fontSize: '10px',
+                        color: 'rgba(255,255,255,0.4)',
+                        marginTop: '2px'
+                      }}>
+                        {category.startDate} ~ {category.endDate}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Arrow indicator */}
+                  {isSelected && (
+                    <div style={{
+                      color: '#A855F7',
+                      fontSize: '12px',
+                      opacity: 0.6
+                    }}>›</div>
+                  )}
+                </button>
+              )
+            })}
           </div>
-          
-          <div style={{ marginTop: '20px', padding: '12px', background: 'rgba(34,211,238,0.08)', borderRadius: '8px', border: '1px solid rgba(34,211,238,0.2)' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#22D3EE', marginBottom: '8px' }}>
-              💡 Mẹo
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: 'var(--color-muted)', lineHeight: '1.6' }}>
-              <li>Nhấn "Nhận" để claim thưởng ngay lập tức</li>
-              <li>Coin và Gem sẽ cập nhật vào tài khoản</li>
-              <li>Nhiệm vụ hàng ngày reset vào 0h</li>
-              <li>Nhiệm vụ hàng tuần reset vào thứ 2</li>
-            </ul>
-          </div>
-        </div>
+        </aside>
+
+        {/* Right Content - Quest Details */}
+        <main className="panel" style={{
+          flex: 1,
+          display: isMobile && !showDetail ? 'none' : 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          minWidth: 0
+        }}>
+          {selectedCategory && (
+            <>
+              {/* Back button for mobile */}
+              {isMobile && (
+                <button
+                  onClick={() => setShowDetail(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    color: 'var(--color-muted)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginBottom: '12px'
+                  }}
+                >
+                  ← {t('common.back') || 'Quay lại'}
+                </button>
+              )}
+
+              {/* Breadcrumb + Time */}
+              <nav style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                color: 'var(--color-muted)',
+                marginBottom: '16px',
+                flexWrap: isMobile ? 'wrap' : 'nowrap'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span 
+                    onClick={() => window.location.hash = '#home'} 
+                    style={{ color: 'var(--color-muted)', textDecoration: 'none', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-muted)'}
+                  >
+                    {t('breadcrumb.home')}
+                  </span>
+                  <span>›</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{t('quests.title')}</span>
+                </div>
+                {selectedCategory.startDate && (
+                  <div style={{
+                    fontSize: '12px',
+                    padding: '6px 12px',
+                    background: 'rgba(168,85,247,0.1)',
+                    border: '1px solid rgba(168,85,247,0.2)',
+                    borderRadius: '20px',
+                    color: '#A855F7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span>⏰</span>
+                    <span>{selectedCategory.startDate} ~ {selectedCategory.endDate}</span>
+                  </div>
+                )}
+              </nav>
+
+              {/* Category Title */}
+              <div style={{ marginBottom: isMobile ? '14px' : '20px' }}>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: isMobile ? '20px' : '26px',
+                  fontWeight: 800,
+                  background: 'linear-gradient(135deg, #A855F7, #8B5CF6)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? '8px' : '12px'
+                }}>
+                  <span style={{
+                    fontSize: isMobile ? '24px' : '32px',
+                    WebkitTextFillColor: 'initial',
+                    filter: 'drop-shadow(0 2px 8px rgba(168,85,247,0.3))'
+                  }}>{selectedCategory.icon}</span>
+                  {t(selectedCategory.nameKey)}
+                </h2>
+              </div>
+
+              {/* Quest List */}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginRight: '-8px',
+                paddingRight: '8px'
+              }}>
+                {selectedCategory.quests.length === 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '300px',
+                    color: 'var(--color-muted)',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '16px',
+                    border: '1px dashed rgba(255,255,255,0.1)'
+                  }}>
+                    <div style={{ fontSize: '56px', marginBottom: '16px', opacity: 0.6 }}>🚧</div>
+                    <div style={{ fontSize: '16px', fontWeight: 500 }}>{t('events.comingSoon')}</div>
+                    <div style={{ fontSize: '13px', marginTop: '8px', opacity: 0.6 }}>{t('events.stayTuned')}</div>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    {selectedCategory.quests.map((quest, index) => {
+                      const progress = Math.min((quest.current / quest.target) * 100, 100)
+                      const canClaim = quest.current >= quest.target && !quest.claimed
+
+                      return (
+                        <div
+                          key={quest.id}
+                          data-tour={index === 0 ? 'first-quest' : undefined}
+                          style={{
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
+                            gap: isMobile ? '10px' : '16px',
+                            padding: isMobile ? '12px' : '14px 18px',
+                            minHeight: isMobile ? 'auto' : '64px',
+                            background: quest.claimed
+                              ? 'rgba(255,255,255,0.01)'
+                              : canClaim
+                              ? 'linear-gradient(90deg, rgba(168,85,247,0.06), rgba(139,92,246,0.04))'
+                              : 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
+                            borderRadius: '12px',
+                            border: canClaim
+                              ? '1px solid rgba(168,85,247,0.25)'
+                              : '1px solid rgba(255,255,255,0.05)',
+                            opacity: quest.claimed ? 0.5 : 1,
+                            transition: 'all 0.2s ease',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          {/* Glow effect for claimable */}
+                          {canClaim && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: '1px',
+                              background: 'linear-gradient(90deg, transparent, rgba(168,85,247,0.5), transparent)'
+                            }} />
+                          )}
+
+                          {/* Top row: Icon + Info */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '10px' : '16px', width: '100%' }}>
+                            {/* Quest Icon/Number */}
+                            <div style={{
+                              width: isMobile ? '36px' : '40px',
+                              height: isMobile ? '36px' : '40px',
+                              borderRadius: '10px',
+                              background: canClaim
+                                ? 'linear-gradient(135deg, rgba(168,85,247,0.2), rgba(139,92,246,0.15))'
+                                : 'rgba(255,255,255,0.05)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: isMobile ? '14px' : '16px',
+                              fontWeight: 700,
+                              color: canClaim ? '#A855F7' : 'var(--color-muted)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              flexShrink: 0
+                            }}>
+                              {quest.claimed ? '✓' : index + 1}
+                            </div>
+
+                            {/* Quest Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: isMobile ? '13px' : '14px',
+                                fontWeight: 600,
+                                color: 'var(--color-text)',
+                                marginBottom: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                flexWrap: isMobile ? 'wrap' : 'nowrap'
+                              }}>
+                                <span style={{
+                                  overflow: isMobile ? 'visible' : 'hidden',
+                                  textOverflow: isMobile ? 'unset' : 'ellipsis',
+                                  whiteSpace: isMobile ? 'normal' : 'nowrap',
+                                  wordBreak: isMobile ? 'break-word' : 'normal',
+                                  flex: isMobile ? '1 1 100%' : 'unset'
+                                }}>{t(quest.titleKey)}</span>
+                                <span style={{
+                                  fontSize: '12px',
+                                  color: canClaim ? '#A855F7' : 'var(--color-muted)',
+                                  fontWeight: 500,
+                                  flexShrink: 0
+                                }}>
+                                  {quest.current}/{quest.target}
+                                </span>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div style={{
+                                width: '100%',
+                                height: '4px',
+                                background: 'rgba(255,255,255,0.08)',
+                                borderRadius: '2px',
+                                overflow: 'hidden'
+                              }}>
+                                <div style={{
+                                  width: `${progress}%`,
+                                  height: '100%',
+                                  background: canClaim
+                                    ? 'linear-gradient(90deg, #A855F7, #8B5CF6)'
+                                    : quest.claimed
+                                    ? 'rgba(74,222,128,0.5)'
+                                    : 'linear-gradient(90deg, #64748B, #475569)',
+                                  borderRadius: '2px',
+                                  transition: 'width 0.3s ease'
+                                }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Bottom row: Rewards + Button */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isMobile ? 'space-between' : 'flex-end',
+                            gap: isMobile ? '10px' : '16px',
+                            width: '100%'
+                          }}>
+                          {/* Reward Preview */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: isMobile ? '6px 10px' : '8px 14px',
+                            background: 'rgba(0,0,0,0.15)',
+                            borderRadius: '8px',
+                            flexShrink: 0
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {quest.reward.coin > 0 && (
+                                <div style={{
+                                  fontSize: '13px',
+                                  color: '#FBBF24',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  <img src="/coin.png" alt="" style={{ width: '16px', height: '16px' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                  <span>{quest.reward.coin}</span>
+                                </div>
+                              )}
+                              {quest.reward.gem > 0 && (
+                                <div style={{
+                                  fontSize: '13px',
+                                  color: '#22D3EE',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  <img src="/gem.png" alt="" style={{ width: '16px', height: '16px' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                  <span>{quest.reward.gem}</span>
+                                </div>
+                              )}
+                              {quest.reward.exp && quest.reward.exp > 0 && (
+                                <div style={{
+                                  fontSize: '13px',
+                                  color: '#4ADE80',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  <span>⭐</span>
+                                  <span>{quest.reward.exp}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <button
+                            data-tour={quest.id === 'login1' ? 'claim-quest' : undefined}
+                            onClick={() => canClaim && !claimingId && claimReward(selectedCategory.id, quest.id)}
+                            disabled={!canClaim || quest.claimed || claimingId === quest.id}
+                            style={{
+                              padding: isMobile ? '8px 14px' : '10px 20px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: quest.claimed
+                                ? 'rgba(74,222,128,0.15)'
+                                : claimingId === quest.id
+                                ? 'rgba(168,85,247,0.3)'
+                                : canClaim
+                                ? 'linear-gradient(135deg, #A855F7, #8B5CF6)'
+                                : 'rgba(255,255,255,0.06)',
+                              color: quest.claimed
+                                ? '#4ADE80'
+                                : canClaim
+                                ? 'white'
+                                : 'var(--color-muted)',
+                              fontSize: isMobile ? '12px' : '13px',
+                              fontWeight: 600,
+                              cursor: canClaim && !claimingId ? 'pointer' : 'default',
+                              minWidth: isMobile ? '64px' : '72px',
+                              transition: 'all 0.2s ease',
+                              boxShadow: canClaim && !claimingId ? '0 4px 15px rgba(168,85,247,0.35)' : 'none',
+                              flexShrink: 0,
+                              opacity: claimingId === quest.id ? 0.7 : 1
+                            }}
+                            onMouseEnter={(e) => {
+                              if (canClaim && !claimingId) {
+                                e.currentTarget.style.transform = 'translateY(-2px)'
+                                e.currentTarget.style.boxShadow = '0 6px 20px rgba(168,85,247,0.5)'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (canClaim && !claimingId) {
+                                e.currentTarget.style.transform = 'translateY(0)'
+                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(168,85,247,0.35)'
+                              }
+                            }}
+                          >
+                            {quest.claimed
+                              ? '✓ ' + t('events.claimed')
+                              : claimingId === quest.id
+                              ? '...'
+                              : canClaim
+                              ? t('events.claim')
+                              : t('events.go')}
+                          </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </main>
       </div>
     </div>
   )

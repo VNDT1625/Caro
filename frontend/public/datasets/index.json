@@ -1,0 +1,58 @@
+{
+  "totalParts": 13,
+  "totalEntries": 10500,
+  "parts": [
+    {
+      "file": "caro_dataset_part1.jsonl",
+      "entries": 817
+    },
+    {
+      "file": "caro_dataset_part2.jsonl",
+      "entries": 903
+    },
+    {
+      "file": "caro_dataset_part3.jsonl",
+      "entries": 927
+    },
+    {
+      "file": "caro_dataset_part4.jsonl",
+      "entries": 927
+    },
+    {
+      "file": "caro_dataset_part5.jsonl",
+      "entries": 978
+    },
+    {
+      "file": "caro_dataset_part6.jsonl",
+      "entries": 905
+    },
+    {
+      "file": "caro_dataset_part7.jsonl",
+      "entries": 841
+    },
+    {
+      "file": "caro_dataset_part8.jsonl",
+      "entries": 844
+    },
+    {
+      "file": "caro_dataset_part9.jsonl",
+      "entries": 861
+    },
+    {
+      "file": "caro_dataset_part10.jsonl",
+      "entries": 788
+    },
+    {
+      "file": "caro_dataset_part11.jsonl",
+      "entries": 820
+    },
+    {
+      "file": "caro_dataset_part12.jsonl",
+      "entries": 809
+    },
+    {
+      "file": "caro_dataset_part13.jsonl",
+      "entries": 80
+    }
+  ]
+}

@@ -14,6 +14,27 @@ CREATE TABLE public.achievements (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT achievements_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.admin (
+  user_id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  role USER-DEFINED NOT NULL DEFAULT 'readonly'::admin_role,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_active_at timestamp with time zone,
+  CONSTRAINT admin_pkey PRIMARY KEY (user_id),
+  CONSTRAINT admin_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.admin_notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  admin_id uuid NOT NULL,
+  title character varying NOT NULL,
+  content text NOT NULL,
+  is_broadcast boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  deleted_at timestamp with time zone,
+  CONSTRAINT admin_notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT admin_notifications_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.admin(user_id)
+);
 CREATE TABLE public.ai_analysis_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   match_id uuid NOT NULL,
@@ -32,6 +53,22 @@ CREATE TABLE public.ai_analysis_logs (
   CONSTRAINT ai_analysis_logs_pkey PRIMARY KEY (id),
   CONSTRAINT ai_analysis_logs_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id),
   CONSTRAINT ai_analysis_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.appeals (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  report_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  reason text NOT NULL CHECK (length(TRIM(BOTH FROM reason)) > 0),
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::appeal_status,
+  admin_response text CHECK (length(admin_response) <= 2000),
+  processed_by uuid,
+  processed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT appeals_pkey PRIMARY KEY (id),
+  CONSTRAINT appeals_report_id_fkey FOREIGN KEY (report_id) REFERENCES public.reports(id),
+  CONSTRAINT appeals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT appeals_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.audit_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -73,10 +110,59 @@ CREATE TABLE public.chat_messages (
   is_deleted boolean DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
   channel_scope character varying DEFAULT 'global'::character varying CHECK (channel_scope::text = ANY (ARRAY['global'::character varying, 'friends'::character varying, 'room'::character varying, 'match'::character varying]::text[])),
+  target_user_id uuid,
   CONSTRAINT chat_messages_pkey PRIMARY KEY (id),
   CONSTRAINT chat_messages_sender_user_id_fkey FOREIGN KEY (sender_user_id) REFERENCES public.profiles(user_id),
   CONSTRAINT chat_messages_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id),
-  CONSTRAINT chat_messages_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id)
+  CONSTRAINT chat_messages_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id),
+  CONSTRAINT chat_messages_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.currency_packages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  package_code character varying NOT NULL UNIQUE,
+  name_vi character varying NOT NULL,
+  name_en character varying,
+  description_vi text,
+  description_en text,
+  currency_type character varying NOT NULL CHECK (currency_type::text = ANY (ARRAY['coin'::character varying, 'gem'::character varying]::text[])),
+  amount integer NOT NULL CHECK (amount > 0),
+  bonus_amount integer DEFAULT 0 CHECK (bonus_amount >= 0),
+  price_vnd integer NOT NULL CHECK (price_vnd > 0),
+  discount_percent integer DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  original_price_vnd integer,
+  icon_url text,
+  is_featured boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  sort_order integer DEFAULT 0,
+  valid_from timestamp with time zone,
+  valid_until timestamp with time zone,
+  max_purchases_per_user integer,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT currency_packages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.currency_purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  package_id uuid NOT NULL,
+  txn_ref character varying NOT NULL UNIQUE,
+  currency_type character varying NOT NULL CHECK (currency_type::text = ANY (ARRAY['coin'::character varying, 'gem'::character varying]::text[])),
+  amount integer NOT NULL,
+  bonus_amount integer DEFAULT 0,
+  total_amount integer NOT NULL,
+  price_vnd integer NOT NULL,
+  status character varying DEFAULT 'pending'::character varying CHECK (status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'failed'::character varying, 'refunded'::character varying]::text[])),
+  payment_method character varying DEFAULT 'vnpay'::character varying,
+  vnp_data jsonb,
+  balance_before integer,
+  balance_after integer,
+  ip_address inet,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  paid_at timestamp with time zone,
+  CONSTRAINT currency_purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT currency_purchases_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT currency_purchases_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.currency_packages(id)
 );
 CREATE TABLE public.friends (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -116,8 +202,19 @@ CREATE TABLE public.items (
   release_date timestamp with time zone DEFAULT now(),
   created_at timestamp with time zone DEFAULT now(),
   source_type text DEFAULT 'shop'::text CHECK (source_type = ANY (ARRAY['shop'::text, 'achievement'::text, 'quest'::text, 'event'::text, 'gift'::text, 'starter'::text])),
+  name_en text,
+  description_en text,
   CONSTRAINT items_pkey PRIMARY KEY (id),
   CONSTRAINT fk_items_category FOREIGN KEY (category) REFERENCES public.categories(id)
+);
+CREATE TABLE public.logs_usage (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  type text NOT NULL,
+  cost_credits integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT logs_usage_pkey PRIMARY KEY (id),
+  CONSTRAINT logs_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.match_replays (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -137,6 +234,31 @@ CREATE TABLE public.match_replays (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT match_replays_pkey PRIMARY KEY (id),
   CONSTRAINT match_replays_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id)
+);
+CREATE TABLE public.match_skill_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  match_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  turn_number integer NOT NULL CHECK (turn_number > 0),
+  offered_skills jsonb NOT NULL,
+  selected_skill_id uuid,
+  was_skipped boolean DEFAULT false,
+  target_position jsonb,
+  effect_result jsonb,
+  board_state_before jsonb,
+  board_state_after jsonb,
+  selection_time_ms integer,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT match_skill_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT match_skill_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT match_skill_logs_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id),
+  CONSTRAINT match_skill_logs_selected_skill_id_fkey FOREIGN KEY (selected_skill_id) REFERENCES public.skills(id)
+);
+CREATE TABLE public.match_skill_state (
+  match_id uuid NOT NULL,
+  state jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT match_skill_state_pkey PRIMARY KEY (match_id)
 );
 CREATE TABLE public.matches (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -160,11 +282,15 @@ CREATE TABLE public.matches (
   started_at timestamp with time zone DEFAULT now(),
   ended_at timestamp with time zone,
   created_at timestamp with time zone DEFAULT now(),
+  series_id uuid,
+  game_number integer CHECK (game_number IS NULL OR game_number >= 1 AND game_number <= 3),
+  swap2_history jsonb,
   CONSTRAINT matches_pkey PRIMARY KEY (id),
   CONSTRAINT matches_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id),
   CONSTRAINT matches_player_x_user_id_fkey FOREIGN KEY (player_x_user_id) REFERENCES public.profiles(user_id),
   CONSTRAINT matches_player_o_user_id_fkey FOREIGN KEY (player_o_user_id) REFERENCES public.profiles(user_id),
-  CONSTRAINT matches_winner_user_id_fkey FOREIGN KEY (winner_user_id) REFERENCES public.profiles(user_id)
+  CONSTRAINT matches_winner_user_id_fkey FOREIGN KEY (winner_user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT matches_series_id_fkey FOREIGN KEY (series_id) REFERENCES public.ranked_series(id)
 );
 CREATE TABLE public.matchmaking_queue (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -218,6 +344,33 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
 );
+CREATE TABLE public.packages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  price_vnd integer NOT NULL,
+  credits integer NOT NULL,
+  owner_cut_percent numeric NOT NULL DEFAULT 40,
+  metadata jsonb,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT packages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.payments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  package_id uuid,
+  amount_vnd integer NOT NULL,
+  credits_awarded integer DEFAULT 0,
+  owner_cut_vnd integer DEFAULT 0,
+  provider text DEFAULT 'vnpay'::text,
+  provider_txid text,
+  status text DEFAULT 'pending'::text,
+  raw_payload jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT payments_pkey PRIMARY KEY (id),
+  CONSTRAINT payments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT payments_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.packages(id)
+);
 CREATE TABLE public.profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL UNIQUE,
@@ -236,14 +389,24 @@ CREATE TABLE public.profiles (
   best_win_streak integer DEFAULT 0,
   coins integer DEFAULT 0,
   gems integer DEFAULT 0,
-  level integer DEFAULT 1 CHECK (level >= 1 AND level <= 100),
-  exp integer DEFAULT 0 CHECK (exp >= 0),
   equipped_board_skin uuid,
   equipped_piece_skin uuid,
+  equipped_avatar_frame uuid,
   last_active timestamp with time zone DEFAULT now(),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   deleted_at timestamp with time zone,
+  level integer DEFAULT 1 CHECK (level >= 1 AND level <= 100),
+  exp integer DEFAULT 0 CHECK (exp >= 0),
+  metadata jsonb DEFAULT '{}'::jsonb,
+  onboarding_completed boolean DEFAULT false,
+  plan text DEFAULT 'free'::text,
+  trial_expires_at timestamp with time zone,
+  pro_expires_at timestamp with time zone,
+  credits_balance integer DEFAULT 0,
+  daily_ask_used integer DEFAULT 0,
+  daily_analyze_used integer DEFAULT 0,
+  daily_reset_at date,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -257,6 +420,76 @@ CREATE TABLE public.rank_history (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT rank_history_pkey PRIMARY KEY (id),
   CONSTRAINT rank_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.ranked_series (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  player1_id uuid NOT NULL,
+  player2_id uuid NOT NULL,
+  player1_initial_mp integer NOT NULL DEFAULT 0,
+  player2_initial_mp integer NOT NULL DEFAULT 0,
+  player1_initial_rank character varying NOT NULL DEFAULT 'vo_danh'::character varying,
+  player2_initial_rank character varying NOT NULL DEFAULT 'vo_danh'::character varying,
+  player1_wins integer NOT NULL DEFAULT 0 CHECK (player1_wins >= 0 AND player1_wins <= 2),
+  player2_wins integer NOT NULL DEFAULT 0 CHECK (player2_wins >= 0 AND player2_wins <= 2),
+  games_to_win integer NOT NULL DEFAULT 2,
+  current_game integer NOT NULL DEFAULT 1 CHECK (current_game >= 1 AND current_game <= 3),
+  player1_side character NOT NULL DEFAULT 'X'::bpchar CHECK (player1_side = ANY (ARRAY['X'::bpchar, 'O'::bpchar])),
+  player2_side character NOT NULL DEFAULT 'O'::bpchar CHECK (player2_side = ANY (ARRAY['X'::bpchar, 'O'::bpchar])),
+  status character varying NOT NULL DEFAULT 'in_progress'::character varying CHECK (status::text = ANY (ARRAY['in_progress'::character varying, 'completed'::character varying, 'abandoned'::character varying]::text[])),
+  winner_id uuid,
+  final_score character varying,
+  winner_mp_change integer,
+  loser_mp_change integer,
+  winner_coins integer,
+  loser_coins integer,
+  winner_exp integer,
+  loser_exp integer,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  started_at timestamp with time zone,
+  ended_at timestamp with time zone,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ranked_series_pkey PRIMARY KEY (id),
+  CONSTRAINT ranked_series_winner_id_fkey FOREIGN KEY (winner_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT ranked_series_player1_id_fkey FOREIGN KEY (player1_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT ranked_series_player2_id_fkey FOREIGN KEY (player2_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.report_actions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  report_id uuid NOT NULL,
+  admin_id uuid,
+  action character varying NOT NULL CHECK (length(TRIM(BOTH FROM action)) > 0),
+  old_status character varying,
+  new_status character varying,
+  notes text CHECK (length(notes) <= 2000),
+  metadata jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT report_actions_pkey PRIMARY KEY (id),
+  CONSTRAINT report_actions_report_id_fkey FOREIGN KEY (report_id) REFERENCES public.reports(id),
+  CONSTRAINT report_actions_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reporter_id uuid NOT NULL,
+  reported_user_id uuid,
+  match_id uuid,
+  type USER-DEFINED NOT NULL,
+  description text CHECK (length(description) <= 1000),
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::report_status,
+  rule_analysis jsonb,
+  reason_result text,
+  ai_analysis jsonb,
+  ai_summary_player text,
+  ai_details_admin text,
+  processed_at timestamp with time zone,
+  processed_by uuid,
+  admin_notes text CHECK (length(admin_notes) <= 2000),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT reports_pkey PRIMARY KEY (id),
+  CONSTRAINT reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT reports_reported_user_id_fkey FOREIGN KEY (reported_user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT reports_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.matches(id),
+  CONSTRAINT reports_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.room_players (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -291,8 +524,89 @@ CREATE TABLE public.rooms (
   started_at timestamp with time zone,
   ended_at timestamp with time zone,
   game_state jsonb DEFAULT jsonb_build_object('board', '[]'::jsonb, 'moves', '[]'::jsonb, 'currentTurn', 'X', 'currentGame', 1, 'scores', jsonb_build_object('X', 0, 'O', 0), 'gameStartedAt', NULL::unknown, 'lastMoveAt', NULL::unknown),
+  swap2_enabled boolean DEFAULT false,
   CONSTRAINT rooms_pkey PRIMARY KEY (id),
   CONSTRAINT rooms_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.seasons (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  season_number integer NOT NULL UNIQUE,
+  name character varying NOT NULL,
+  name_en character varying,
+  start_date timestamp with time zone NOT NULL,
+  end_date timestamp with time zone NOT NULL,
+  is_active boolean DEFAULT false,
+  skill_pool jsonb NOT NULL DEFAULT '[]'::jsonb,
+  theme_color character varying DEFAULT '#22D3EE'::character varying,
+  banner_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT seasons_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.skill_packages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  package_code character varying NOT NULL UNIQUE,
+  name_vi character varying NOT NULL,
+  name_en character varying,
+  description_vi text,
+  description_en text,
+  cards_count integer NOT NULL DEFAULT 5,
+  common_rate numeric NOT NULL DEFAULT 0.7000,
+  rare_rate numeric NOT NULL DEFAULT 0.2500,
+  legendary_rate numeric NOT NULL DEFAULT 0.0500,
+  price_tinh_thach integer DEFAULT 0,
+  price_nguyen_than integer DEFAULT 0,
+  source character varying NOT NULL DEFAULT 'shop'::character varying,
+  is_active boolean DEFAULT true,
+  icon_url text,
+  background_color character varying DEFAULT '#ffffff'::character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT skill_packages_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.skills (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  skill_code character varying NOT NULL UNIQUE,
+  name_vi character varying NOT NULL,
+  name_en character varying,
+  description_vi text NOT NULL,
+  description_en text,
+  category USER-DEFINED NOT NULL,
+  rarity USER-DEFINED NOT NULL DEFAULT 'common'::skill_rarity,
+  effect_type character varying NOT NULL,
+  effect_params jsonb NOT NULL DEFAULT '{}'::jsonb,
+  cooldown integer DEFAULT 3 CHECK (cooldown >= 0 AND cooldown <= 10),
+  mana_cost integer DEFAULT 0,
+  icon_url text,
+  preview_animation character varying,
+  effect_color character varying DEFAULT '#ffffff'::character varying,
+  unlock_requirement jsonb,
+  upgrade_costs jsonb DEFAULT '[{"coins": 500, "level": 2}, {"coins": 1500, "level": 3}]'::jsonb,
+  level_scaling jsonb DEFAULT '{"2": 1.2, "3": 1.5}'::jsonb,
+  is_active boolean DEFAULT true,
+  is_starter boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT skills_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.titles (
+  id text NOT NULL,
+  name_vi text NOT NULL,
+  name_en text NOT NULL,
+  description_vi text,
+  description_en text,
+  category text NOT NULL CHECK (category = ANY (ARRAY['rank'::text, 'wins'::text, 'streak'::text, 'special'::text, 'season'::text, 'social'::text, 'skill'::text, 'event'::text])),
+  rarity text NOT NULL DEFAULT 'common'::text CHECK (rarity = ANY (ARRAY['common'::text, 'rare'::text, 'epic'::text, 'legendary'::text, 'mythic'::text])),
+  icon text,
+  color text DEFAULT '#22D3EE'::text,
+  glow_color text,
+  requirement_type text NOT NULL,
+  requirement_value jsonb NOT NULL DEFAULT '{}'::jsonb,
+  points integer DEFAULT 0,
+  sort_order integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT titles_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.tournament_matches (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -394,6 +708,36 @@ CREATE TABLE public.user_achievements (
   CONSTRAINT user_achievements_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
   CONSTRAINT user_achievements_achievement_id_fkey FOREIGN KEY (achievement_id) REFERENCES public.achievements(id)
 );
+CREATE TABLE public.user_admin_notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  notification_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  is_read boolean DEFAULT false,
+  read_at timestamp with time zone,
+  deleted_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_admin_notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT user_admin_notifications_notification_id_fkey FOREIGN KEY (notification_id) REFERENCES public.admin_notifications(id),
+  CONSTRAINT user_admin_notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.user_bans (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  report_id uuid,
+  ban_type USER-DEFINED NOT NULL,
+  reason text NOT NULL CHECK (length(TRIM(BOTH FROM reason)) > 0),
+  expires_at timestamp with time zone,
+  is_active boolean NOT NULL DEFAULT true,
+  lifted_at timestamp with time zone,
+  lifted_by uuid,
+  lift_reason text CHECK (length(lift_reason) <= 2000),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_bans_pkey PRIMARY KEY (id),
+  CONSTRAINT user_bans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT user_bans_report_id_fkey FOREIGN KEY (report_id) REFERENCES public.reports(id),
+  CONSTRAINT user_bans_lifted_by_fkey FOREIGN KEY (lifted_by) REFERENCES public.profiles(user_id)
+);
 CREATE TABLE public.user_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -403,4 +747,58 @@ CREATE TABLE public.user_items (
   CONSTRAINT user_items_pkey PRIMARY KEY (id),
   CONSTRAINT user_items_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
   CONSTRAINT user_items_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.user_package_purchases (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  package_id uuid NOT NULL,
+  price_paid_tinh_thach integer DEFAULT 0,
+  price_paid_nguyen_than integer DEFAULT 0,
+  skills_received jsonb NOT NULL DEFAULT '[]'::jsonb,
+  purchased_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_package_purchases_pkey PRIMARY KEY (id),
+  CONSTRAINT user_package_purchases_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_package_purchases_package_id_fkey FOREIGN KEY (package_id) REFERENCES public.skill_packages(id)
+);
+CREATE TABLE public.user_skill_combos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  season_id uuid NOT NULL,
+  preset_name character varying DEFAULT 'Default'::character varying,
+  preset_slot integer DEFAULT 1 CHECK (preset_slot >= 1 AND preset_slot <= 3),
+  skill_ids jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_array_length(skill_ids) <= 15),
+  is_valid boolean DEFAULT true,
+  validation_errors jsonb,
+  is_active boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_skill_combos_pkey PRIMARY KEY (id),
+  CONSTRAINT user_skill_combos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT user_skill_combos_season_id_fkey FOREIGN KEY (season_id) REFERENCES public.seasons(id)
+);
+CREATE TABLE public.user_skills (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  skill_id uuid NOT NULL,
+  is_unlocked boolean DEFAULT false,
+  unlocked_at timestamp with time zone,
+  unlock_method character varying,
+  current_level integer DEFAULT 1 CHECK (current_level >= 1 AND current_level <= 3),
+  times_used integer DEFAULT 0,
+  times_successful integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_skills_pkey PRIMARY KEY (id),
+  CONSTRAINT user_skills_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT user_skills_skill_id_fkey FOREIGN KEY (skill_id) REFERENCES public.skills(id)
+);
+CREATE TABLE public.user_titles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title_id text NOT NULL,
+  unlocked_at timestamp with time zone DEFAULT now(),
+  is_equipped boolean DEFAULT false,
+  CONSTRAINT user_titles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_titles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_titles_title_id_fkey FOREIGN KEY (title_id) REFERENCES public.titles(id)
 );

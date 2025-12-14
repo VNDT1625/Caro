@@ -5,12 +5,21 @@ import { supabase } from '../lib/supabase'
 import { TrainingDifficulty, describeDifficulty } from '../lib/game/botAI'
 import { useFriendSystem } from '../hooks/useFriendSystem'
 import HomeChatOverlay from '../components/chat/HomeChatOverlay'
+import { useChat } from '../hooks/useChat'
+import { fetchChatHistory } from '../lib/chat'
+import type { ChatMessage } from '../types/chat'
+import TournamentModal from '../components/tournament/TournamentModal'
+import AvatarWithFrame, { AvatarFrameData } from '../components/avatar/AvatarWithFrame'
+import { RankBadgeV2 } from '../components/rank'
+import { validateUsernameInput } from '../lib/username'
 
 interface HomeProps {
   mobileMenuOpen?: boolean
   onCloseMobileMenu?: () => void
   user?: any
   rank?: string
+  avatarUrl?: string
+  equippedFrame?: AvatarFrameData | null
 }
 
 type FriendPanelFilter = 'all' | 'online' | 'incoming' | 'outgoing'
@@ -28,6 +37,13 @@ interface FeaturedEvent {
   ctaLabel: string
   ctaHref: string
 }
+
+const USERNAME_ERROR_KEY_MAP = {
+  empty: 'usernameErrorEmpty',
+  short: 'usernameErrorShort',
+  long: 'usernameErrorLong',
+  invalid: 'usernameErrorInvalid'
+} as const
 
 const getFeaturedEvents = (t: any): FeaturedEvent[] => [
   {
@@ -71,7 +87,7 @@ const getFeaturedEvents = (t: any): FeaturedEvent[] => [
   }
 ]
 
-export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: HomeProps = {}) {
+export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank, avatarUrl, equippedFrame }: HomeProps = {}) {
   const { t, language } = useLanguage()
   const FEATURED_EVENTS = React.useMemo(() => getFeaturedEvents(t), [t, language])
   const [activeTab, setActiveTab] = React.useState<'friends' | 'chat' | 'ai'>('friends')
@@ -91,6 +107,11 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
   const [isDragging, setIsDragging] = React.useState(false)
   const [chatOverlayOpen, setChatOverlayOpen] = React.useState(false)
   const [chatOverlayTab, setChatOverlayTab] = React.useState<'world' | 'friend' | 'ai'>('world')
+  const [chatChannel, setChatChannel] = React.useState<'world' | 'friend'>('world')
+  const [friendLastMessages, setFriendLastMessages] = React.useState<Record<string, ChatMessage>>({})
+  const [selectedFriendId, setSelectedFriendId] = React.useState<string | null>(null)
+  const [aiMode, setAiMode] = React.useState<'basic' | 'trial' | 'pro'>('basic')
+  const [aiMessages, setAiMessages] = React.useState<Array<{id: string, role: 'user' | 'assistant', content: string, model?: string}>>([])
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
   const [showUsernamePrompt, setShowUsernamePrompt] = React.useState(false)
   const [usernameInput, setUsernameInput] = React.useState('')
@@ -99,6 +120,19 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
   const [opponentDeclined, setOpponentDeclined] = React.useState(false)
   const [showTrainingModal, setShowTrainingModal] = React.useState(false)
   const [trainingDifficulty, setTrainingDifficulty] = React.useState<TrainingDifficulty>('nhap-mon')
+  const [trainingSwap2, setTrainingSwap2] = React.useState(false) // Swap2 optional for AI training
+  
+  // Variant Mode state
+  const [showVariantModal, setShowVariantModal] = React.useState(false)
+  const [variantBoardSize, setVariantBoardSize] = React.useState(15)
+  const [variantWinLength, setVariantWinLength] = React.useState(5)
+  const [variantTimeLimit, setVariantTimeLimit] = React.useState<number | null>(null)
+  const [variantOpponent, setVariantOpponent] = React.useState<'bot' | 'local'>('bot')
+  const [variantBotDifficulty, setVariantBotDifficulty] = React.useState<TrainingDifficulty>('ky-tai')
+  
+  // Tournament Modal state
+  const [showTournamentModal, setShowTournamentModal] = React.useState(false)
+  
   const {
     friends,
     incomingRequests,
@@ -124,9 +158,15 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
   const [blockFor5Min, setBlockFor5Min] = React.useState(false)
   const [showFriendNotification, setShowFriendNotification] = React.useState(false)
   const [notificationMessage, setNotificationMessage] = React.useState('')
+  const [viewingProfileId, setViewingProfileId] = React.useState<string | null>(null)
+  const [viewingProfile, setViewingProfile] = React.useState<any>(null)
+  const [viewingProfileLoading, setViewingProfileLoading] = React.useState(false)
+  const [viewingProfileError, setViewingProfileError] = React.useState<string | null>(null)
   const eventAutoplayRef = React.useRef<number | null>(null)
   const eventPointerStart = React.useRef<number | null>(null)
   const totalEvents = FEATURED_EVENTS.length
+  const chatMessagesRef = React.useRef<HTMLDivElement | null>(null)
+  const aiMessagesRef = React.useRef<HTMLDivElement | null>(null)
 
   // Realtime subscription for friend requests
   React.useEffect(() => {
@@ -150,6 +190,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
             .from('profiles')
             .select('username, display_name, avatar_url')
             .eq('user_id', payload.new.user_id)
+            .limit(1)
             .maybeSingle()
           
           const senderName = profile?.display_name || profile?.username || t('home.friends.anonymousUser')
@@ -198,6 +239,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
               .from('profiles')
               .select('username, display_name')
               .eq('user_id', payload.new.friend_id)
+              .limit(1)
               .maybeSingle()
             
             const friendName = profile?.display_name || profile?.username || t('home.friends.anonymousUser')
@@ -244,8 +286,9 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
           .from('profiles')
           .select('username, display_name')
           .eq('user_id', user.id)
+          .limit(1)
           .maybeSingle()
-        
+
         if (data) {
           setUsername(data.username || data.display_name || '')
         }
@@ -379,8 +422,9 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     setIsDragging(false)
   }
 
-  const openChatOverlay = React.useCallback((tab: 'world' | 'friend' | 'ai' = 'world') => {
+  const openChatOverlay = React.useCallback((tab: 'world' | 'friend' | 'ai' = 'world', friendId?: string) => {
     setChatOverlayTab(tab)
+    setSelectedFriendId(friendId || null)
     setChatOverlayOpen(true)
   }, [])
 
@@ -393,6 +437,88 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     () => friends.filter((entry) => entry.status === 'accepted'),
     [friends]
   )
+
+  // Chat hook for world messages
+  const worldChat = useChat({
+    mode: 'home',
+    channel: 'global',
+    userId: user?.id,
+    enabled: chatChannel === 'world' && Boolean(user?.id),
+    limit: 20
+  })
+
+  // Load last messages for each friend
+  React.useEffect(() => {
+    if (chatChannel !== 'friend' || !user?.id || acceptedFriends.length === 0) {
+      setFriendLastMessages({})
+      return
+    }
+
+    const loadFriendMessages = async () => {
+      try {
+        const { data: session } = await supabase.auth.getSession()
+        if (!session.session?.access_token) return
+
+        const messagesMap: Record<string, ChatMessage> = {}
+        
+        // Load last message for each friend
+        await Promise.all(
+          acceptedFriends.map(async (friend) => {
+            try {
+              const response = await fetchChatHistory({
+                channel: 'friends',
+                targetUserId: friend.friend_id,
+                limit: 1,
+                token: session.session.access_token
+              })
+              if (response.messages && response.messages.length > 0) {
+                // Get the most recent message (last in array after sorting)
+                messagesMap[friend.friend_id] = response.messages[response.messages.length - 1]
+              }
+            } catch (e) {
+              console.error('Failed to load message for friend', friend.friend_id, e)
+            }
+          })
+        )
+        
+        setFriendLastMessages(messagesMap)
+      } catch (e) {
+        console.error('Failed to load friend messages', e)
+      }
+    }
+
+    loadFriendMessages()
+  }, [chatChannel, user?.id, acceptedFriends])
+
+  const formatMessageTime = (timestamp?: string) => {
+    if (!timestamp) return ''
+    const d = new Date(timestamp)
+    const now = new Date()
+    const diff = now.getTime() - d.getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+    
+    if (minutes < 1) return 'Vừa xong'
+    if (minutes < 60) return `${minutes} phút`
+    if (hours < 24) return `${hours} giờ`
+    if (days < 7) return `${days} ngày`
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  }
+
+  // Auto-scroll chat messages to bottom when new messages arrive
+  React.useEffect(() => {
+    if (activeTab === 'chat' && chatChannel === 'world' && chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+    }
+  }, [worldChat.messages.length, activeTab, chatChannel])
+
+  // Auto-scroll AI messages to bottom when new messages arrive
+  React.useEffect(() => {
+    if (activeTab === 'ai' && aiMessagesRef.current) {
+      aiMessagesRef.current.scrollTop = aiMessagesRef.current.scrollHeight
+    }
+  }, [aiMessages.length, activeTab])
 
   const filteredFriends = React.useMemo(() => {
     if (friendFilter === 'incoming') return incomingRequests
@@ -413,6 +539,53 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     if (diff < 86_400_000) return t('home.friends.hoursAgo', { count: Math.floor(diff / 3_600_000) })
     return t('home.friends.daysAgo', { count: Math.floor(diff / 86_400_000) })
   }
+
+  const getRankLabel = React.useCallback((code?: string | null) => {
+    const normalized = code || 'vo_danh'
+    const rankMap: Record<string, string> = {
+      vo_danh: t('home.friends.anonymous'),
+      tan_ky: t('rank.tan_ky'),
+      hoc_ky: t('rank.hoc_ky'),
+      ky_lao: t('rank.ky_lao'),
+      cao_ky: t('rank.cao_ky'),
+      ky_thanh: t('rank.ky_thanh'),
+      truyen_thuyet: t('rank.ky_thanh')
+    }
+    return rankMap[normalized] || t('home.friends.anonymous')
+  }, [t])
+
+  const openFriendProfile = React.useCallback(async (userId: string) => {
+    if (!userId) return
+    setViewingProfileId(userId)
+    setViewingProfile(null)
+    setViewingProfileError(null)
+    setViewingProfileLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id,username,display_name,avatar_url,current_rank,mindpoint,total_matches,total_wins,total_losses,win_streak,elo_rating,last_active')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (error) throw error
+      if (!data) {
+        setViewingProfileError(t('home.friends.profileError'))
+      } else {
+        setViewingProfile(data)
+      }
+    } catch (err: any) {
+      setViewingProfileError(err?.message || t('home.friends.profileError'))
+    } finally {
+      setViewingProfileLoading(false)
+    }
+  }, [t])
+
+  const closeFriendProfile = React.useCallback(() => {
+    setViewingProfileId(null)
+    setViewingProfile(null)
+    setViewingProfileError(null)
+    setViewingProfileLoading(false)
+  }, [])
 
   const showSearchResults = friendSearch.trim().length > 0
 
@@ -491,9 +664,10 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
             )}
             {!searchingFriends && searchResults.map((result) => {
               const displayName = result.profile.display_name || result.profile.username || t('home.friends.anonymous')
-              const rankDisplay = result.profile.rank_tier || t('home.friends.noRank')
+              const rankDisplay = getRankLabel(result.profile.current_rank || 'vo_danh')
               const normalized = (result.status || '').toLowerCase()
               const targetUsername = result.profile.username
+              const targetUserId = result.profile.user_id
 
               let statusIcon: React.ReactNode = null
               if (!normalized) {
@@ -572,14 +746,31 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
                     }}
                   ></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {displayName}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
-                      {rankDisplay}
-                    </div>
+                  <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {displayName}
                   </div>
-                  {statusIcon}
+                  <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                    {rankDisplay}
+                  </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => openFriendProfile(targetUserId)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        background: 'transparent',
+                        color: '#E2E8F0',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {t('home.friends.viewProfile')}
+                    </button>
+                    {statusIcon}
+                  </div>
                 </div>
               )
             })}
@@ -719,6 +910,21 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
                     </div>
                   </div>
                   <div className="friend-actions" style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button
+                      onClick={() => openFriendProfile(entry.profile?.user_id || entry.friend_id)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        background: 'transparent',
+                        color: '#E2E8F0',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {t('home.friends.viewProfile')}
+                    </button>
                     {isIncomingView ? (
                       <>
                         <button
@@ -877,36 +1083,48 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
   }, [user?.id])
 
   async function handleSaveUsername() {
-    if (!usernameInput.trim()) {
-      alert(t('home.usernamePrompt.errorEmpty'))
+    if (!user?.id) {
+      alert(t('common.error'))
       return
     }
 
-    // Validate username format (alphanumeric and underscore, 3-20 chars)
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(usernameInput)) {
-      alert(t('home.usernamePrompt.errorInvalid'))
+    const { displayName, slug, error } = validateUsernameInput(usernameInput)
+
+    if (error) {
+      alert(t(`profile.${USERNAME_ERROR_KEY_MAP[error]}`))
       return
     }
 
     try {
-      const { error } = await supabase
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .ilike('username', slug)
+        .maybeSingle()
+
+      if (existing && existing.user_id !== user.id) {
+        alert(t('profile.usernameErrorTaken'))
+        return
+      }
+
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
-          username: usernameInput.trim(),
-          display_name: usernameInput.trim()
+          username: slug,
+          display_name: displayName
         })
         .eq('user_id', user.id)
 
-      if (error) {
-        console.error('Update username error:', error)
-        alert(t('home.usernamePrompt.errorUpdate', { message: error.message }))
+      if (updateError) {
+        console.error('Update username error:', updateError)
+        alert(t('profile.usernameErrorSave'))
       } else {
         setShowUsernamePrompt(false)
-        alert(t('home.usernamePrompt.success'))
+        alert(t('profile.usernameUpdateSuccess'))
       }
     } catch (err) {
       console.error('Save username error:', err)
-      alert(t('home.usernamePrompt.errorSave'))
+      alert(t('profile.usernameErrorSave'))
     }
   }
 
@@ -929,6 +1147,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       boardSize: 15,
       botProfile: profile,
       tuning: describeDifficulty(trainingDifficulty),
+      swap2Enabled: trainingSwap2,
       createdAt: Date.now()
     }
 
@@ -939,6 +1158,30 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
 
   const handleStartHotseat = () => {
     window.location.hash = '#hotseat'
+  }
+
+  // Variant Mode handlers
+  const handleOpenVariantModal = () => {
+    // Navigate directly to variant page which has its own setup modal
+    window.location.hash = '#variant'
+  }
+
+  const handleCloseVariantModal = () => {
+    setShowVariantModal(false)
+  }
+
+  const handleStartVariantGame = () => {
+    const variantConfig = {
+      boardSize: variantBoardSize,
+      winLength: variantWinLength,
+      timePerMove: variantTimeLimit,
+      opponentType: variantOpponent,
+      botDifficulty: variantBotDifficulty,
+      createdAt: Date.now()
+    }
+    localStorage.setItem('variantMatch', JSON.stringify(variantConfig))
+    setShowVariantModal(false)
+    window.location.hash = '#variant'
   }
 
   React.useEffect(() => {
@@ -1240,11 +1483,18 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       console.log('🎉 Both players ready! Starting match in 1 second...')
       setTimeout(() => {
         if (opponent) {
-          localStorage.setItem('currentMatch', JSON.stringify({
+          // Include series info for ranked matches
+          const matchData: any = {
             roomId,
             opponent,
             matchSettings: matchmaking?.matchSettings
-          }))
+          }
+          // Add series info if available (from matchmaking state)
+          if (matchmaking?.seriesId) {
+            matchData.seriesId = matchmaking.seriesId
+            matchData.series = matchmaking.series
+          }
+          localStorage.setItem('currentMatch', JSON.stringify(matchData))
         }
         localStorage.removeItem('matchmaking')
         setMatchmaking(null)
@@ -1321,7 +1571,8 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       boardSize: '15x15',
       winCondition: 5,
       turnTime: 30,
-      totalTime: 600
+      totalTime: 600,
+      swap2Enabled: true // Ranked mode always has Swap 2 enabled
     }
 
     // Join matchmaking queue
@@ -1364,16 +1615,18 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
         )
         
         if (result.success && result.roomId) {
-          console.log('✅ Room created:', result.roomId)
+          console.log('✅ Room created:', result.roomId, result.seriesId ? `with series ${result.seriesId}` : '')
           const createdRoomId = result.roomId
           setRoomId(createdRoomId)
           
-          // Update localStorage
+          // Update localStorage with series info for ranked matches
           localStorage.setItem('matchmaking', JSON.stringify({
             ...matchmaking,
             matchFound: true,
             opponent: opponent,
-            roomId: createdRoomId
+            roomId: createdRoomId,
+            seriesId: result.seriesId,
+            series: result.series
           }))
           
           // IMPORTANT: Mark myself as ready immediately after creating room
@@ -1431,42 +1684,74 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // Desktop navigation (without game modes section)
   const navigationItems = (
     <>
-      <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#shop'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">🏯</span>
-        <span className="nav-label">{t('home.nav.shop')}</span>
-        <span className="nav-badge hot">{t('home.nav.badgeHot')}</span>
-      </button>
-      <button className="nav-item" onClick={() => { window.location.hash = '#inventory'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">🎒</span>
-        <span className="nav-label">{t('home.nav.inventory')}</span>
-        <span className="nav-count">12</span>
-      </button>
-      <button className="nav-item nav-item-new" onClick={() => { window.location.hash = '#quests'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">✨</span>
-        <span className="nav-label">{t('home.nav.quests')}</span>
-        <span className="nav-count">3</span>
-      </button>
-      <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#events'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">🎉</span>
-        <span className="nav-label">{t('home.nav.events')}</span>
-        <span className="nav-badge hot">{t('home.nav.badgeHot')}</span>
-      </button>
-      <button className="nav-item" onClick={() => { window.location.hash = '#khainhan'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">⚡</span>
-        <span className="nav-label">{t('home.nav.khaiNhan')}</span>
-        <span className="nav-badge rank">{t('home.nav.badgeRank')}</span>
-      </button>
-      <button className="nav-item" onClick={() => { window.location.hash = '#guide'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">📚</span>
-        <span className="nav-label">{t('home.nav.guide')}</span>
-      </button>
-      <button className="nav-item" onClick={() => { window.location.hash = '#ai-analysis'; onCloseMobileMenu?.() }}>
-        <span className="nav-icon">🧙</span>
-        <span className="nav-label">{t('home.nav.mentor')}</span>
-        <span className="nav-badge new">{t('home.nav.badgeNew')}</span>
-      </button>
+      <div className="home-nav-section">
+        <div className="home-nav-heading">{t('nav.sectionTreasure')}</div>
+        <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#shop'; onCloseMobileMenu?.() }} data-tour="shop">
+          <span className="nav-icon">🏯</span>
+          <span className="nav-label">{t('nav.shop')}</span>
+          <span className="nav-badge hot">{t('nav.badgeHot')}</span>
+        </button>
+        <button className="nav-item" onClick={() => { window.location.hash = '#inventory'; onCloseMobileMenu?.() }} data-tour="inventory">
+          <span className="nav-icon">🎒</span>
+          <span className="nav-label">{t('nav.inventory')}</span>
+          <span className="nav-count">12</span>
+        </button>
+      </div>
+      <div className="home-nav-section secondary">
+        <div className="home-nav-heading">{t('nav.sectionEvents')}</div>
+        <button className="nav-item nav-item-hot" onClick={() => { window.location.hash = '#events'; onCloseMobileMenu?.() }} data-tour="events">
+          <span className="nav-icon">🎉</span>
+          <span className="nav-label">{t('nav.events')}</span>
+          <span className="nav-badge hot">{t('nav.badgeHot')}</span>
+        </button>
+        <button className="nav-item nav-item-new" onClick={() => { window.location.hash = '#quests'; onCloseMobileMenu?.() }} data-tour="quests">
+          <span className="nav-icon">✨</span>
+          <span className="nav-label">{t('nav.quests')}</span>
+          <span className="nav-count">3</span>
+        </button>
+      </div>
+      <div className="home-nav-section secondary">
+        <div className="home-nav-heading">{t('nav.sectionTraining')}</div>
+        <button className="nav-item" onClick={() => { window.location.hash = '#khainhan'; onCloseMobileMenu?.() }}>
+          <span className="nav-icon">⚡</span>
+          <span className="nav-label">{t('nav.khaiNhan')}</span>
+          <span className="nav-badge rank">{t('nav.badgeRank')}</span>
+        </button>
+        <button className="nav-item" onClick={() => { window.location.hash = '#guide'; onCloseMobileMenu?.() }}>
+          <span className="nav-icon">📚</span>
+          <span className="nav-label">{t('nav.guide')}</span>
+        </button>
+        <button className="nav-item" onClick={() => { window.location.hash = '#ai-analysis'; onCloseMobileMenu?.() }} data-tour="ai">
+          <span className="nav-icon">🧙</span>
+          <span className="nav-label">{t('nav.aiAnalysis')}</span>
+          <span className="nav-badge new">{t('nav.badgeNew')}</span>
+        </button>
+      </div>
+    </>
+  )
+
+  // Mobile navigation (with game modes section)
+  const mobileNavigationItems = (
+    <>
+      {navigationItems}
+      <div className="home-nav-section secondary">
+        <div className="home-nav-heading">{t('nav.sectionGameModes')}</div>
+        <button className="nav-item" onClick={() => { setShowTrainingModal(true); onCloseMobileMenu?.() }}>
+          <span className="nav-icon">🤖</span>
+          <span className="nav-label">{t('nav.aiTraining')}</span>
+        </button>
+        <button className="nav-item" onClick={() => { window.location.hash = '#variant'; onCloseMobileMenu?.() }}>
+          <span className="nav-icon">🎲</span>
+          <span className="nav-label">{t('nav.variantMode')}</span>
+        </button>
+        <button className="nav-item" onClick={() => { setShowTournamentModal(true); onCloseMobileMenu?.() }}>
+          <span className="nav-icon">🏆</span>
+          <span className="nav-label">{t('nav.tournament')}</span>
+        </button>
+      </div>
     </>
   )
 
@@ -1562,16 +1847,50 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
       {mobileMenuOpen && (
         <div className="mobile-nav-overlay" onClick={onCloseMobileMenu}>
           <nav className="mobile-nav-drawer" onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <button
+              onClick={onCloseMobileMenu}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'var(--color-text)',
+                fontSize: '20px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10
+              }}
+            >
+              ✕
+            </button>
             <div className="mobile-nav-header">
-              <div className="mobile-nav-user">
-                <div className="avatar" />
+              <div 
+                className="mobile-nav-user"
+                onClick={() => { window.location.hash = '#profile'; onCloseMobileMenu?.() }}
+                style={{ cursor: 'pointer' }}
+              >
+                <AvatarWithFrame
+                  avatarUrl={avatarUrl}
+                  frame={equippedFrame}
+                  size={48}
+                  username={username || user?.user_metadata?.name}
+                />
                 <div className="mobile-nav-user-info">
                   <div className="mobile-nav-username">{username || user?.user_metadata?.name || t('home.noUsername')}</div>
                   <div className="mobile-nav-rank">{t('home.realm')}: {rank ?? t('home.friends.noRank')}</div>
                 </div>
               </div>
             </div>
-            {navigationItems}
+            <div className="mobile-nav-items">
+              {mobileNavigationItems}
+            </div>
           </nav>
         </div>
       )}
@@ -1743,7 +2062,7 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
         <div className="home-grid">
           {/* Left sidebar [A] - Navigation */}
           <aside className="home-sidebar glass-card">
-          <nav className="home-nav">
+          <nav className="home-nav" data-tour="home-menu">
             {navigationItems}
           </nav>
         </aside>
@@ -1756,34 +2075,46 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
               <div className="hero-label">ẢNH HERO / ART CARO</div>
             </div>
 
-            <div className="matchmaking-content">
+            <div className="matchmaking-content" data-tour="matchmaking">
               <h2 className="mm-title">{t('home.hero.title')}</h2>
               <p className="mm-subtitle">{t('home.hero.subtitle')}</p>
               
-              <button className="cta-primary" onClick={handleStartQuickMatch}>
-                <span className="cta-icon">⚔️</span>
+              <button className="cta-primary quick-match-btn" onClick={handleStartQuickMatch}>
+                <span className="cta-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="1" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                    <line x1="7" y1="1" x2="7" y2="19" stroke="currentColor" strokeWidth="0.8" opacity="0.5"/>
+                    <line x1="13" y1="1" x2="13" y2="19" stroke="currentColor" strokeWidth="0.8" opacity="0.5"/>
+                    <line x1="1" y1="7" x2="19" y2="7" stroke="currentColor" strokeWidth="0.8" opacity="0.5"/>
+                    <line x1="1" y1="13" x2="19" y2="13" stroke="currentColor" strokeWidth="0.8" opacity="0.5"/>
+                    <circle cx="7" cy="7" r="2.5" fill="#1a1a2e"/>
+                    <circle cx="13" cy="13" r="2.5" fill="#1a1a2e"/>
+                    <circle cx="13" cy="7" r="2.5" fill="#fff" stroke="#ccc" strokeWidth="0.5"/>
+                  </svg>
+                </span>
                 {t('home.hero.ctaQuickMatch')}
                 <span className="rank-badge" style={{ marginLeft: '8px', padding: '2px 8px', background: '#34d399', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>{t('home.hero.ctaRankNote')}</span>
               </button>
 
-              <div className="mode-grid">
-                <button className="mode-btn">
-                  <span className="mode-icon">⛰️</span>
+              <div className="mode-grid" data-tour="game-modes">
+                <button className="mode-btn" onClick={handleOpenVariantModal} data-tour="mode-variant">
+                  <span className="mode-icon">☯</span>
                   <span className="mode-text">{t('home.modes.ranked')}</span>
                 </button>
-                <button className="mode-btn" onClick={() => window.location.hash = 'createroom'}>
+                <button className="mode-btn" onClick={() => setShowTournamentModal(true)} data-tour="mode-tournament">
                   <span className="mode-icon">⚔️</span>
                   <span className="mode-text">{t('home.modes.tournament')}</span>
                 </button>
-                <button className="mode-btn" onClick={handleOpenTrainingModal}>
-                  <span className="mode-icon">🧘</span>
+                <button className="mode-btn" onClick={handleOpenTrainingModal} data-tour="mode-training">
+                  <span className="mode-icon">⚫</span>
                   <span className="mode-text">{t('home.modes.training')}</span>
                 </button>
                 <button 
                   className="mode-btn"
                   onClick={handleStartHotseat}
+                  data-tour="mode-hotseat"
                 >
-                  <span className="mode-icon">🏛️</span>
+                  <span className="mode-icon">⚪</span>
                   <span className="mode-text">{t('home.modes.hotseat')}</span>
                 </button>
               </div>
@@ -1862,42 +2193,308 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
             <div className="social-content">
               {activeTab === 'friends' && renderFriendsPanel()}
               {activeTab === 'chat' && (
-                <div className="chat-tab">
-                  <div className="chat-overlay-trigger" onClick={() => openChatOverlay('world')}>
-                    <div className="chat-trigger-copy">
-                      <div className="chat-trigger-title">Truyền Âm nhanh</div>
-                      <div className="chat-trigger-sub">Nhấn để mở cửa sổ chat to giữa màn hình</div>
+                <div className="chat-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
+                  {/* Messages List - Fixed height with scroll */}
+                  <div 
+                    ref={chatChannel === 'world' ? chatMessagesRef : null}
+                    style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px', minHeight: 0, maxHeight: 'calc(100% - 60px)', width: '100%', boxSizing: 'border-box' }}
+                  >
+                    {chatChannel === 'world' ? (
+                      <div className="chat-messages-list">
+                        {worldChat.status === 'connecting' && worldChat.messages.length === 0 && (
+                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                            Đang kết nối realtime...
                     </div>
-                    <button className="chat-send-btn" type="button">Mở</button>
+                        )}
+                        {worldChat.status === 'error' && worldChat.messages.length === 0 && (
+                          <div style={{ padding: '16px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>
+                            Chat offline, thử refresh hoặc đăng nhập lại.
                   </div>
-                  <div className="chat-trigger-row">
+                        )}
+                        {worldChat.messages.length === 0 && worldChat.status !== 'error' && (
+                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                            Chưa có tin nhắn. Hãy gửi lời chào đầu tiên.
+                          </div>
+                        )}
+                        {worldChat.messages.slice(-10).map((msg) => {
+                          const mine = msg.sender_user_id === user?.id
+                          const senderName = mine 
+                            ? (userDisplayName || 'Bạn')
+                            : (msg.sender_profile?.display_name || msg.sender_profile?.username || 'Người chơi')
+                          return (
+                            <div 
+                              key={msg.id} 
+                              style={{
+                                padding: '8px 12px',
+                                marginBottom: '8px',
+                                borderRadius: '8px',
+                                background: mine ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                border: `1px solid ${mine ? 'rgba(34, 211, 238, 0.2)' : 'rgba(255, 255, 255, 0.08)'}`
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: mine ? '#22D3EE' : '#fff' }}>
+                                  {senderName}
+                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
+                                  {formatMessageTime(msg.created_at)}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '13px', color: 'var(--color-text)', wordBreak: 'break-word' }}>
+                                {msg.content}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="chat-friends-list">
+                        {acceptedFriends.length === 0 ? (
+                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                            Chưa có bạn bè. Thêm bạn bè để trò chuyện.
+                          </div>
+                        ) : (
+                          acceptedFriends.map((friend) => {
+                            const displayName = friend.profile?.display_name || friend.profile?.username || t('home.friends.anonymous')
+                            const lastMsg = friendLastMessages[friend.friend_id]
+                            const isOnline = friend.profile?.is_online
+                            
+                            return (
+                            <div
+                              key={friend.friend_id}
+                              onClick={() => {
+                                openChatOverlay('friend', friend.friend_id)
+                              }}
+                                style={{
+                                  padding: '12px',
+                                  marginBottom: '8px',
+                                  borderRadius: '10px',
+                                  background: 'rgba(255, 255, 255, 0.03)',
+                                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                                  e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.3)'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{ position: 'relative' }}>
+                                    {friend.profile?.avatar_url ? (
+                                      <img 
+                                        src={friend.profile.avatar_url} 
+                                        alt={displayName}
+                                        style={{
+                                          width: '40px',
+                                          height: '40px',
+                                          borderRadius: '50%',
+                                          objectFit: 'cover',
+                                          border: isOnline ? '2px solid #22D3EE' : '2px solid rgba(148, 163, 184, 0.3)'
+                                        }}
+                                      />
+                                    ) : (
+                                      <div 
+                                        style={{
+                                          width: '40px',
+                                          height: '40px',
+                                          borderRadius: '50%',
+                                          background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontSize: '18px',
+                                          border: isOnline ? '2px solid #22D3EE' : '2px solid rgba(148, 163, 184, 0.3)'
+                                        }}
+                                      >
+                                        👤
+                                      </div>
+                                    )}
+                                    {isOnline && (
+                                      <div style={{
+                                        position: 'absolute',
+                                        bottom: '0',
+                                        right: '0',
+                                        width: '12px',
+                                        height: '12px',
+                                        borderRadius: '50%',
+                                        background: '#22D3EE',
+                                        border: '2px solid #0f172a',
+                                        boxShadow: '0 0 6px rgba(34, 211, 238, 0.6)'
+                                      }}></div>
+                                    )}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      justifyContent: 'space-between', 
+                                      alignItems: 'center',
+                                      marginBottom: '4px'
+                                    }}>
+                                      <div style={{ 
+                                        fontWeight: 600, 
+                                        fontSize: '14px', 
+                                        color: '#fff',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {displayName}
+                                      </div>
+                                      {lastMsg && (
+                                        <span style={{ fontSize: '11px', color: 'var(--color-muted)', flexShrink: 0, marginLeft: '8px' }}>
+                                          {formatMessageTime(lastMsg.created_at)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {lastMsg ? (
+                                      <div style={{ 
+                                        fontSize: '12px', 
+                                        color: 'var(--color-muted)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {lastMsg.sender_user_id === user?.id ? 'Bạn: ' : ''}{lastMsg.content}
+                                      </div>
+                                    ) : (
+                                      <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                                        Chưa có tin nhắn
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input Area - Fixed at bottom */}
+                  <div style={{ 
+                    padding: '14px 16px', 
+                    borderTop: '1px solid rgba(34, 211, 238, 0.15)',
+                    display: 'flex',
+                    gap: '10px',
+                    alignItems: 'center',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden',
+                    background: 'linear-gradient(180deg, rgba(15,23,42,0.98), rgba(10,14,26,0.99))',
+                    flexShrink: 0,
+                    borderRadius: '0 0 16px 16px'
+                  }}>
                     <input
                       type="text"
-                      placeholder="Nhắn Thế giới..."
-                      onFocus={() => openChatOverlay('world')}
+                      placeholder={chatChannel === 'world' ? 'Nhắn Thế giới...' : 'Nhắn bạn bè...'}
+                      onFocus={() => {
+                        if (chatChannel === 'world') {
+                          openChatOverlay('world')
+                        } else {
+                          openChatOverlay('friend')
+                        }
+                      }}
                       readOnly
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(34, 211, 238, 0.25)',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        color: '#e2e8f0',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        width: 0,
+                        transition: 'all 0.2s ease',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)'
+                      }}
                     />
-                    <input
-                      type="text"
-                      placeholder="Chọn bạn bè để trò chuyện"
-                      onFocus={() => openChatOverlay('friend')}
-                      readOnly
-                    />
-                    <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
-                      Hỏi Cao nhân
-                    </button>
+                    <select
+                      value={chatChannel}
+                      onChange={(e) => setChatChannel(e.target.value as 'world' | 'friend')}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(34, 211, 238, 0.25)',
+                        background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(99, 102, 241, 0.1))',
+                        color: '#22d3ee',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        minWidth: '90px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <option value="world">Thế giới</option>
+                      <option value="friend">Bạn bè</option>
+                    </select>
                   </div>
                 </div>
               )}
               {activeTab === 'ai' && (
-                <div className="chat-tab">
-                  <div className="info-placeholder">
-                    Hỏi đáp Cao nhân AI theo các mức Basic / Trial / Pro.
-                    <div style={{ marginTop: 12 }}>
-                      <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
-                        Mở khung AI
-                      </button>
+                <div className="chat-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
+                  {/* Messages List - Fixed height with scroll */}
+                  <div 
+                    ref={aiMessagesRef}
+                    style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px', minHeight: 0, maxHeight: 'calc(100% - 60px)', width: '100%', boxSizing: 'border-box' }}
+                  >
+                    <div className="chat-messages-list">
+                      {aiMessages.length === 0 && (
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                          Bắt đầu hỏi Cao nhân về Caro.
+                        </div>
+                      )}
+                      {aiMessages.slice(-10).map((msg) => {
+                        const isUser = msg.role === 'user'
+                        return (
+                          <div 
+                            key={msg.id} 
+                            style={{
+                              padding: '8px 12px',
+                              marginBottom: '8px',
+                              borderRadius: '8px',
+                              background: isUser ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                              border: `1px solid ${isUser ? 'rgba(34, 211, 238, 0.2)' : 'rgba(255, 255, 255, 0.08)'}`
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: isUser ? '#22D3EE' : '#fff' }}>
+                                {isUser ? (userDisplayName || 'Bạn') : (msg.model?.toUpperCase() || 'AI')}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--color-text)', wordBreak: 'break-word' }}>
+                              {msg.content}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
+                  </div>
+
+                  {/* Input Area - Sticky at bottom */}
+                  <div className="ai-chat-input-bar">
+                    <input
+                      type="text"
+                      placeholder={t('common.askCaoNhan') || "Hỏi Cao nhân về Caro..."}
+                      onFocus={() => openChatOverlay('ai')}
+                      readOnly
+                    />
+                    <select
+                      value={aiMode}
+                      onChange={(e) => setAiMode(e.target.value as 'basic' | 'trial' | 'pro')}
+                    >
+                      <option value="basic">Free</option>
+                      <option value="trial">Trial</option>
+                      <option value="pro">Pro</option>
+                    </select>
                   </div>
                 </div>
               )}
@@ -1967,42 +2564,308 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
           <div className="social-content">
             {activeTab === 'friends' && renderFriendsPanel()}
             {activeTab === 'chat' && (
-              <div className="chat-tab">
-                <div className="chat-overlay-trigger" onClick={() => openChatOverlay('world')}>
-                  <div className="chat-trigger-copy">
-                    <div className="chat-trigger-title">Truyền Âm nhanh</div>
-                    <div className="chat-trigger-sub">Nhấn để mở cửa sổ chat to giữa màn hình</div>
+              <div className="chat-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
+                {/* Messages List - Fixed height with scroll */}
+                <div 
+                  ref={chatChannel === 'world' ? chatMessagesRef : null}
+                  style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px', minHeight: 0, maxHeight: 'calc(100% - 60px)', width: '100%', boxSizing: 'border-box' }}
+                >
+                  {chatChannel === 'world' ? (
+                    <div className="chat-messages-list">
+                      {worldChat.status === 'connecting' && worldChat.messages.length === 0 && (
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                          Đang kết nối realtime...
                   </div>
-                  <button className="chat-send-btn" type="button">Mở</button>
+                      )}
+                      {worldChat.status === 'error' && worldChat.messages.length === 0 && (
+                        <div style={{ padding: '16px', textAlign: 'center', color: '#f87171', fontSize: '14px' }}>
+                          Chat offline, thử refresh hoặc đăng nhập lại.
                 </div>
-                <div className="chat-trigger-row">
+                      )}
+                      {worldChat.messages.length === 0 && worldChat.status !== 'error' && (
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                          Chưa có tin nhắn. Hãy gửi lời chào đầu tiên.
+                        </div>
+                      )}
+                      {worldChat.messages.slice(-10).map((msg) => {
+                        const mine = msg.sender_user_id === user?.id
+                        const senderName = mine 
+                          ? (userDisplayName || 'Bạn')
+                          : (msg.sender_profile?.display_name || msg.sender_profile?.username || 'Người chơi')
+                        return (
+                          <div 
+                            key={msg.id} 
+                            style={{
+                              padding: '8px 12px',
+                              marginBottom: '8px',
+                              borderRadius: '8px',
+                              background: mine ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                              border: `1px solid ${mine ? 'rgba(34, 211, 238, 0.2)' : 'rgba(255, 255, 255, 0.08)'}`
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: mine ? '#22D3EE' : '#fff' }}>
+                                {senderName}
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
+                                {formatMessageTime(msg.created_at)}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--color-text)', wordBreak: 'break-word' }}>
+                              {msg.content}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="chat-friends-list">
+                      {acceptedFriends.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                          Chưa có bạn bè. Thêm bạn bè để trò chuyện.
+                        </div>
+                      ) : (
+                        acceptedFriends.map((friend) => {
+                          const displayName = friend.profile?.display_name || friend.profile?.username || t('home.friends.anonymous')
+                          const lastMsg = friendLastMessages[friend.friend_id]
+                          const isOnline = friend.profile?.is_online
+                          
+                          return (
+                            <div
+                              key={friend.friend_id}
+                              onClick={() => {
+                                openChatOverlay('friend', friend.friend_id)
+                              }}
+                              style={{
+                                padding: '12px',
+                                marginBottom: '8px',
+                                borderRadius: '10px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                                e.currentTarget.style.borderColor = 'rgba(34, 211, 238, 0.3)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ position: 'relative' }}>
+                                  {friend.profile?.avatar_url ? (
+                                    <img 
+                                      src={friend.profile.avatar_url} 
+                                      alt={displayName}
+                                      style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        border: isOnline ? '2px solid #22D3EE' : '2px solid rgba(148, 163, 184, 0.3)'
+                                      }}
+                                    />
+                                  ) : (
+                                    <div 
+                                      style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '18px',
+                                        border: isOnline ? '2px solid #22D3EE' : '2px solid rgba(148, 163, 184, 0.3)'
+                                      }}
+                                    >
+                                      👤
+                                    </div>
+                                  )}
+                                  {isOnline && (
+                                    <div style={{
+                                      position: 'absolute',
+                                      bottom: '0',
+                                      right: '0',
+                                      width: '12px',
+                                      height: '12px',
+                                      borderRadius: '50%',
+                                      background: '#22D3EE',
+                                      border: '2px solid #0f172a',
+                                      boxShadow: '0 0 6px rgba(34, 211, 238, 0.6)'
+                                    }}></div>
+                                  )}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center',
+                                    marginBottom: '4px'
+                                  }}>
+                                    <div style={{ 
+                                      fontWeight: 600, 
+                                      fontSize: '14px', 
+                                      color: '#fff',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {displayName}
+                                    </div>
+                                    {lastMsg && (
+                                      <span style={{ fontSize: '11px', color: 'var(--color-muted)', flexShrink: 0, marginLeft: '8px' }}>
+                                        {formatMessageTime(lastMsg.created_at)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {lastMsg ? (
+                                    <div style={{ 
+                                      fontSize: '12px', 
+                                      color: 'var(--color-muted)',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {lastMsg.sender_user_id === user?.id ? 'Bạn: ' : ''}{lastMsg.content}
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                                      Chưa có tin nhắn
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area - Fixed at bottom */}
+                <div style={{ 
+                  padding: '14px 16px', 
+                  borderTop: '1px solid rgba(34, 211, 238, 0.15)',
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'center',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(180deg, rgba(15,23,42,0.98), rgba(10,14,26,0.99))',
+                  flexShrink: 0,
+                  borderRadius: '0 0 16px 16px'
+                }}>
                   <input
                     type="text"
-                    placeholder="Nhắn Thế giới..."
-                    onFocus={() => openChatOverlay('world')}
+                    placeholder={chatChannel === 'world' ? 'Nhắn Thế giới...' : 'Nhắn bạn bè...'}
+                    onFocus={() => {
+                      if (chatChannel === 'world') {
+                        openChatOverlay('world')
+                      } else {
+                        openChatOverlay('friend')
+                      }
+                    }}
                     readOnly
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(34, 211, 238, 0.25)',
+                      background: 'rgba(15, 23, 42, 0.6)',
+                      color: '#e2e8f0',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      width: 0,
+                      transition: 'all 0.2s ease',
+                      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)'
+                    }}
                   />
-                  <input
-                    type="text"
-                    placeholder="Chọn bạn bè để trò chuyện"
-                    onFocus={() => openChatOverlay('friend')}
-                    readOnly
-                  />
-                  <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
-                    Hỏi Cao nhân
-                  </button>
+                  <select
+                    value={chatChannel}
+                    onChange={(e) => setChatChannel(e.target.value as 'world' | 'friend')}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(34, 211, 238, 0.25)',
+                      background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(99, 102, 241, 0.1))',
+                      color: '#22d3ee',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      minWidth: '90px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <option value="world">Thế giới</option>
+                    <option value="friend">Bạn bè</option>
+                  </select>
                 </div>
               </div>
             )}
             {activeTab === 'ai' && (
-              <div className="chat-tab">
-                <div className="info-placeholder">
-                  Hỏi đáp Cao nhân AI theo các mức Basic / Trial / Pro.
-                  <div style={{ marginTop: 12 }}>
-                    <button className="chat-send-btn" type="button" onClick={() => openChatOverlay('ai')}>
-                      Mở khung AI
-                    </button>
+              <div className="chat-tab" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', position: 'relative' }}>
+                {/* Messages List - Fixed height with scroll */}
+                <div 
+                  ref={aiMessagesRef}
+                  style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px', minHeight: 0, maxHeight: 'calc(100% - 60px)', width: '100%', boxSizing: 'border-box' }}
+                >
+                  <div className="chat-messages-list">
+                    {aiMessages.length === 0 && (
+                      <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-muted)', fontSize: '14px' }}>
+                        Bắt đầu hỏi Cao nhân về Caro.
+                      </div>
+                    )}
+                    {aiMessages.slice(-10).map((msg) => {
+                      const isUser = msg.role === 'user'
+                      return (
+                        <div 
+                          key={msg.id} 
+                          style={{
+                            padding: '8px 12px',
+                            marginBottom: '8px',
+                            borderRadius: '8px',
+                            background: isUser ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                            border: `1px solid ${isUser ? 'rgba(34, 211, 238, 0.2)' : 'rgba(255, 255, 255, 0.08)'}`
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: isUser ? '#22D3EE' : '#fff' }}>
+                              {isUser ? (userDisplayName || 'Bạn') : (msg.model?.toUpperCase() || 'AI')}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '13px', color: 'var(--color-text)', wordBreak: 'break-word' }}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
+                </div>
+
+                {/* Input Area - Sticky at bottom */}
+                <div className="ai-chat-input-bar">
+                  <input
+                    type="text"
+                    placeholder={t('common.askCaoNhan') || "Hỏi Cao nhân về Caro..."}
+                    onFocus={() => openChatOverlay('ai')}
+                    readOnly
+                  />
+                  <select
+                    value={aiMode}
+                    onChange={(e) => setAiMode(e.target.value as 'basic' | 'trial' | 'pro')}
+                  >
+                    <option value="basic">Free</option>
+                    <option value="trial">Trial</option>
+                    <option value="pro">Pro</option>
+                  </select>
                 </div>
               </div>
             )}
@@ -2079,6 +2942,32 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
                   </button>
                 )
               })}
+            </div>
+
+            {/* Swap 2 Toggle */}
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '12px 16px', 
+              background: 'rgba(34, 211, 238, 0.05)', 
+              borderRadius: '12px',
+              border: '1px solid rgba(34, 211, 238, 0.2)'
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={trainingSwap2}
+                  onChange={(e) => setTrainingSwap2(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: '#22D3EE' }}
+                />
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>
+                    🔄 Swap 2 Opening
+                  </div>
+                  <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '2px' }}>
+                    Luyện tập luật mở đầu chuyên nghiệp với AI
+                  </div>
+                </div>
+              </label>
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -2338,13 +3227,215 @@ export default function Home({ mobileMenuOpen, onCloseMobileMenu, user, rank }: 
         </div>
       )}
 
+      {viewingProfileId && (
+        <div
+          className="popup-overlay"
+          onClick={closeFriendProfile}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 6, 23, 0.85)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16
+          }}
+        >
+          <div
+            className="popup-content glass-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 760,
+              borderRadius: 16,
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%)',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
+              padding: 16
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 18, color: '#E2E8F0', letterSpacing: '-0.02em' }}>
+                {t('profile.overview')}
+              </h3>
+              <button
+                onClick={closeFriendProfile}
+                style={{
+                  border: '1px solid rgba(148, 163, 184, 0.35)',
+                  background: 'transparent',
+                  color: '#E2E8F0',
+                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  cursor: 'pointer',
+                  fontSize: 16
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {viewingProfileLoading ? (
+              <div style={{ padding: '24px 0', color: '#E2E8F0', textAlign: 'center' }}>
+                {t('home.friends.profileLoading')}
+              </div>
+            ) : viewingProfileError ? (
+              <div style={{ padding: '24px 0', color: '#FCA5A5', textAlign: 'center', fontWeight: 600 }}>
+                {viewingProfileError || t('home.friends.profileError')}
+              </div>
+            ) : viewingProfile ? (
+              (() => {
+                const rankCode = (viewingProfile.current_rank || 'vo_danh') as any
+                const mainRank = (['vo_danh', 'tan_ky', 'hoc_ky', 'ky_lao', 'cao_ky', 'ky_thanh', 'truyen_thuyet'].includes(rankCode) ? rankCode : 'vo_danh') as any
+                const totalMatches = viewingProfile.total_matches || 0
+                const totalWins = viewingProfile.total_wins || 0
+                const winRate = totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0
+                const streak = viewingProfile.win_streak || 0
+                const elo = viewingProfile.elo_rating || 0
+                const mp = viewingProfile.mindpoint || 0
+                const rankLevel = viewingProfile.rank_level || 1
+                const level = viewingProfile.level || 1
+                const exp = viewingProfile.exp || 0
+                const expNeeded = Math.max(100, Math.floor(100 * Math.pow(level, 1.5)))
+                const displayName = viewingProfile.display_name || viewingProfile.username || t('home.friends.anonymous')
+                const emailDisplay = viewingProfile.email || 'Ẩn'
+                const phoneDisplay = viewingProfile.phone || t('profile.noPhone')
+                const titleDisplay = viewingProfile.title || t('profile.titleValue')
+
+                return (
+                  <div style={{ color: '#E2E8F0' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <div
+                        style={{
+                          width: 88,
+                          height: 88,
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '3px solid rgba(56, 189, 248, 0.65)',
+                          background: 'linear-gradient(135deg, #0ea5e9, #1e293b)'
+                        }}
+                      >
+                        {viewingProfile.avatar_url ? (
+                          <img src={viewingProfile.avatar_url} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B1224', fontSize: 32 }}>👤</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 800 }}>{displayName}</div>
+                    </div>
+
+                    <div style={{ background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(94,234,212,0.3)', borderRadius: 14, padding: 14, marginBottom: 12 }}>
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ color: '#67e8f9', fontSize: 13, marginBottom: 4 }}>Level {level}</div>
+                        <div style={{ width: '100%', height: 6, borderRadius: 999, background: 'rgba(148,163,184,0.3)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, (exp / expNeeded) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #22d3ee, #3b82f6)' }}></div>
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8' }}>{exp} / {expNeeded} EXP</div>
+                      </div>
+
+                      <div>
+                        <div style={{ color: '#67e8f9', fontSize: 13, marginBottom: 4 }}>{t('home.rank')}: {getRankLabel(mainRank)}</div>
+                        <div style={{ width: '100%', height: 6, borderRadius: 999, background: 'rgba(148,163,184,0.3)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, (mp % 100))}%`, height: '100%', background: 'linear-gradient(90deg, #0ea5e9, #6366f1)' }}></div>
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8' }}>{mp % 100} / 100 MP</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 10 }}>
+                      <RankBadgeV2 rank={mainRank} tier={'so_ky' as any} level={rankLevel as any} showTier={false} />
+                    </div>
+
+                    <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 4 }}>Danh hiệu</div>
+                      <div style={{
+                        display: 'inline-block',
+                        padding: '10px 16px',
+                        borderRadius: 12,
+                        border: '1px solid rgba(14,165,233,0.35)',
+                        background: 'rgba(14,165,233,0.12)',
+                        color: '#22d3ee',
+                        fontWeight: 700
+                      }}>
+                        “{titleDisplay}”
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.6)', fontSize: 13 }}>
+                        <span style={{ color: '#94a3b8' }}>Email:</span>
+                        <span style={{ color: '#e2e8f0' }}>{emailDisplay}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.25)', background: 'rgba(15,23,42,0.6)', fontSize: 13 }}>
+                        <span style={{ color: '#94a3b8' }}>{t('profile.phoneLabel')}:</span>
+                        <span style={{ color: '#e2e8f0' }}>{phoneDisplay}</span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                      gap: 10,
+                      background: 'rgba(14,165,233,0.08)',
+                      border: '1px solid rgba(14,165,233,0.35)',
+                      borderRadius: 16,
+                      padding: 12
+                    }}>
+                      <div style={{ textAlign: 'center', padding: 10 }}>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>{t('profile.stats.winRate')}</div>
+                        <div style={{ color: '#E2E8F0', fontSize: 20, fontWeight: 800 }}>{winRate}%</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: 10 }}>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>{t('profile.stats.total')}</div>
+                        <div style={{ color: '#E2E8F0', fontSize: 20, fontWeight: 800 }}>{totalMatches}</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: 10 }}>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>{t('profile.stats.streak')}</div>
+                        <div style={{ color: '#E2E8F0', fontSize: 20, fontWeight: 800 }}>{streak}</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: 10 }}>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>Elo</div>
+                        <div style={{ color: '#E2E8F0', fontSize: 20, fontWeight: 800 }}>{elo}</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()
+            ) : null}
+          </div>
+        </div>
+      )}
+
       <HomeChatOverlay
         isOpen={chatOverlayOpen}
-        onClose={() => setChatOverlayOpen(false)}
+        onClose={() => {
+          setChatOverlayOpen(false)
+          setSelectedFriendId(null)
+        }}
         userId={user?.id}
         displayName={userDisplayName}
         friends={acceptedFriends}
         initialTab={chatOverlayTab}
+        initialActiveFriend={selectedFriendId}
+        onAiMessagesUpdate={(messages) => {
+          if (chatOverlayTab === 'ai') {
+            setAiMessages(messages.map(msg => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              model: msg.model
+            })))
+          }
+        }}
+      />
+
+      {/* Tournament Modal */}
+      <TournamentModal
+        isOpen={showTournamentModal}
+        onClose={() => setShowTournamentModal(false)}
+        user={user}
       />
 
       <style>{`

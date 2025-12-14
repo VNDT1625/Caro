@@ -1,0 +1,13 @@
+{
+  "moves": [
+    {"x": 7, "y": 7, "player": "X"},
+    {"x": 7, "y": 8, "player": "O"},
+    {"x": 7, "y": 9, "player": "X"},
+    {"x": 7, "y": 10, "player": "O"},
+    {"x": 0, "y": 0, "player": "X"}
+  ],
+  "expected_analysis": {
+    "rating": "blunder",
+    "mistakes": 1
+  }
+}

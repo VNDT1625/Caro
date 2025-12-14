@@ -12,7 +12,7 @@ async function fetchProfiles(supabase, ids) {
   if (!ids.length) return []
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, username, display_name, avatar_url, rank_tier, last_active')
+    .select('user_id, username, display_name, avatar_url, current_rank, last_active')
     .in('user_id', ids)
 
   if (error) throw error
@@ -67,7 +67,7 @@ async function resolveFriendPayload(supabase, userId, rows) {
             username: profile.username,
             display_name: profile.display_name,
             avatar_url: profile.avatar_url,
-            rank_tier: profile.rank_tier,
+            current_rank: profile.current_rank,
             last_active: profile.last_active,
             is_online: isOnline(profile.last_active)
           }
@@ -137,7 +137,7 @@ function registerFriendRoutes(app, { supabaseAdmin, requireAuth }) {
     try {
       const { data: profiles, error } = await supabaseAdmin
         .from('profiles')
-        .select('user_id, username, display_name, avatar_url, rank_tier, last_active')
+        .select('user_id, username, display_name, avatar_url, current_rank, last_active')
         .or(`username.ilike.%${keyword}%,display_name.ilike.%${keyword}%`)
         .neq('user_id', userId)
         .limit(MAX_SEARCH_RESULTS)
@@ -172,7 +172,7 @@ function registerFriendRoutes(app, { supabaseAdmin, requireAuth }) {
             username: profile.username,
             display_name: profile.display_name,
             avatar_url: profile.avatar_url,
-            rank_tier: profile.rank_tier,
+            current_rank: profile.current_rank,
             last_active: profile.last_active,
             is_online: isOnline(profile.last_active)
           },

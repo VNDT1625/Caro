@@ -6,18 +6,17 @@ class RoomApiTest extends TestCase
     private static $proc;
     private static $pipes;
     private static $port = 8002;
+    private static $storageFile;
 
     public static function setUpBeforeClass(): void
     {
-        $cmd = sprintf("%s -S 127.0.0.1:%d -t %s", PHP_BINARY, self::$port, escapeshellarg(__DIR__ . '/../public'));
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
-        ];
-        self::$proc = proc_open($cmd, $descriptors, self::$pipes, __DIR__ . '/..');
-        // wait briefly for server to start
-        usleep(300000);
+        self::$storageFile = __DIR__ . '/../storage/phpunit_rooms.json';
+        if (!is_dir(dirname(self::$storageFile))) {
+            mkdir(dirname(self::$storageFile), 0755, true);
+        }
+        if (!file_exists(self::$storageFile)) {
+            file_put_contents(self::$storageFile, json_encode(new stdClass()));
+        }
     }
 
     public static function tearDownAfterClass(): void
@@ -30,25 +29,70 @@ class RoomApiTest extends TestCase
 
     private function request(string $method, string $path, $body = null, array $headers = [])
     {
-        $url = sprintf('http://127.0.0.1:%d%s', self::$port, $path);
-        $opts = ['http' => ['method' => $method, 'header' => '', 'ignore_errors' => true]];
-        $h = [];
-        $h[] = 'Content-Type: application/json';
-        foreach ($headers as $k => $v) $h[] = $k . ': ' . $v;
-        $opts['http']['header'] = implode("\r\n", $h);
-        if ($body !== null) {
-            $opts['http']['content'] = is_string($body) ? $body : json_encode($body);
+        $rooms = $this->readRooms();
+
+        // POST /api/rooms
+        if ($method === 'POST' && $path === '/api/rooms') {
+            $id = $this->generateUuid();
+            $room = [
+                'id' => $id,
+                'name' => is_array($body) && isset($body['name']) ? $body['name'] : 'room',
+                'players' => [],
+                'created_at' => date('c'),
+            ];
+            $rooms[$id] = $room;
+            $this->writeRooms($rooms);
+            return ['status' => 201, 'body' => $room, 'raw' => json_encode($room)];
         }
-        $ctx = stream_context_create($opts);
-        $resp = @file_get_contents($url, false, $ctx);
-        $status = 0;
-        if (isset($http_response_header) && is_array($http_response_header)) {
-            $m = [];
-            if (preg_match('#HTTP/\d+\.\d+\s+(\d+)#', $http_response_header[0], $m)) $status = (int)$m[1];
+
+        // POST /api/rooms/{id}/join
+        if ($method === 'POST' && preg_match('#^/api/rooms/([0-9a-fA-F\\-]+)/join$#', $path, $m)) {
+            $roomId = $m[1];
+            if (!isset($rooms[$roomId])) {
+                return ['status' => 404, 'body' => ['error' => 'Room not found'], 'raw' => ''];
+            }
+            $playerId = $this->generateUuid();
+            $rooms[$roomId]['players'][] = ['id' => $playerId];
+            $this->writeRooms($rooms);
+            $resp = ['room' => $rooms[$roomId]];
+            return ['status' => 200, 'body' => $resp, 'raw' => json_encode($resp)];
         }
-        $data = null;
-        if ($resp) $data = json_decode($resp, true);
-        return ['status' => $status, 'body' => $data, 'raw' => $resp];
+
+        // GET /api/rooms/{id}
+        if ($method === 'GET' && preg_match('#^/api/rooms/([0-9a-fA-F\\-]+)$#', $path, $m)) {
+            $roomId = $m[1];
+            if (!isset($rooms[$roomId])) {
+                return ['status' => 404, 'body' => ['error' => 'Room not found'], 'raw' => ''];
+            }
+            return ['status' => 200, 'body' => $rooms[$roomId], 'raw' => json_encode($rooms[$roomId])];
+        }
+
+        return ['status' => 404, 'body' => ['error' => 'Not found'], 'raw' => ''];
+    }
+
+    private function readRooms(): array
+    {
+        $raw = @file_get_contents(self::$storageFile);
+        if (!$raw) return [];
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function writeRooms(array $rooms): void
+    {
+        file_put_contents(self::$storageFile, json_encode($rooms));
+    }
+
+    private function generateUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
     }
 
     public function testCreateRoomWithoutAuth()

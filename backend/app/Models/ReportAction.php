@@ -1,0 +1,263 @@
+<?php
+
+namespace App\Models;
+
+/**
+ * ReportAction Model
+ * 
+ * Represents an audit log entry for actions taken on reports.
+ * This is an immutable record - once created, it should not be modified.
+ * 
+ * @property string $id UUID primary key
+ * @property string $report_id UUID of the related report
+ * @property string|null $admin_id UUID of the admin who performed the action
+ * @property string $action Action type (e.g., 'status_change', 'ban_applied')
+ * @property string|null $old_status Previous status value
+ * @property string|null $new_status New status value
+ * @property string|null $notes Additional notes about the action
+ * @property array|null $metadata Additional JSON metadata
+ * @property string $created_at Creation timestamp (immutable)
+ */
+class ReportAction extends BaseModel
+{
+    /**
+     * The table associated with the model.
+     */
+    protected string $table = 'report_actions';
+
+    /**
+     * Common action types
+     */
+    public const ACTION_STATUS_CHANGE = 'status_change';
+    public const ACTION_BAN_APPLIED = 'ban_applied';
+    public const ACTION_BAN_LIFTED = 'ban_lifted';
+    public const ACTION_APPEAL_PROCESSED = 'appeal_processed';
+    public const ACTION_ADMIN_NOTE_ADDED = 'admin_note_added';
+    public const ACTION_AI_ANALYSIS_COMPLETED = 'ai_analysis_completed';
+    public const ACTION_RULE_ANALYSIS_COMPLETED = 'rule_analysis_completed';
+    public const ACTION_ESCALATED = 'escalated';
+    public const ACTION_DISMISSED = 'dismissed';
+    public const ACTION_RESOLVED = 'resolved';
+
+    public const VALID_ACTIONS = [
+        self::ACTION_STATUS_CHANGE,
+        self::ACTION_BAN_APPLIED,
+        self::ACTION_BAN_LIFTED,
+        self::ACTION_APPEAL_PROCESSED,
+        self::ACTION_ADMIN_NOTE_ADDED,
+        self::ACTION_AI_ANALYSIS_COMPLETED,
+        self::ACTION_RULE_ANALYSIS_COMPLETED,
+        self::ACTION_ESCALATED,
+        self::ACTION_DISMISSED,
+        self::ACTION_RESOLVED,
+    ];
+
+    /**
+     * Maximum notes length
+     */
+    public const MAX_NOTES_LENGTH = 2000;
+
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected array $fillable = [
+        'report_id',
+        'admin_id',
+        'action',
+        'old_status',
+        'new_status',
+        'notes',
+        'metadata',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected array $casts = [
+        'metadata' => 'array',
+        'created_at' => 'datetime',
+    ];
+
+    /**
+     * Get the related report.
+     * 
+     * @return array|null Report data
+     */
+    public function report(): ?array
+    {
+        if (empty($this->attributes['report_id'])) {
+            return null;
+        }
+        return $this->belongsTo('reports', 'report_id', 'id');
+    }
+
+    /**
+     * Get the admin who performed the action.
+     * 
+     * @return array|null Profile data of the admin
+     */
+    public function admin(): ?array
+    {
+        if (empty($this->attributes['admin_id'])) {
+            return null;
+        }
+        return $this->belongsTo('profiles', 'admin_id', 'user_id');
+    }
+
+    /**
+     * Validate action data before creation.
+     * 
+     * @param array $data Action data to validate
+     * @return array Validation result ['valid' => bool, 'errors' => array]
+     */
+    public static function validate(array $data): array
+    {
+        $errors = [];
+
+        // Required fields
+        if (empty($data['report_id'])) {
+            $errors['report_id'] = 'Report ID is required';
+        }
+
+        if (empty($data['action']) || strlen(trim($data['action'])) === 0) {
+            $errors['action'] = 'Action type is required and cannot be empty';
+        }
+
+        // Optional field validation
+        if (!empty($data['notes']) && strlen($data['notes']) > self::MAX_NOTES_LENGTH) {
+            $errors['notes'] = 'Notes must not exceed ' . self::MAX_NOTES_LENGTH . ' characters';
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * Check if this is a status change action.
+     * 
+     * @return bool
+     */
+    public function isStatusChange(): bool
+    {
+        return $this->getAttribute('action') === self::ACTION_STATUS_CHANGE;
+    }
+
+    /**
+     * Check if this is a ban-related action.
+     * 
+     * @return bool
+     */
+    public function isBanAction(): bool
+    {
+        $action = $this->getAttribute('action');
+        return in_array($action, [self::ACTION_BAN_APPLIED, self::ACTION_BAN_LIFTED]);
+    }
+
+    /**
+     * Check if this action was performed by an admin.
+     * 
+     * @return bool
+     */
+    public function hasAdmin(): bool
+    {
+        return !empty($this->attributes['admin_id']);
+    }
+
+    /**
+     * Check if this action was auto-generated (no admin).
+     * 
+     * @return bool
+     */
+    public function isAutoGenerated(): bool
+    {
+        return empty($this->attributes['admin_id']);
+    }
+
+    /**
+     * Create a new action log entry.
+     * 
+     * @param array $data Action data
+     * @return self
+     */
+    public static function createAction(array $data): self
+    {
+        $action = new self();
+        $action->fill($data);
+        
+        return $action;
+    }
+
+    /**
+     * Create a status change action.
+     * 
+     * @param string $reportId Report UUID
+     * @param string|null $adminId Admin UUID (null for auto-generated)
+     * @param string|null $oldStatus Previous status
+     * @param string $newStatus New status
+     * @param string|null $notes Optional notes
+     * @return self
+     */
+    public static function createStatusChange(
+        string $reportId,
+        ?string $adminId,
+        ?string $oldStatus,
+        string $newStatus,
+        ?string $notes = null
+    ): self {
+        return self::createAction([
+            'report_id' => $reportId,
+            'admin_id' => $adminId,
+            'action' => self::ACTION_STATUS_CHANGE,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'notes' => $notes,
+        ]);
+    }
+
+    /**
+     * Create a ban applied action.
+     * 
+     * @param string $reportId Report UUID
+     * @param string $adminId Admin UUID
+     * @param array $banDetails Ban details for metadata
+     * @param string|null $notes Optional notes
+     * @return self
+     */
+    public static function createBanApplied(
+        string $reportId,
+        string $adminId,
+        array $banDetails,
+        ?string $notes = null
+    ): self {
+        return self::createAction([
+            'report_id' => $reportId,
+            'admin_id' => $adminId,
+            'action' => self::ACTION_BAN_APPLIED,
+            'notes' => $notes,
+            'metadata' => $banDetails,
+        ]);
+    }
+
+    /**
+     * Create a ban lifted action.
+     * 
+     * @param string $reportId Report UUID
+     * @param string $adminId Admin UUID
+     * @param string $liftReason Reason for lifting
+     * @return self
+     */
+    public static function createBanLifted(
+        string $reportId,
+        string $adminId,
+        string $liftReason
+    ): self {
+        return self::createAction([
+            'report_id' => $reportId,
+            'admin_id' => $adminId,
+            'action' => self::ACTION_BAN_LIFTED,
+            'notes' => $liftReason,
+        ]);
+    }
+}

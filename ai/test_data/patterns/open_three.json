@@ -1,0 +1,8 @@
+{
+  "board": [
+    [null, null, null],
+    [null, "X", "X"],
+    [null, null, "X"]
+  ],
+  "expected": "open_three"
+}

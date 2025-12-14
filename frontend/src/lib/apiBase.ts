@@ -18,6 +18,11 @@ function candidateValues(): string[] {
 }
 
 export function getApiBase(): string {
+  // Reset cache on each call in dev mode to allow hot reload
+  if (import.meta.env.DEV) {
+    cachedBaseUrl = null
+  }
+  
   if (cachedBaseUrl !== null) return cachedBaseUrl
 
   const fromEnv = candidateValues().find(Boolean)
@@ -27,8 +32,15 @@ export function getApiBase(): string {
   }
 
   if (typeof window !== 'undefined') {
-    const fallback = (window as any).__MP_API_BASE__ || window.location?.origin || ''
+    const fallback =
+      (window as any).__MP_API_BASE__ ||
+      // Dev fallback: if running Vite on 5173, use Node socket server on 8000 for chat/social APIs
+      (window.location?.port === '5173' ? `${window.location.protocol}//${window.location.hostname}:8000` : '') ||
+      window.location?.origin ||
+      ''
     cachedBaseUrl = sanitize(fallback)
+    
+    console.log('[apiBase] API Base URL:', cachedBaseUrl) // Debug log
     return cachedBaseUrl
   }
 

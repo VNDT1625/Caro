@@ -9,6 +9,24 @@ export default function Login() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const handleFacebookLogin = async () => {
+    setMessage('')
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: window.location.origin
+        }
+      })
+      if (error) throw error
+      setMessage('Đang chuyển tới Facebook...')
+    } catch (err: any) {
+      setMessage(err.message || 'Không thể kết nối Facebook, vui lòng thử lại')
+      setLoading(false)
+    }
+  }
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('')
@@ -62,6 +80,27 @@ export default function Login() {
           </div>
         </form>
         {message && <p style={{ color: 'var(--color-muted)' }}>{message}</p>}
+
+        <div style={{ margin: '16px 0', textAlign: 'center', color: 'var(--color-muted)', fontSize: '13px' }}>
+          — Hoặc —
+        </div>
+        <button
+          type="button"
+          onClick={handleFacebookLogin}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '10px',
+            background: '#1877F2',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            fontWeight: 600,
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          Đăng nhập bằng Facebook
+        </button>
         
         <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px', color: 'var(--color-muted)' }}>
           Chưa có tài khoản?{' '}

@@ -74,7 +74,8 @@ export default function Matchmaking() {
         boardSize: '15x15',
         winCondition: 5,
         turnTime: 30,
-        totalTime: 600
+        totalTime: 600,
+        swap2Enabled: true // Ranked mode always has Swap 2 enabled
       }
       
       const result = await joinMatchmakingQueue(user.id, matchSettings)

@@ -1,6 +1,9 @@
 import React from 'react'
 import GameBoard from '../components/GameBoard'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useSwap2Local } from '../hooks/useSwap2Local'
+import Swap2PhaseIndicator from '../components/swap2/Swap2PhaseIndicator'
+import ColorChoiceModal from '../components/swap2/ColorChoiceModal'
 
 type PlayerSide = 'X' | 'O'
 
@@ -194,6 +197,50 @@ export default function Hotseat() {
   const [draftForbiddenEnabled, setDraftForbiddenEnabled] = React.useState<boolean>(forbiddenEnabled)
   const [draftTimeEnabled, setDraftTimeEnabled] = React.useState<boolean>(timeEnabled)
   const [draftTimePerTurnSec, setDraftTimePerTurnSec] = React.useState<number>(timePerTurnSec)
+  // Swap2 opening rule (optional for Tiêu Dao)
+  const [swap2Enabled, setSwap2Enabled] = React.useState<boolean>(false)
+  const [draftSwap2Enabled, setDraftSwap2Enabled] = React.useState<boolean>(false)
+  // Track if swap2 phase completed for current round
+  const [swap2Completed, setSwap2Completed] = React.useState<boolean>(false)
+  // Player side mapping after swap2 (player1 = first player, player2 = second player)
+  const [playerSideMapping, setPlayerSideMapping] = React.useState<{ player1: PlayerSide; player2: PlayerSide }>({ player1: 'X', player2: 'O' })
+  // Initial board state after swap2 completion
+  const [initialBoardAfterSwap2, setInitialBoardAfterSwap2] = React.useState<Record<string, PlayerSide> | undefined>(undefined)
+
+  // Swap2 local hook
+  const swap2 = useSwap2Local({
+    enabled: swap2Enabled && !swap2Completed,
+    player1Name: playerNames.X,
+    player2Name: playerNames.O,
+    onComplete: (assignment) => {
+      console.log('🎨 Swap2 complete:', assignment)
+      setPlayerSideMapping({ player1: assignment.player1Side, player2: assignment.player2Side })
+      
+      // Convert tentative stones to board state
+      // In Swap2: stones 1,3 = Black(X), stone 2 = White(O)
+      // If 5 stones: stones 1,3,4 = Black(X), stones 2,5 = White(O)
+      const boardState: Record<string, PlayerSide> = {}
+      assignment.tentativeStones.forEach((stone) => {
+        const key = `${stone.x}_${stone.y}`
+        // Placement order: 1=Black, 2=White, 3=Black, 4=Black, 5=White
+        const isBlack = stone.placementOrder === 1 || stone.placementOrder === 3 || stone.placementOrder === 4
+        boardState[key] = isBlack ? 'X' : 'O'
+      })
+      console.log('🎯 Initial board after swap2:', boardState)
+      setInitialBoardAfterSwap2(boardState)
+      
+      setSwap2Completed(true)
+      // Set turn based on number of stones placed
+      // Gomoku alternates: B-W-B-W-B-W...
+      // After 3 stones (moves 1,2,3 = B-W-B): next is move 4 = White (O)
+      // After 5 stones (moves 1,2,3,4,5 = B-W-B-W-B): next is move 6 = White (O)
+      // So after swap2, next turn is always O (White)
+      setCurrentTurn('O')
+      // Find who plays White (O) based on assignment
+      const whitePlayerName = assignment.player1Side === 'O' ? playerNames.X : playerNames.O
+      setStatus(`${whitePlayerName} đi tiếp (Trắng)`)
+    }
+  })
 
   // Compute a responsive cell size so the full board fits without scrolling
   React.useEffect(() => {
@@ -226,11 +273,12 @@ export default function Hotseat() {
   // When opening the setup popup, initialize drafts from current settings
   React.useEffect(() => {
     if (showSetup) {
+      setDraftSwap2Enabled(swap2Enabled)
       setDraftForbiddenEnabled(forbiddenEnabled)
       setDraftTimeEnabled(timeEnabled)
       setDraftTimePerTurnSec(timePerTurnSec)
     }
-  }, [showSetup, forbiddenEnabled, timeEnabled, timePerTurnSec])
+  }, [showSetup, swap2Enabled, forbiddenEnabled, timeEnabled, timePerTurnSec])
 
   // Load persisted setup for smoother resume between visits
   React.useEffect(() => {
@@ -254,6 +302,9 @@ export default function Hotseat() {
       if (typeof parsed.timePerTurnSec === 'number') {
         setTimePerTurnSec(parsed.timePerTurnSec)
       }
+      if (typeof parsed.swap2Enabled === 'boolean') {
+        setSwap2Enabled(parsed.swap2Enabled)
+      }
     } catch (error) {
       console.warn('Không thể đọc cấu hình Tiêu Dao:', error)
     }
@@ -270,13 +321,14 @@ export default function Hotseat() {
           scores,
           forbiddenEnabled,
           timeEnabled,
-          timePerTurnSec
+          timePerTurnSec,
+          swap2Enabled
         })
       )
     } catch (error) {
       console.warn('Không thể lưu cấu hình Tiêu Dao:', error)
     }
-  }, [playerNames, scores, forbiddenEnabled, timeEnabled, timePerTurnSec])
+  }, [playerNames, scores, forbiddenEnabled, timeEnabled, timePerTurnSec, swap2Enabled])
 
   const handleNameChange = React.useCallback((side: PlayerSide, value: string) => {
     const sanitized = value.slice(0, 24)
@@ -285,11 +337,19 @@ export default function Hotseat() {
 
   const resetRoundState = React.useCallback(() => {
     setCurrentTurn('X')
-    setStatus(t('hotseat.startNewRoundBlackFirst'))
     setRoundResolved(false)
     setLastWinner(null)
     setTurnRemainingSec(timeEnabled ? timePerTurnSec : 0)
-  }, [t, timeEnabled, timePerTurnSec])
+    setInitialBoardAfterSwap2(undefined) // Reset initial board
+    // Reset swap2 for new round
+    if (swap2Enabled) {
+      setSwap2Completed(false)
+      // swap2.reset() will be triggered by useEffect when enabled changes
+      setStatus('Bắt đầu Swap 2 - Đặt 3 quân mở đầu')
+    } else {
+      setStatus(t('hotseat.startNewRoundBlackFirst'))
+    }
+  }, [t, timeEnabled, timePerTurnSec, swap2Enabled])
 
   const handleManualReset = React.useCallback(() => {
     resetRoundState()
@@ -433,15 +493,43 @@ export default function Hotseat() {
           </div>
 
           {/* Game Board (responsive cell size to fit viewport) */}
-          <div ref={boardAnchorRef} style={{ display: 'flex', justifyContent: 'center' }}>
-            <GameBoard
-              key={boardSeed}
-              enableForbidden={forbiddenEnabled}
-              onMove={handleMove}
-              onWin={handleWin}
-              onReset={handleBoardReset}
-              cellSizePx={cellSize}
-            />
+          <div ref={boardAnchorRef} style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            {/* Swap2 Phase Indicator */}
+            {swap2.isSwap2Active && (
+              <Swap2PhaseIndicator
+                phase={swap2.currentPhase!}
+                activePlayerName={swap2.getActivePlayerName()}
+                isCurrentUserActive={true}
+                stonesPlaced={swap2.stonesPlaced}
+                stonesRequired={swap2.stonesRequired}
+              />
+            )}
+            
+            {/* Tentative stones overlay during swap2 */}
+            <div style={{ position: 'relative' }}>
+              <GameBoard
+                key={boardSeed}
+                enableForbidden={forbiddenEnabled}
+                onMove={handleMove}
+                onWin={handleWin}
+                onReset={handleBoardReset}
+                cellSizePx={cellSize}
+                disabled={swap2.isSwap2Active && (swap2.currentPhase === 'swap2_choice' || swap2.currentPhase === 'swap2_final_choice')}
+                // Swap2 props
+                isSwap2Active={swap2.isSwap2Active}
+                swap2Phase={swap2.currentPhase}
+                tentativeStones={swap2.tentativeStones}
+                onSwap2PlaceStone={(x, y) => swap2.placeStone(x, y)}
+                // Initial board after swap2 completion
+                initialBoard={initialBoardAfterSwap2}
+                // Always pass currentTurn after swap2 to keep GameBoard in sync
+                initialCurrentPlayer={swap2Completed ? currentTurn : undefined}
+                // Pass currentPlayer to sync turn state with Hotseat
+                currentPlayer={swap2Completed ? currentTurn : undefined}
+              />
+              
+              {/* Tentative stones are now rendered by GameBoard component */}
+            </div>
           </div>
 
           {/* Player O Card */}
@@ -470,6 +558,9 @@ export default function Hotseat() {
               <button onClick={() => setShowSetup(false)} style={{ border: '1px solid rgba(148,163,184,0.35)', background: 'transparent', color: '#94A3B8', borderRadius: 8, padding: '4px 8px', cursor: 'pointer' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#E2E8F0' }}>
+                <input type="checkbox" checked={draftSwap2Enabled} onChange={() => setDraftSwap2Enabled((p) => !p)} /> 🔄 Swap 2 Opening
+              </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#E2E8F0' }}>
                 <input type="checkbox" checked={draftForbiddenEnabled} onChange={() => setDraftForbiddenEnabled((p) => !p)} /> 🚫 {t('hotseat.forbiddenRulesBlack')}
               </label>
@@ -506,11 +597,25 @@ export default function Hotseat() {
                 <button onClick={() => setShowSetup(false)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(148,163,184,0.35)', background: 'transparent', color: '#94A3B8', cursor: 'pointer' }}>{t('common.cancel')}</button>
                 <button
                   onClick={() => {
+                    const swap2Changed = draftSwap2Enabled !== swap2Enabled
+                    setSwap2Enabled(draftSwap2Enabled)
                     setForbiddenEnabled(draftForbiddenEnabled)
                     setTimeEnabled(draftTimeEnabled)
                     setTimePerTurnSec(draftTimePerTurnSec)
                     setTurnRemainingSec(draftTimeEnabled ? draftTimePerTurnSec : 0)
                     setShowSetup(false)
+                    // If swap2 setting changed, reset the game to apply new rules
+                    if (swap2Changed) {
+                      // Reset swap2 state
+                      setSwap2Completed(false)
+                      setInitialBoardAfterSwap2(undefined)
+                      // Reset board
+                      setBoardSeed((prev) => prev + 1)
+                      setCurrentTurn('X')
+                      setRoundResolved(false)
+                      setLastWinner(null)
+                      setStatus(draftSwap2Enabled ? 'Bắt đầu Swap 2 - Đặt 3 quân mở đầu' : t('hotseat.startNewRoundBlackFirst'))
+                    }
                   }}
                   style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(34,197,94,0.5)', background: 'rgba(34,197,94,0.15)', color: '#BBF7D0', cursor: 'pointer', fontWeight: 700 }}
                 >
@@ -560,6 +665,15 @@ export default function Hotseat() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Swap2 Color Choice Modal */}
+      {swap2.shouldShowChoiceModal && (
+        <ColorChoiceModal
+          phase={swap2.currentPhase as 'swap2_choice' | 'swap2_final_choice'}
+          onChoice={(choice) => swap2.makeChoice(choice)}
+          tentativeStones={swap2.tentativeStones}
+        />
       )}
 
       {/* CSS animations */}

@@ -1,4 +1,26 @@
+# AI Match Analysis System Dependencies
+# Core Framework
 fastapi
 uvicorn
+
+# Data Processing
 numpy
+
+# JIT Compilation for Performance (Task 8.7.1)
+numba
+
+# HTTP Client (for OpenRouter/DeepSeek API)
+httpx
+
+# Caching
+redis
+
+# Testing - Property-Based Testing
+hypothesis
+pytest
+pytest-asyncio
+
+# Pydantic for data validation
+pydantic
+
 # add ML libs below as needed

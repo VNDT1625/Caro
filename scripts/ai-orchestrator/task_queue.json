@@ -1,0 +1,23 @@
+{
+  "pending": [
+    {
+      "id": "ranked-1",
+      "spec": "ranked-bo3-system",
+      "task": "Implement SeriesManager service (Task 2 in tasks.md)",
+      "assigned_to": "kiro",
+      "priority": 1,
+      "dependencies": []
+    },
+    {
+      "id": "payment-1",
+      "spec": "payment-system",
+      "task": "Create payment system spec and implement Stripe/PayPal integration",
+      "assigned_to": "gpt",
+      "priority": 1,
+      "dependencies": []
+    }
+  ],
+  "in_progress": [],
+  "completed": [],
+  "failed": []
+}
