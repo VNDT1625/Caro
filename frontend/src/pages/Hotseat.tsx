@@ -2,6 +2,7 @@ import React from 'react'
 import GameBoard from '../components/GameBoard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useSwap2Local } from '../hooks/useSwap2Local'
+import { useEquippedSkins } from '../hooks/useEquippedSkins'
 import Swap2PhaseIndicator from '../components/swap2/Swap2PhaseIndicator'
 import ColorChoiceModal from '../components/swap2/ColorChoiceModal'
 
@@ -175,6 +176,7 @@ function PlayerCard({ side, name, score, isTurn, isLastWinner, onNameChange, tim
 
 export default function Hotseat() {
   const { t } = useLanguage()
+  const { pieceSkin, boardSkin } = useEquippedSkins()
   const [playerNames, setPlayerNames] = React.useState<Record<PlayerSide, string>>({
     X: 'Người chơi 1',
     O: 'Người chơi 2'
@@ -526,6 +528,9 @@ export default function Hotseat() {
                 initialCurrentPlayer={swap2Completed ? currentTurn : undefined}
                 // Pass currentPlayer to sync turn state with Hotseat
                 currentPlayer={swap2Completed ? currentTurn : undefined}
+                // Skin customization
+                pieceSkin={pieceSkin || undefined}
+                boardSkin={boardSkin || undefined}
               />
               
               {/* Tentative stones are now rendered by GameBoard component */}

@@ -319,7 +319,8 @@ export default function Profile() {
     if (!user) return
     setLoadingHistory(true)
     try {
-      const { data, error } = await supabase
+      // Query matches first
+      const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select(`
           id,
@@ -330,22 +331,53 @@ export default function Profile() {
           player_x_mindpoint_change,
           player_o_mindpoint_change,
           ended_at,
-          player_x:profiles!matches_player_x_user_id_fkey(username, display_name),
-          player_o:profiles!matches_player_o_user_id_fkey(username, display_name)
+          match_type
         `)
         .or(`player_x_user_id.eq.${user.id},player_o_user_id.eq.${user.id}`)
         .not('ended_at', 'is', null)
         .order('ended_at', { ascending: false })
         .limit(20)
 
-      if (error) throw error
+      if (matchesError) throw matchesError
+      
+      if (!matchesData || matchesData.length === 0) {
+        setMatchHistory([])
+        return
+      }
 
-      const formatted = (data || []).map((match: any) => {
+      // Collect all unique user IDs to fetch profiles
+      const userIds = new Set<string>()
+      matchesData.forEach((m: any) => {
+        if (m.player_x_user_id) userIds.add(m.player_x_user_id)
+        if (m.player_o_user_id) userIds.add(m.player_o_user_id)
+      })
+
+      // Fetch profiles for all players
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', Array.from(userIds))
+
+      // Create a map for quick lookup
+      const profileMap = new Map<string, { username: string | null; display_name: string | null }>()
+      if (profilesData) {
+        profilesData.forEach((p: any) => {
+          profileMap.set(p.user_id, { username: p.username, display_name: p.display_name })
+        })
+      }
+
+      const formatted = matchesData.map((match: any) => {
         const isPlayerX = match.player_x_user_id === user.id
-        const opponentName = isPlayerX 
-          ? (match.player_o?.username || match.player_o?.display_name || 'AI')
-          : (match.player_x?.username || match.player_x?.display_name || t('profile.opponent'))
-        const opponentId = isPlayerX ? match.player_o_user_id : match.player_x_user_id
+        const opponentUserId = isPlayerX ? match.player_o_user_id : match.player_x_user_id
+        const opponentProfile = opponentUserId ? profileMap.get(opponentUserId) : null
+        
+        // Determine opponent name
+        let opponentName = t('profile.opponent')
+        if (opponentProfile) {
+          opponentName = opponentProfile.display_name || opponentProfile.username || t('profile.opponent')
+        } else if (!opponentUserId) {
+          opponentName = 'AI'
+        }
         
         let result = 'draw'
         if (match.winner_user_id === user.id) result = 'win'
@@ -359,9 +391,10 @@ export default function Profile() {
           id: match.id,
           result,
           opponent: opponentName,
-          opponentId,
+          opponentId: opponentUserId,
           eloChange: eloChange || 0,
-          time: timeAgo
+          time: timeAgo,
+          matchType: match.match_type
         }
       })
 

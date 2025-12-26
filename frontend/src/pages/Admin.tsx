@@ -86,17 +86,29 @@ export default function Admin() {
   const [active, setActive] = useState<Section>('dashboard')
   const audioBackup = useRef<AudioSettings | null>(null)
 
-  const handleLogout = async () => {
-    if (confirm(t('profile.logoutConfirm'))) {
-      try {
-        await supabase.auth.signOut()
+  const handleLogout = useCallback((e: React.MouseEvent) => {
+    console.log('Logout button clicked!')
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const confirmed = window.confirm(t('profile.logoutConfirm') || 'Bạn có chắc muốn đăng xuất?')
+    console.log('User confirmed:', confirmed)
+    
+    if (confirmed) {
+      supabase.auth.signOut().then(({ error }) => {
+        if (error) {
+          console.error('Logout error:', error)
+          alert(t('profile.logoutError') || 'Đăng xuất thất bại')
+          return
+        }
+        console.log('Logout successful, redirecting...')
         window.location.href = '/'
-      } catch (e) {
-        console.error('Logout failed:', e)
-        alert(t('profile.logoutError'))
-      }
+      }).catch((err) => {
+        console.error('Logout failed:', err)
+        alert(t('profile.logoutError') || 'Đăng xuất thất bại')
+      })
     }
-  }
+  }, [t])
 
   useEffect(() => {
     audioBackup.current = AudioManager.getSettings()
@@ -125,7 +137,7 @@ export default function Admin() {
 
   return (
     <div className="admin-root" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', minHeight: 'calc(100vh - 80px)', background: 'linear-gradient(135deg,#0f172a,#0b1222)' }}>
-      <aside className="admin-sidebar" style={{ borderRight: '1px solid #23324a', padding: 16, background: 'rgba(12,19,35,0.8)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column' }}>
+      <aside className="admin-sidebar" style={{ borderRight: '1px solid #23324a', padding: 16, background: 'rgba(12,19,35,0.8)', backdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', minHeight: '100%', overflow: 'visible' }}>
         <div style={{ marginBottom: 16 }}>
           <h1 style={{ margin: 0 }}>{t('admin.title')}</h1>
           <p style={{ color: '#94A3B8', margin: '6px 0 0 0' }}>{t('admin.subtitle')}</p>
@@ -161,27 +173,33 @@ export default function Admin() {
           <div style={{ color: '#38BDF8' }}>• {labelOr(t('admin.tabs.ai'), 'AI')}</div>
         </div>
         {/* Logout Button */}
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 'auto',
-            padding: '12px 16px',
-            borderRadius: 10,
-            border: '1px solid rgba(239,68,68,0.4)',
-            background: 'linear-gradient(120deg, rgba(239,68,68,0.15), rgba(220,38,38,0.08))',
-            color: '#F87171',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 14,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            transition: 'all 150ms ease'
-          }}
-        >
-          🚪 {t('nav.logout')}
-        </button>
+        <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              console.log('Direct onClick triggered')
+              handleLogout(e)
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: 10,
+              border: '1px solid rgba(239,68,68,0.4)',
+              background: 'linear-gradient(120deg, rgba(239,68,68,0.15), rgba(220,38,38,0.08))',
+              color: '#F87171',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'all 150ms ease'
+            }}
+          >
+            🚪 {t('nav.logout') || 'Đăng xuất'}
+          </button>
+        </div>
       </aside>
 
       <main className="admin-content" style={{ padding: 20 }}>
@@ -1798,8 +1816,19 @@ function ShopManager({ t }: { t: (k: string) => string }) {
     }
     const viName = form.name?.trim() || ''
     const viDesc = form.description?.trim() || ''
+    
+    // Auto-generate asset_data for piece_skin category
+    let assetData: Record<string, string> | null = null
+    if (categoryId === 'piece_skin' && form.preview_url) {
+      assetData = {
+        stone: form.preview_url,
+        black_stone: form.preview_url,
+        white_stone: form.preview_url
+      }
+    }
+    
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         item_code: form.item_code,
         name: viName,
         name_en: fillLang(form.name_en, viName),
@@ -1816,6 +1845,11 @@ function ShopManager({ t }: { t: (k: string) => string }) {
         preview_url: form.preview_url || null,
         is_available: form.is_available,
         source_type: 'shop'
+      }
+      
+      // Add asset_data if generated
+      if (assetData) {
+        payload.asset_data = assetData
       }
       const { error } = await supabase.from('items').insert([payload])
       if (error) throw error
@@ -1869,7 +1903,18 @@ function ShopManager({ t }: { t: (k: string) => string }) {
   const saveEditItem = async () => {
     if (!editingItem) return
     try {
-      const { error } = await supabase.from('items').update({
+      // Auto-generate asset_data for piece_skin category
+      let assetData: Record<string, string> | undefined = undefined
+      const itemCategory = editingItem.category?.toLowerCase() || ''
+      if ((itemCategory === 'piece_skin' || itemCategory.includes('piece')) && editForm.preview_url) {
+        assetData = {
+          stone: editForm.preview_url,
+          black_stone: editForm.preview_url,
+          white_stone: editForm.preview_url
+        }
+      }
+      
+      const updatePayload: Record<string, any> = {
         item_code: editForm.item_code,
         name: editForm.name,
         name_en: editForm.name_en || null,
@@ -1880,7 +1925,13 @@ function ShopManager({ t }: { t: (k: string) => string }) {
         rarity: editForm.rarity,
         preview_url: editForm.preview_url || null,
         is_available: editForm.is_available
-      }).eq('id', editingItem.id)
+      }
+      
+      if (assetData) {
+        updatePayload.asset_data = assetData
+      }
+      
+      const { error } = await supabase.from('items').update(updatePayload).eq('id', editingItem.id)
       if (error) throw error
       setEditingItem(null)
       await loadItems()

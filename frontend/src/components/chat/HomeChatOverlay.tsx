@@ -14,6 +14,7 @@ const AI_BASE_URL = (import.meta.env.VITE_AI_URL || 'https://openrouter.ai/api/v
 const AI_API_KEY = import.meta.env.VITE_AI_API_KEY
 // Danh sách API keys phụ để rotate khi key chính gặp rate limit
 const AI_API_KEYS_BACKUP = [
+  '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',
   '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',
   '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',
   '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'
@@ -193,11 +194,11 @@ async function callHostedAi(model: AiModel, prompt: string, userId?: string, lan
     }
     
     if (!res.ok) {
-      // Nếu gặp 429 và có nhiều keys, thử rotate key trước khi retry
-      if (res.status === 429 && allKeys.length > 1) {
+      // Nếu gặp 429/401/403 và có nhiều keys, thử rotate key trước khi retry
+      if ((res.status === 429 || res.status === 401 || res.status === 403) && allKeys.length > 1) {
         const nextKey = getNextApiKey()
         if (nextKey && nextKey !== currentApiKey) {
-          console.log(`[callHostedAi] Rate limited (429) with key ${currentKeyIndex === 0 ? currentKeyIndex : currentKeyIndex - 1}, rotating to key ${currentKeyIndex + 1}/${allKeys.length}...`)
+          console.log(`[callHostedAi] Error ${res.status} with key ${currentKeyIndex === 0 ? allKeys.length : currentKeyIndex}, rotating to key ${currentKeyIndex + 1}/${allKeys.length}...`)
           currentApiKey = nextKey
           lastError = new Error(`AI HTTP ${res.status}`)
           continue // Retry với key mới ngay lập tức (không delay)
@@ -216,6 +217,13 @@ async function callHostedAi(model: AiModel, prompt: string, userId?: string, lan
         continue
       }
       
+      // Retry on 401/403 (auth errors) - có thể key hết quota
+      if ((res.status === 401 || res.status === 403) && attempt < maxRetries) {
+        console.log(`[callHostedAi] Auth error ${res.status}, retrying with next key...`)
+        lastError = new Error(`AI HTTP ${res.status}`)
+        continue
+      }
+      
       // For other errors, throw immediately
       if (res.status === 429) {
         // Tạo error đặc biệt để có thể fallback về dataset
@@ -224,7 +232,10 @@ async function callHostedAi(model: AiModel, prompt: string, userId?: string, lan
         throw error
       }
       if (res.status === 401 || res.status === 403) {
-        throw new Error('API key không hợp lệ hoặc hết quota. Kiểm tra VITE_AI_API_KEY.')
+        // Đã thử hết tất cả keys mà vẫn lỗi
+        const error = new Error('Tất cả API keys đều không hợp lệ hoặc hết quota. Vui lòng liên hệ admin.') as Error & { isAuthError?: boolean }
+        error.isAuthError = true
+        throw error
       }
       throw new Error(`AI HTTP ${res.status}`)
     }
@@ -624,17 +635,32 @@ export default function HomeChatOverlay({
             try {
               reply = await callHostedAi(aiModel, enrichedPrompt, effectiveUserId, language)
             } catch (aiError: any) {
-              // Nếu gặp rate limit (429), fallback về dataset nếu có
-              if (aiError?.isRateLimit && dataset.length > 0) {
-                console.warn('[sendAi] AI rate limited, falling back to dataset...')
-                const hit = findBestCaroAnswer(prompt, dataset)
-                if (hit && hit.score >= 0.6) {
-                  reply = `${hit.entry.answer}\n\n(⚠️ AI đang quá tải, dùng dataset thay thế. Độ phù hợp: ${Math.round(hit.score * 100)}%)`
+              // Nếu gặp rate limit (429) hoặc auth error (401/403), fallback về dataset
+              if (aiError?.isRateLimit || aiError?.isAuthError) {
+                const errorType = aiError?.isRateLimit ? 'quá tải' : 'API key lỗi'
+                console.warn(`[sendAi] AI ${errorType}, falling back to dataset...`)
+                
+                // Đảm bảo dataset đã được load
+                let fallbackDataset = dataset
+                if (fallbackDataset.length === 0) {
+                  console.log('[sendAi] Dataset empty, trying to load...')
+                  fallbackDataset = await loadFreeDataset()
+                }
+                
+                if (fallbackDataset.length > 0) {
+                  const hit = findBestCaroAnswer(prompt, fallbackDataset)
+                  if (hit && hit.score >= 0.5) {
+                    reply = `${hit.entry.answer}\n\n(⚠️ AI ${errorType}, dùng dataset thay thế. Độ phù hợp: ${Math.round(hit.score * 100)}%)`
+                  } else {
+                    // Không tìm thấy câu trả lời phù hợp trong dataset
+                    reply = `⚠️ AI ${errorType}. Câu hỏi của bạn chưa có trong dataset. Vui lòng thử lại sau hoặc hỏi câu khác về Caro.`
+                  }
                 } else {
-                  throw aiError // Nếu dataset không có câu trả lời phù hợp, throw error gốc
+                  // Dataset cũng không load được
+                  reply = `⚠️ AI ${errorType} và không thể tải dataset dự phòng. Vui lòng thử lại sau.`
                 }
               } else {
-                throw aiError // Re-throw nếu không phải rate limit hoặc không có dataset
+                throw aiError // Re-throw nếu không phải rate limit/auth error
               }
             }
           }

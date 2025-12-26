@@ -100,6 +100,34 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with detailed logging."""
+    # Log the raw body for debugging
+    try:
+        body = await request.body()
+        print(f"[Validation Error] URL: {request.url}")
+        print(f"[Validation Error] Body: {body.decode('utf-8')[:500]}")
+    except:
+        pass
+    print(f"[Validation Error] Details: {exc.errors()}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "success": False,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Dữ liệu không hợp lệ",
+                "details": exc.errors()
+            },
+            "status": 422
+        }
+    )
+
+
 # ============================================
 # Input Validation & Sanitization - Requirements 17.4
 # ============================================
@@ -702,6 +730,7 @@ async def analyze_match(req: AnalyzeRequest):
     - Handles edge cases (insufficient moves, board validation)
     """
     start_time = time.time()
+    print(f"[/analyze] Received request: match_id={req.match_id}, user_id={req.user_id}, moves_count={len(req.moves)}")
     
     # Get language (default to Vietnamese)
     language = req.language or 'vi'

@@ -139,21 +139,35 @@ class ServiceProvider
             );
         };
 
-        // Scoring Engine Service (singleton)
+        // Scoring Engine Service (singleton with database)
         self::$factories[ScoringEngineServiceInterface::class] = function () {
-            return new ScoringEngineService();
-        };
-
-        // Series Manager Service (depends on ScoringEngine)
-        self::$factories[SeriesManagerServiceInterface::class] = function () {
-            $service = new SeriesManagerService();
-            $service->setScoringEngine(self::resolve(ScoringEngineServiceInterface::class));
+            $service = new ScoringEngineService();
+            $db = self::getDatabase();
+            if ($db !== null) {
+                $service->setDatabase($db);
+            }
             return $service;
         };
 
-        // Rank Manager Service (singleton)
+        // Series Manager Service (depends on ScoringEngine and database)
+        self::$factories[SeriesManagerServiceInterface::class] = function () {
+            $service = new SeriesManagerService();
+            $service->setScoringEngine(self::resolve(ScoringEngineServiceInterface::class));
+            $db = self::getDatabase();
+            if ($db !== null) {
+                $service->setDatabase($db);
+            }
+            return $service;
+        };
+
+        // Rank Manager Service (singleton with database)
         self::$factories[RankManagerServiceInterface::class] = function () {
-            return new RankManagerService();
+            $service = new RankManagerService();
+            $db = self::getDatabase();
+            if ($db !== null) {
+                $service->setDatabase($db);
+            }
+            return $service;
         };
 
         // Disconnect Handler Service (depends on SeriesManager)

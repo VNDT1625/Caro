@@ -226,6 +226,46 @@ export async function loadCaroDataset(language?: string) {
     console.warn('[caroDataset] merge local dataset failed', err)
   }
 
+  // Merge với entries đã học từ Trial (lưu trên server) - cho phép tất cả user dùng
+  try {
+    const { getApiBase } = await import('./apiBase')
+    let apiBase = getApiBase()
+    
+    // Force sử dụng port 8001 cho PHP backend
+    if (typeof window !== 'undefined' && window.location) {
+      const isDev = window.location.port === '5173' || window.location.hostname === 'localhost'
+      if (isDev && (!apiBase || apiBase.includes(':8000'))) {
+        apiBase = `${window.location.protocol}//${window.location.hostname}:8001`
+      }
+    }
+    
+    const learnedUrl = apiBase 
+      ? `${apiBase}/api/dataset/learned${language ? `?language=${language}` : ''}`
+      : `/api/dataset/learned${language ? `?language=${language}` : ''}`
+    
+    const learnedRes = await fetch(learnedUrl, { 
+      signal: AbortSignal.timeout(3000) // 3s timeout
+    })
+    
+    if (learnedRes.ok) {
+      const learnedData = await learnedRes.json()
+      if (learnedData.entries && Array.isArray(learnedData.entries)) {
+        const baseIds = new Set((cachedDataset || []).map((e) => normalizeText(e.question)))
+        learnedData.entries.forEach((e: CaroQAEntry) => {
+          const key = normalizeText(e.question)
+          if (!baseIds.has(key)) {
+            cachedDataset?.push(e)
+            baseIds.add(key)
+          }
+        })
+        console.log(`[caroDataset] Merged ${learnedData.count} learned entries from server`)
+      }
+    }
+  } catch (err) {
+    // Không block nếu không load được learned entries
+    console.warn('[caroDataset] Failed to load learned entries from server:', err)
+  }
+
   // Filter final result by language if specified
   // Entries không có language được coi là 'vi' (mặc định)
   if (language) {
@@ -365,7 +405,7 @@ function validateToken(token: string): { valid: boolean; expiresIn?: number; err
   return { valid: true, expiresIn }
 }
 
-export function addLocalDatasetEntry(entry: Omit<CaroQAEntry, 'id'> & { id?: string }) {
+export function addLocalDatasetEntry(entry: Omit<CaroQAEntry, 'id'> & { id?: string; language?: string }) {
   const list = readLocalDataset()
   const normalized = normalizeText(entry.question)
   const exists = list.some((e) => normalizeText(e.question) === normalized)
@@ -376,10 +416,14 @@ export function addLocalDatasetEntry(entry: Omit<CaroQAEntry, 'id'> & { id?: str
     paraphrases: entry.paraphrases || [],
     answer: entry.answer,
     difficulty: entry.difficulty || 'beginner',
-    topic: entry.topic || 'auto'
+    topic: entry.topic || 'auto',
+    language: entry.language || 'vi'
   }
   list.push(newEntry)
   saveLocalDataset(list)
+  
+  // Thêm vào cache để Basic mode có thể dùng ngay
+  addEntryToCache(newEntry)
 }
 
 /**
@@ -470,8 +514,36 @@ export async function addServerDatasetEntry(
       } catch {
         error = { error: text || `HTTP ${response.status}` }
       }
+      
+      // Nếu là 409 (duplicate), vẫn thêm vào cache local để Basic mode có thể dùng
+      if (response.status === 409) {
+        const newEntry: CaroQAEntry = {
+          id: entry.id || `c-server-${Date.now()}`,
+          question: entry.question,
+          paraphrases: entry.paraphrases || [],
+          answer: entry.answer,
+          difficulty: entry.difficulty || 'beginner',
+          topic: entry.topic || 'auto',
+          language: language
+        }
+        addEntryToCache(newEntry)
+        console.log('[addServerDatasetEntry] Entry already exists on server, added to local cache')
+      }
+      
       return { success: false, error: error.error || error.message || `HTTP ${response.status}` }
     }
+    
+    // Thành công - thêm entry vào cache để Basic mode có thể dùng ngay
+    const newEntry: CaroQAEntry = {
+      id: entry.id || `c-server-${Date.now()}`,
+      question: entry.question,
+      paraphrases: entry.paraphrases || [],
+      answer: entry.answer,
+      difficulty: entry.difficulty || 'beginner',
+      topic: entry.topic || 'auto',
+      language: language
+    }
+    addEntryToCache(newEntry)
     
     return { success: true }
   } catch (err) {
@@ -527,6 +599,33 @@ export function preloadDataset(language?: string): Promise<CaroQAEntry[]> {
  */
 export function isDatasetLoaded(): boolean {
   return cachedDataset !== null && cachedDataset.length > 0
+}
+
+/**
+ * Invalidate cache để force reload dataset lần sau
+ */
+export function invalidateDatasetCache(): void {
+  cachedDataset = null
+  cachedLanguage = undefined
+  preloadPromise = null
+  console.log('[caroDataset] Cache invalidated')
+}
+
+/**
+ * Thêm entry mới vào cache hiện tại (không cần reload toàn bộ)
+ * Gọi sau khi lưu thành công vào server hoặc localStorage
+ */
+export function addEntryToCache(entry: CaroQAEntry): void {
+  if (!cachedDataset) {
+    cachedDataset = []
+  }
+  // Kiểm tra duplicate
+  const normalized = normalizeText(entry.question)
+  const exists = cachedDataset.some((e) => normalizeText(e.question) === normalized)
+  if (!exists) {
+    cachedDataset.push(entry)
+    console.log(`[caroDataset] Added entry to cache: "${entry.question.substring(0, 30)}..."`)
+  }
 }
 
 /**

@@ -617,7 +617,7 @@ export default function App() {
     return Number.isFinite(n) ? n : 0
   }
 
-  // Fetch real coin/gem from `profiles` table if available; otherwise fallback to user_metadata; default to 0
+  // Fetch real coin/gem from `profiles` table if available; auto-logout if profile is missing
   useEffect(() => {
     if (!user) {
       setCoin(0)
@@ -674,28 +674,32 @@ export default function App() {
           }
           return
         }
-      } catch (e) {
-        // ignore and fallback
-      }
-
-      // fallback to user_metadata if profiles table not present or query failed
-      try {
-        const meta = user.user_metadata ?? {}
-        setCoin(toNumber(meta?.coins ?? meta?.coin))
-        setGem(toNumber(meta?.gems ?? meta?.gem))
-        const code = meta?.current_rank ?? meta?.rank ?? 'vo_danh'
-        setRankCode(code)
-        setRank(formatRankLabel(code))
-        // No profile found, user needs username
-        if (!cancelled) {
-          setNeedsUsername(true)
-          setShowUsernamePopup(true)
+        
+        // Profile not found - check if this is a new user or existing user who lost profile
+        if (!cancelled && !data) {
+          // Check if user account is new (created within last 10 minutes)
+          const userCreatedAt = user.created_at ? new Date(user.created_at).getTime() : 0
+          const now = Date.now()
+          const tenMinutes = 10 * 60 * 1000
+          const isNewUser = (now - userCreatedAt) < tenMinutes
+          
+          if (isNewUser) {
+            // New user - allow them to create profile via UsernamePopup
+            console.log('[App] New user without profile, showing username popup')
+            setNeedsUsername(true)
+            setShowUsernamePopup(true)
+          } else {
+            // Existing user who lost profile - auto logout
+            console.warn('[App] Existing user lost profile data, auto-logout')
+            await supabase.auth.signOut()
+            window.location.hash = '#login'
+          }
+          return
         }
       } catch (e) {
-        setCoin(0)
-        setGem(0)
-        setRankCode('vo_danh')
-        setRank(formatRankLabel('vo_danh'))
+        // On error fetching profile, don't auto-logout immediately
+        // Could be network issue - just log and let user retry
+        console.warn('[App] Error fetching profile:', e)
       }
     })()
 

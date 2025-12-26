@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { ReportModal } from '../components/report'
 import { useSwap2State } from '../hooks/useSwap2State'
 import { useSocket } from '../hooks/useSocket'
+import { useEquippedSkins } from '../hooks/useEquippedSkins'
 import Swap2PhaseIndicator from '../components/swap2/Swap2PhaseIndicator'
 import ColorChoiceModal from '../components/swap2/ColorChoiceModal'
 import Swap2CompleteOverlay from '../components/swap2/Swap2CompleteOverlay'
@@ -34,6 +35,7 @@ type BoardCell = null | 'X' | 'O' | 'BLOCKED' | string
 
 export default function Room() {
   const { t } = useLanguage()
+  const { pieceSkin, boardSkin } = useEquippedSkins()
   
   // User & Room info
   const [user, setUser] = React.useState<any>(null)
@@ -1571,7 +1573,7 @@ export default function Room() {
                 display: 'grid',
                 gridTemplateColumns: `repeat(15, ${cellSize}px)`,
                 gridTemplateRows: `repeat(15, ${cellSize}px)`,
-                background: 'linear-gradient(135deg, #d4a574, #c49563)',
+                background: boardSkin?.background || 'linear-gradient(135deg, #d4a574, #c49563)',
                 borderRadius: '4px',
                 width: `${cellSize * 15}px`,
                 height: `${cellSize * 15}px`,
@@ -1593,7 +1595,7 @@ export default function Room() {
                       y1="0%"
                       x2={`${i * (100 / 15)}%`}
                       y2="100%"
-                      stroke="#8b6f47"
+                      stroke={boardSkin?.grid_color || "#8b6f47"}
                       strokeWidth="1"
                     />
                   ))}
@@ -1605,7 +1607,7 @@ export default function Room() {
                       y1={`${i * (100 / 15)}%`}
                       x2="100%"
                       y2={`${i * (100 / 15)}%`}
-                      stroke="#8b6f47"
+                      stroke={boardSkin?.grid_color || "#8b6f47"}
                       strokeWidth="1"
                     />
                   ))}
@@ -1616,7 +1618,7 @@ export default function Room() {
                       cx={`${(sx + 0.5) * (100 / 15)}%`}
                       cy={`${(sy + 0.5) * (100 / 15)}%`}
                       r="3"
-                      fill="#8b6f47"
+                      fill={boardSkin?.star_color || "#8b6f47"}
                     />
                   ))}
                 </svg>
@@ -1723,20 +1725,45 @@ export default function Room() {
                       )}
                       
                       {/* Normal stone */}
-                      {cell && !hasTentativeStone && (
-                        <div style={{
+                      {cell && !hasTentativeStone && (() => {
+                        // Use custom piece skin colors if available
+                        const blackColor = pieceSkin?.black_color || '#000'
+                        const whiteColor = pieceSkin?.white_color || '#ccc'
+                        // Highlight should be lighter than base for gradient effect
+                        const blackHighlight = '#666'
+                        const whiteHighlight = '#fff'
+                        const sharedStone = pieceSkin?.stone || pieceSkin?.black_stone || pieceSkin?.white_stone
+                        // Show skin for both players - use appropriate image based on stone color
+                        const blackStone = pieceSkin?.black_stone || sharedStone
+                        const whiteStone = pieceSkin?.white_stone || sharedStone
+                        const useImage = cell === 'X' ? blackStone : whiteStone
+                        
+                        // Build style object to avoid mixing shorthand/non-shorthand
+                        const stoneStyle: React.CSSProperties = {
                           width: `${cellSize * 0.75}px`,
                           height: `${cellSize * 0.75}px`,
-                          borderRadius: '50%',
-                          background: cell === 'X'
-                            ? 'radial-gradient(circle at 35% 35%, #666, #000)'
-                            : 'radial-gradient(circle at 35% 35%, #fff, #ccc)',
+                          borderRadius: useImage ? 8 : '50%',
                           boxShadow: cell === 'X'
                             ? '0 2px 4px rgba(0,0,0,0.6)'
                             : '0 2px 4px rgba(0,0,0,0.3)',
                           border: isLastMove ? `2px solid ${cell === 'X' ? '#3b82f6' : '#ef4444'}` : 'none'
-                        }} />
-                      )}
+                        }
+                        
+                        if (useImage) {
+                          stoneStyle.backgroundImage = `url(${useImage})`
+                          stoneStyle.backgroundRepeat = 'no-repeat'
+                          stoneStyle.backgroundSize = 'cover'
+                          stoneStyle.backgroundPosition = 'center'
+                          stoneStyle.backgroundColor = cell === 'X' ? blackColor : whiteColor
+                        } else {
+                          const fallbackGradient = cell === 'X'
+                            ? `radial-gradient(circle at 35% 35%, ${blackHighlight}, ${blackColor})`
+                            : `radial-gradient(circle at 35% 35%, ${whiteHighlight}, ${whiteColor})`
+                          stoneStyle.backgroundImage = fallbackGradient
+                        }
+                        
+                        return <div style={stoneStyle} />
+                      })()}
                       
                       {/* Hover preview */}
                       {!cell && !hasTentativeStone && isHovered && canClick && (
@@ -2024,4 +2051,3 @@ export default function Room() {
     </div>
   )
 }
-

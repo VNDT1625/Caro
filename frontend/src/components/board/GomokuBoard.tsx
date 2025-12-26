@@ -11,6 +11,21 @@ export interface BoardCell {
   shielded?: boolean
 }
 
+export interface PieceSkinConfig {
+  black_stone?: string // URL to black stone image
+  white_stone?: string // URL to white stone image
+  stone?: string // Shared stone image for both colors
+  black_color?: string // Fallback color for black
+  white_color?: string // Fallback color for white
+}
+
+export interface BoardSkinConfig {
+  background?: string // URL to background image or color
+  grid_color?: string
+  star_color?: string
+  border_color?: string
+}
+
 export interface GomokuBoardProps {
   boardSize: number
   board: BoardCell[][] | (null | 'X' | 'O')[][]
@@ -28,6 +43,9 @@ export interface GomokuBoardProps {
   theme?: 'wood' | 'dark' | 'light'
   // Custom cell renderer
   renderCellOverlay?: (x: number, y: number, cell: BoardCell) => React.ReactNode
+  // Skin customization
+  pieceSkin?: PieceSkinConfig
+  boardSkin?: BoardSkinConfig
 }
 
 // Hook to get viewport size
@@ -57,7 +75,9 @@ export default function GomokuBoard({
   tentativeStones = [],
   enableMagnifier = true,
   theme = 'wood',
-  renderCellOverlay
+  renderCellOverlay,
+  pieceSkin,
+  boardSkin
 }: GomokuBoardProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -66,6 +86,54 @@ export default function GomokuBoard({
   // Magnifier state
   const [magnifier, setMagnifier] = useState<{ x: number; y: number; cellX: number; cellY: number } | null>(null)
   const [tapHighlight, setTapHighlight] = useState<{ x: number; y: number } | null>(null)
+  
+  // Skin image cache
+  const [skinImages, setSkinImages] = useState<{ black?: HTMLImageElement; white?: HTMLImageElement }>({})
+  
+  // Load skin images when pieceSkin changes
+  useEffect(() => {
+    const loadImage = (url: string): Promise<HTMLImageElement> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = url
+      })
+    }
+    
+    const loadSkins = async () => {
+      const sharedStone = pieceSkin?.stone || pieceSkin?.black_stone || pieceSkin?.white_stone
+      const blackUrl = pieceSkin?.black_stone || sharedStone
+      const whiteUrl = pieceSkin?.white_stone || sharedStone
+      
+      const newImages: { black?: HTMLImageElement; white?: HTMLImageElement } = {}
+      
+      if (blackUrl) {
+        try {
+          newImages.black = await loadImage(blackUrl)
+        } catch (e) {
+          console.warn('[GomokuBoard] Failed to load black stone skin:', blackUrl)
+        }
+      }
+      
+      if (whiteUrl) {
+        try {
+          newImages.white = await loadImage(whiteUrl)
+        } catch (e) {
+          console.warn('[GomokuBoard] Failed to load white stone skin:', whiteUrl)
+        }
+      }
+      
+      setSkinImages(newImages)
+    }
+    
+    if (pieceSkin?.black_stone || pieceSkin?.white_stone || pieceSkin?.stone) {
+      loadSkins()
+    } else {
+      setSkinImages({})
+    }
+  }, [pieceSkin?.black_stone, pieceSkin?.white_stone, pieceSkin?.stone])
   
   // Calculate board size to fit viewport (1:1 square, smaller dimension)
   const boardPixelSize = useMemo(() => {
@@ -207,35 +275,89 @@ export default function GomokuBoard({
         const cx = x * cellSize + centerOffset
         const cy = y * cellSize + centerOffset
         
-        // Stone gradient
-        const gradient = ctx.createRadialGradient(
-          cx - stoneRadius * 0.3,
-          cy - stoneRadius * 0.3,
-          0,
-          cx,
-          cy,
-          stoneRadius
-        )
+        // Check if we have skin image for this stone
+        const skinImg = cell.player === 'X' ? skinImages.black : skinImages.white
         
-        if (cell.player === 'X') {
-          gradient.addColorStop(0, '#4a4a4a')
-          gradient.addColorStop(1, colors.black)
+        if (skinImg) {
+          // Draw skin image - fill the cell area with rounded corners effect
+          const imgSize = stoneRadius * 2.2 // Slightly larger to fill cell nicely
+          const imgX = cx - imgSize / 2
+          const imgY = cy - imgSize / 2
+          
+          // Save context for clipping
+          ctx.save()
+          
+          // Create rounded rect clip path
+          const cornerRadius = imgSize * 0.15
+          ctx.beginPath()
+          ctx.moveTo(imgX + cornerRadius, imgY)
+          ctx.lineTo(imgX + imgSize - cornerRadius, imgY)
+          ctx.quadraticCurveTo(imgX + imgSize, imgY, imgX + imgSize, imgY + cornerRadius)
+          ctx.lineTo(imgX + imgSize, imgY + imgSize - cornerRadius)
+          ctx.quadraticCurveTo(imgX + imgSize, imgY + imgSize, imgX + imgSize - cornerRadius, imgY + imgSize)
+          ctx.lineTo(imgX + cornerRadius, imgY + imgSize)
+          ctx.quadraticCurveTo(imgX, imgY + imgSize, imgX, imgY + imgSize - cornerRadius)
+          ctx.lineTo(imgX, imgY + cornerRadius)
+          ctx.quadraticCurveTo(imgX, imgY, imgX + cornerRadius, imgY)
+          ctx.closePath()
+          ctx.clip()
+          
+          // Draw the image
+          ctx.drawImage(skinImg, imgX, imgY, imgSize, imgSize)
+          
+          ctx.restore()
+          
+          // Add subtle border for visibility
+          ctx.strokeStyle = cell.player === 'X' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.moveTo(imgX + cornerRadius, imgY)
+          ctx.lineTo(imgX + imgSize - cornerRadius, imgY)
+          ctx.quadraticCurveTo(imgX + imgSize, imgY, imgX + imgSize, imgY + cornerRadius)
+          ctx.lineTo(imgX + imgSize, imgY + imgSize - cornerRadius)
+          ctx.quadraticCurveTo(imgX + imgSize, imgY + imgSize, imgX + imgSize - cornerRadius, imgY + imgSize)
+          ctx.lineTo(imgX + cornerRadius, imgY + imgSize)
+          ctx.quadraticCurveTo(imgX, imgY + imgSize, imgX, imgY + imgSize - cornerRadius)
+          ctx.lineTo(imgX, imgY + cornerRadius)
+          ctx.quadraticCurveTo(imgX, imgY, imgX + cornerRadius, imgY)
+          ctx.closePath()
+          ctx.stroke()
         } else {
-          gradient.addColorStop(0, '#ffffff')
-          gradient.addColorStop(1, '#d1d1d1')
+          // Fallback to gradient stone (default behavior)
+          const blackColor = pieceSkin?.black_color || colors.black
+          const whiteColor = pieceSkin?.white_color || colors.white
+          
+          const gradient = ctx.createRadialGradient(
+            cx - stoneRadius * 0.3,
+            cy - stoneRadius * 0.3,
+            0,
+            cx,
+            cy,
+            stoneRadius
+          )
+          
+          if (cell.player === 'X') {
+            const baseColor = blackColor === colors.black ? '#4a4a4a' : blackColor
+            gradient.addColorStop(0, baseColor)
+            gradient.addColorStop(1, blackColor)
+          } else {
+            const baseColor = whiteColor === colors.white ? '#ffffff' : whiteColor
+            gradient.addColorStop(0, baseColor)
+            gradient.addColorStop(1, whiteColor === '#fff' || whiteColor === '#ffffff' || whiteColor === colors.white ? '#d1d1d1' : whiteColor)
+          }
+          
+          ctx.fillStyle = gradient
+          ctx.beginPath()
+          ctx.arc(cx, cy, stoneRadius, 0, Math.PI * 2)
+          ctx.fill()
+          
+          // Stone border
+          ctx.strokeStyle = cell.player === 'X' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)'
+          ctx.lineWidth = 1
+          ctx.stroke()
         }
         
-        ctx.fillStyle = gradient
-        ctx.beginPath()
-        ctx.arc(cx, cy, stoneRadius, 0, Math.PI * 2)
-        ctx.fill()
-        
-        // Stone border
-        ctx.strokeStyle = cell.player === 'X' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)'
-        ctx.lineWidth = 1
-        ctx.stroke()
-        
-        // Move index
+        // Move index (show on top of skin or gradient)
         if (showMoveIndex && cell.moveIndex) {
           ctx.fillStyle = cell.player === 'X' ? '#fff' : '#000'
           ctx.font = `bold ${cellSize * 0.3}px sans-serif`
@@ -273,7 +395,7 @@ export default function GomokuBoard({
       ctx.textBaseline = 'middle'
       ctx.fillText(String(stone.placementOrder), cx, cy)
     }
-  }, [boardPixelSize, boardSize, cellSize, colors, lastMove, normalizedBoard, showMoveIndex, stoneRadius, tapHighlight, tentativeStones])
+  }, [boardPixelSize, boardSize, cellSize, colors, lastMove, normalizedBoard, showMoveIndex, stoneRadius, tapHighlight, tentativeStones, pieceSkin, boardSkin, skinImages])
   
   // Redraw on changes
   useEffect(() => {

@@ -171,11 +171,10 @@ export default function MusicSelector() {
         is_equipped: m.id === musicId
       })))
 
-      // Update AudioManager
+      // Update AudioManager - setBackgroundMusic sẽ tự động play với crossfade
       const selected = ownedMusic.find(m => m.id === musicId)
       if (selected?.preview_url) {
         AudioManager.setBackgroundMusic(selected.preview_url, musicId)
-        AudioManager.playBackgroundMusic()
       }
     } catch (err) {
       console.error('Failed to select music:', err)

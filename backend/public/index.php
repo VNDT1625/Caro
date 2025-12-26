@@ -505,23 +505,32 @@ if ($method === 'POST' && preg_match('#^/api/matches$#', $uri)) {
 	// Try to persist to Supabase (best-effort)
 	if ($SUPABASE_SERVICE_KEY && $SUPABASE_URL) {
 		try {
-			// Normalize players array to extract user ids in expected order
-			function extractPlayerIds(array $players) {
-				$uids = [];
+			// Extract player IDs from players array, respecting side assignment
+			function extractPlayersByRole(array $players) {
+				$result = ['X' => null, 'O' => null];
 				foreach ($players as $p) {
 					if (!is_array($p)) continue;
-					if (!empty($p['userId'])) $uids[] = $p['userId'];
-					elseif (!empty($p['user_id'])) $uids[] = $p['user_id'];
-					elseif (!empty($p['id'])) $uids[] = $p['id'];
+					$uid = $p['userId'] ?? $p['user_id'] ?? $p['id'] ?? null;
+					$side = $p['side'] ?? null;
+					
+					if ($uid && $side) {
+						// Player has explicit side assignment
+						if ($side === 'X') $result['X'] = $uid;
+						elseif ($side === 'O') $result['O'] = $uid;
+					} elseif ($uid) {
+						// Fallback: assign by order (first = X, second = O)
+						if ($result['X'] === null) $result['X'] = $uid;
+						elseif ($result['O'] === null) $result['O'] = $uid;
+					}
 				}
-				return $uids;
+				return $result;
 			}
 			// Insert into matches table (attempt). The schema may require UUID player ids; only send UUIDs.
 			$player_x = null; $player_o = null;
 			if (!empty($body['players']) && is_array($body['players'])) {
-				$uids = extractPlayerIds($body['players']);
-				if (count($uids) > 0 && isValidUuid($uids[0])) $player_x = $uids[0];
-				if (count($uids) > 1 && isValidUuid($uids[1])) $player_o = $uids[1];
+				$playersByRole = extractPlayersByRole($body['players']);
+				if ($playersByRole['X'] && isValidUuid($playersByRole['X'])) $player_x = $playersByRole['X'];
+				if ($playersByRole['O'] && isValidUuid($playersByRole['O'])) $player_o = $playersByRole['O'];
 			}
 
 					$matchPayload = [
@@ -3176,6 +3185,43 @@ if ($method === 'POST' && preg_match('#^/api/dataset/add$#', $uri)) {
 	}
 
 	echo json_encode(['success' => true, 'entry' => $newEntry]);
+	exit;
+}
+
+// GET /api/dataset/learned -> get entries learned from Trial mode
+if ($method === 'GET' && preg_match('#^/api/dataset/learned$#', $uri)) {
+	$language = $_GET['language'] ?? null;
+	
+	$datasetFile = __DIR__ . '/../data/caro_dataset.jsonl';
+	if (!file_exists($datasetFile) || filesize($datasetFile) === 0) {
+		echo json_encode([
+			'entries' => [],
+			'count' => 0
+		]);
+		exit;
+	}
+	
+	$entries = [];
+	$lines = file($datasetFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	foreach ($lines as $line) {
+		$entry = json_decode($line, true);
+		if (!$entry || !isset($entry['question']) || !isset($entry['answer'])) {
+			continue;
+		}
+		
+		// Filter by language if specified
+		$entryLang = $entry['language'] ?? 'vi';
+		if ($language && $entryLang !== $language) {
+			continue;
+		}
+		
+		$entries[] = $entry;
+	}
+	
+	echo json_encode([
+		'entries' => $entries,
+		'count' => count($entries)
+	]);
 	exit;
 }
 

@@ -19,6 +19,20 @@ const useIsMobile = () => {
 type Player = 'X' | 'O'
 type BoardState = Record<string, Player>
 
+export interface PieceSkinConfig {
+  black_color?: string
+  white_color?: string
+  black_stone?: string
+  white_stone?: string
+  stone?: string
+}
+
+export interface BoardSkinConfig {
+  background?: string
+  grid_color?: string
+  star_color?: string
+}
+
 interface GameBoardProps {
   size?: number
   cellSizePx?: number
@@ -40,6 +54,9 @@ interface GameBoardProps {
   // Initial board state (for swap2 completion)
   initialBoard?: BoardState
   initialCurrentPlayer?: Player
+  // Skin customization
+  pieceSkin?: PieceSkinConfig
+  boardSkin?: BoardSkinConfig
 }
 
 export default function GameBoard({
@@ -62,7 +79,10 @@ export default function GameBoard({
   onSwap2PlaceStone,
   // Initial board state (for swap2 completion)
   initialBoard,
-  initialCurrentPlayer
+  initialCurrentPlayer,
+  // Skin customization
+  pieceSkin,
+  boardSkin
 }: GameBoardProps) {
   const [internalBoard, setInternalBoard] = React.useState<BoardState>(initialBoard ?? {})
   const [internalCurrentPlayer, setInternalCurrentPlayer] = React.useState<Player>(initialCurrentPlayer ?? 'X')
@@ -391,6 +411,11 @@ export default function GameBoard({
     const lastBorder = Math.max(2, Math.round(cell * 0.08))
     const forbidFont = Math.max(12, Math.round(cell * 0.6))
 
+    // Board background - use custom skin or default wood
+    const boardBg = boardSkin?.background || 'linear-gradient(135deg, #d4a574, #c49563)'
+    const gridColor = boardSkin?.grid_color || '#8b6f47'
+    const starColor = boardSkin?.star_color || '#8b6f47'
+    
     return (
       <div 
         ref={boardRef}
@@ -398,7 +423,7 @@ export default function GameBoard({
           display: 'inline-grid',
             gridTemplateColumns: `repeat(${size}, ${cell}px)`,
             gap: 0,
-            background: 'linear-gradient(135deg, #d4a574, #c49563)',
+            background: boardBg,
             padding: `${boardPadding}px`,
             borderRadius: '12px',
             boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
@@ -438,7 +463,7 @@ export default function GameBoard({
                     style={{
                       width: `${cell}px`,
                       height: `${cell}px`,
-                      border: '1px solid #8b6f47',
+                      border: `1px solid ${gridColor}`,
                       background: winCell
                         ? 'rgba(255, 215, 0, 0.4)'
                         : forbidden
@@ -457,7 +482,7 @@ export default function GameBoard({
                         width: `${starDot}px`,
                         height: `${starDot}px`,
                         borderRadius: '50%',
-                        background: '#8b6f47',
+                        background: starColor,
                         position: 'absolute'
                       }} />
                     )}
@@ -504,14 +529,25 @@ export default function GameBoard({
                       )
                     })()}
 
-                    {piece && !hasTentativeStone && (
-                      <div style={{
+                    {piece && !hasTentativeStone && (() => {
+                      // Use custom piece skin assets/colors if available
+                      // Default colors for classic black/white stones
+                      const blackColor = pieceSkin?.black_color || '#000'
+                      const whiteColor = pieceSkin?.white_color || '#ccc'
+                      // Highlight should be lighter than base color for gradient effect
+                      const blackHighlight = '#666'
+                      const whiteHighlight = '#fff'
+                      const sharedStone = pieceSkin?.stone || pieceSkin?.black_stone || pieceSkin?.white_stone
+                      const blackStone = pieceSkin?.black_stone || sharedStone
+                      const whiteStone = pieceSkin?.white_stone || sharedStone
+                      // Show skin for both players based on stone color
+                      const useImage = piece === 'X' ? blackStone : whiteStone
+                      
+                      // Build style object to avoid mixing shorthand/non-shorthand
+                      const stoneStyle: React.CSSProperties = {
                         width: `${stone}px`,
                         height: `${stone}px`,
-                        borderRadius: '50%',
-                        background: piece === 'X'
-                          ? 'radial-gradient(circle at 35% 35%, #666, #000)'
-                          : 'radial-gradient(circle at 35% 35%, #fff, #ccc)',
+                        borderRadius: useImage ? '8px' : '50%',
                         boxShadow: piece === 'X'
                           ? '0 3px 6px rgba(0,0,0,0.6), inset 0 -2px 4px rgba(0,0,0,0.4)'
                           : '0 3px 6px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.15)',
@@ -519,8 +555,25 @@ export default function GameBoard({
                         border: lastCell ? `${lastBorder}px solid ${piece === 'X' ? '#3b82f6' : '#ef4444'}` : 'none',
                         position: 'relative',
                         zIndex: 10
-                      }} />
-                    )}
+                      }
+                      
+                      if (useImage) {
+                        // Image skin - use all background properties separately
+                        stoneStyle.backgroundImage = `url(${useImage})`
+                        stoneStyle.backgroundRepeat = 'no-repeat'
+                        stoneStyle.backgroundSize = 'cover'
+                        stoneStyle.backgroundPosition = 'center'
+                        stoneStyle.backgroundColor = piece === 'X' ? blackColor : whiteColor
+                      } else {
+                        // No image - use gradient
+                        const fallbackGradient = piece === 'X'
+                          ? `radial-gradient(circle at 35% 35%, ${blackHighlight}, ${blackColor})`
+                          : `radial-gradient(circle at 35% 35%, ${whiteHighlight}, ${whiteColor})`
+                        stoneStyle.backgroundImage = fallbackGradient
+                      }
+                      
+                      return <div style={stoneStyle} />
+                    })()}
 
                     {!piece && hover && !winner && !forbidden && canClick && (
                       <div style={{

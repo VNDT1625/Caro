@@ -21,7 +21,7 @@ class DatasetController
     }
     
     /**
-     * Load dataset từ các file parts
+     * Load dataset từ các file parts + file học hỏi từ Trial
      */
     private function loadDataset(?string $language = null): void
     {
@@ -29,23 +29,40 @@ class DatasetController
             return;
         }
         
+        // 1. Load từ frontend/public/datasets (static dataset)
         $indexPath = $this->datasetPath . '/index.json';
-        if (!file_exists($indexPath)) {
-            return;
-        }
-        
-        $index = json_decode(file_get_contents($indexPath), true);
-        if (!$index || !isset($index['parts'])) {
-            return;
-        }
-        
-        foreach ($index['parts'] as $part) {
-            $partPath = $this->datasetPath . '/' . $part['file'];
-            if (!file_exists($partPath)) {
-                continue;
+        if (file_exists($indexPath)) {
+            $index = json_decode(file_get_contents($indexPath), true);
+            if ($index && isset($index['parts'])) {
+                foreach ($index['parts'] as $part) {
+                    $partPath = $this->datasetPath . '/' . $part['file'];
+                    if (!file_exists($partPath)) {
+                        continue;
+                    }
+                    
+                    $lines = file($partPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    foreach ($lines as $line) {
+                        $entry = json_decode($line, true);
+                        if (!$entry || !isset($entry['question']) || !isset($entry['answer'])) {
+                            continue;
+                        }
+                        
+                        // Filter by language if specified
+                        $entryLang = $entry['language'] ?? 'vi';
+                        if ($language && $entryLang !== $language) {
+                            continue;
+                        }
+                        
+                        $this->dataset[] = $entry;
+                    }
+                }
             }
-            
-            $lines = file($partPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        }
+        
+        // 2. Load từ backend/data/caro_dataset.jsonl (entries học hỏi từ Trial)
+        $learnedPath = dirname(__DIR__, 2) . '/data/caro_dataset.jsonl';
+        if (file_exists($learnedPath) && filesize($learnedPath) > 0) {
+            $lines = file($learnedPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 $entry = json_decode($line, true);
                 if (!$entry || !isset($entry['question']) || !isset($entry['answer'])) {
@@ -222,16 +239,67 @@ class DatasetController
         
         $index = json_decode(file_get_contents($indexPath), true);
         
+        // Count learned entries
+        $learnedCount = 0;
+        $learnedPath = dirname(__DIR__, 2) . '/data/caro_dataset.jsonl';
+        if (file_exists($learnedPath) && filesize($learnedPath) > 0) {
+            $learnedCount = count(file($learnedPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+        }
+        
         echo json_encode([
             'available' => true,
             'totalParts' => $index['totalParts'] ?? 0,
-            'totalEntries' => $index['totalEntries'] ?? 0,
+            'totalEntries' => ($index['totalEntries'] ?? 0) + $learnedCount,
+            'learnedEntries' => $learnedCount,
             'parts' => array_map(function($p) {
                 return [
                     'file' => $p['file'],
                     'entries' => $p['entries']
                 ];
             }, $index['parts'] ?? [])
+        ]);
+    }
+    
+    /**
+     * Get learned entries (from Trial mode)
+     * 
+     * GET /api/dataset/learned?language=vi
+     */
+    public function learned(): void
+    {
+        header('Content-Type: application/json');
+        
+        $language = $_GET['language'] ?? null;
+        
+        $learnedPath = dirname(__DIR__, 2) . '/data/caro_dataset.jsonl';
+        if (!file_exists($learnedPath) || filesize($learnedPath) === 0) {
+            echo json_encode([
+                'entries' => [],
+                'count' => 0
+            ]);
+            return;
+        }
+        
+        $entries = [];
+        $lines = file($learnedPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $entry = json_decode($line, true);
+            if (!$entry || !isset($entry['question']) || !isset($entry['answer'])) {
+                continue;
+            }
+            
+            // Filter by language if specified
+            $entryLang = $entry['language'] ?? 'vi';
+            if ($language && $entryLang !== $language) {
+                continue;
+            }
+            
+            $entries[] = $entry;
+        }
+        
+        echo json_encode([
+            'entries' => $entries,
+            'count' => count($entries)
         ]);
     }
 }

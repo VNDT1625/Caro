@@ -1238,11 +1238,21 @@ io.on('connection', (socket) => {
       }
       
       // assemble replay and POST to backend for persistence (best-effort)
+      // For ranked/series games, use series player IDs which are guaranteed to be valid
+      let playersForReplay = r.players;
+      if (r.series_id && r.series) {
+        // Build players array with proper user IDs from series data
+        playersForReplay = [
+          { side: r.series.player1_side, userId: r.series.player1_id },
+          { side: r.series.player2_side, userId: r.series.player2_id }
+        ];
+      }
+      
       const replay = {
         roomId,
         match_type: r.mode || 'casual',
         series_id: r.series_id || null,
-        players: r.players,
+        players: playersForReplay,
         moves: r.moves,
         final_board: r.board,
         started_at: r.started_at,
