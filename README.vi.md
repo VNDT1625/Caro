@@ -8,6 +8,17 @@ MindPoint Arena mở rộng cờ năm quân thành một nền tảng dịch v�
 
 > Repository đang được phát triển. Local setup cần Supabase và bốn application process; hiện chưa có hosted demo hoặc Docker Compose bundle.
 
+## Hình ảnh sản phẩm
+
+<p align="center">
+  <img src="frontend/public/hero.png" alt="Key art MindPoint Arena với bàn Gomoku và phong cách võ hiệp" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/readme/mindpoint-arena-loading.gif" alt="Hoạt ảnh loading của MindPoint Arena" width="700" />
+</p>
+<p align="center"><em>Hoạt ảnh mở đầu định hình nhận diện hình ảnh của đấu trường.</em></p>
+
 ## Tính năng đã triển khai
 
 - **Competitive Gomoku:** bàn 15×15, kiểm tra năm quân liên tiếp, ranked best-of-three, MindPoint progression, đổi bên, forfeit, rematch và ranked disconnect grace period 10 giây.

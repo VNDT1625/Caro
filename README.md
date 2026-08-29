@@ -14,6 +14,17 @@ MindPoint Arena evolves the traditional five-in-a-row game into a service-orient
 
 > The repository is an engineering project under active development. Local setup requires Supabase and four application processes; there is currently no hosted demo or Docker Compose bundle.
 
+## Visual showcase
+
+<p align="center">
+  <img src="frontend/public/hero.png" alt="MindPoint Arena key art featuring a Gomoku board and martial-arts theme" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/readme/mindpoint-arena-loading.gif" alt="MindPoint Arena animated loading sequence" width="700" />
+</p>
+<p align="center"><em>Animated loading sequence used to establish the arena's visual identity.</em></p>
+
 ## What is implemented
 
 - **Competitive Gomoku** — 15×15 play, five-in-a-row validation, ranked best-of-three series, MindPoint progression, side rotation, forfeits, rematches, and a 10-second ranked disconnect grace period.
