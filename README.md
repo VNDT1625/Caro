@@ -1,5 +1,7 @@
 # MindPoint Arena
 
+<p align="right"><strong>English</strong> · <a href="README.vi.md">Tiếng Việt</a></p>
+
 **A full-stack online Gomoku platform that combines competitive play, real-time multiplayer, game variants, and explainable post-match analysis.**
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](frontend/package.json)
