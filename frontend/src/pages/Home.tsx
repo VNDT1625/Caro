@@ -55,7 +55,7 @@ const getFeaturedEvents = (t: any): FeaturedEvent[] => [
     timeline: t('home.events.thienCoBien.timeline'),
     reward: t('home.events.thienCoBien.reward'),
     accent: '#34d399',
-    artwork: 'url(/event-thien-co-bien.svg)',
+    artwork: 'url(/event-thien-co-bien.webp)',
     ctaLabel: t('home.events.thienCoBien.ctaLabel'),
     ctaHref: '#events'
   },
@@ -68,7 +68,7 @@ const getFeaturedEvents = (t: any): FeaturedEvent[] => [
     timeline: t('home.events.luaTraiDaiHoi.timeline'),
     reward: t('home.events.luaTraiDaiHoi.reward'),
     accent: '#f472b6',
-    artwork: 'url(/event-lua-trai.svg)',
+    artwork: 'url(/event-lua-trai.webp)',
     ctaLabel: t('home.events.luaTraiDaiHoi.ctaLabel'),
     ctaHref: '#events'
   },
@@ -81,7 +81,7 @@ const getFeaturedEvents = (t: any): FeaturedEvent[] => [
     timeline: t('home.events.tuyetDinhSongDau.timeline'),
     reward: t('home.events.tuyetDinhSongDau.reward'),
     accent: '#a78bfa',
-    artwork: 'url(/event-song-dau.svg)',
+    artwork: 'url(/event-song-dau.webp)',
     ctaLabel: t('home.events.tuyetDinhSongDau.ctaLabel'),
     ctaHref: '#events'
   }

@@ -11,13 +11,22 @@ MindPoint Arena mở rộng cờ năm quân thành một nền tảng dịch v�
 ## Hình ảnh sản phẩm
 
 <p align="center">
-  <img src="frontend/public/hero.png" alt="Key art MindPoint Arena với bàn Gomoku và phong cách võ hiệp" width="900" />
+  <img src="docs/assets/readme/mindpoint-arena-dashboard.gif" alt="Dashboard và carousel sự kiện của MindPoint Arena" width="900" />
 </p>
+<p align="center"><em>Dashboard arena đúng tỉ lệ 16:9 với bộ ảnh sự kiện hoàn chỉnh.</em></p>
 
 <p align="center">
-  <img src="docs/assets/readme/mindpoint-arena-loading.gif" alt="Hoạt ảnh loading của MindPoint Arena" width="700" />
+  <img src="docs/assets/readme/mindpoint-arena-hotseat.gif" alt="Trận Gomoku hot-seat trên MindPoint Arena" width="900" />
 </p>
-<p align="center"><em>Hoạt ảnh mở đầu định hình nhận diện hình ảnh của đấu trường.</em></p>
+<p align="center"><em>Luồng hot-seat 15×15 dùng game board và move logic của ứng dụng.</em></p>
+
+<p align="center">
+  <img src="docs/assets/readme/mindpoint-arena-ai-analysis.gif" alt="Phân tích trận đấu có thể giải thích của MindPoint Arena" width="900" />
+</p>
+<p align="center"><em>Phân tích sau trận hiển thị sai lầm, pattern, insight và nước đi tiếp theo được đề xuất.</em></p>
+
+> [!NOTE]
+> Bản ghi sử dụng dữ liệu demo không nhạy cảm. Dashboard, tương tác bàn cờ và analysis UI được chụp từ ứng dụng đang chạy; bộ ảnh sự kiện mới nằm trong `frontend/public/`.
 
 ## Tính năng đã triển khai
 

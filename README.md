@@ -17,13 +17,22 @@ MindPoint Arena evolves the traditional five-in-a-row game into a service-orient
 ## Visual showcase
 
 <p align="center">
-  <img src="frontend/public/hero.png" alt="MindPoint Arena key art featuring a Gomoku board and martial-arts theme" width="900" />
+  <img src="docs/assets/readme/mindpoint-arena-dashboard.gif" alt="MindPoint Arena dashboard and event carousel" width="900" />
 </p>
+<p align="center"><em>Native 16:9 arena dashboard with the completed event-art carousel.</em></p>
 
 <p align="center">
-  <img src="docs/assets/readme/mindpoint-arena-loading.gif" alt="MindPoint Arena animated loading sequence" width="700" />
+  <img src="docs/assets/readme/mindpoint-arena-hotseat.gif" alt="MindPoint Arena local hot-seat Gomoku match" width="900" />
 </p>
-<p align="center"><em>Animated loading sequence used to establish the arena's visual identity.</em></p>
+<p align="center"><em>Playable 15×15 hot-seat flow using the production board and move logic.</em></p>
+
+<p align="center">
+  <img src="docs/assets/readme/mindpoint-arena-ai-analysis.gif" alt="MindPoint Arena explainable match analysis" width="900" />
+</p>
+<p align="center"><em>Post-match analysis surfaces mistakes, patterns, insights, and the recommended next move.</em></p>
+
+> [!NOTE]
+> The recordings use seeded, non-sensitive demo state. The dashboard, board interactions, and analysis UI are captured from the running application; generated event artwork is included under `frontend/public/`.
 
 ## What is implemented
 
